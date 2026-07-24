@@ -29,23 +29,27 @@ export function makeRoomCode(length = 5) {
 /**
  * Opens a room (a Supabase Realtime channel) for a game.
  *
- * This is deliberately low-level and game-agnostic: it does NOT
- * assign roles/teams/turns. Each game builds its own protocol on
- * top using room.on(eventName, handler) for messages it cares
- * about, and room.send(eventName, payload) to broadcast.
+ * Deliberately low-level and game-agnostic: it does NOT decide
+ * who's in charge of anything. It just gives you:
+ *   - on(eventName, handler)      subscribe to a broadcast event
+ *   - send(eventName, payload)    broadcast an event (senderId auto-attached)
+ *   - onPresence(handler)         connected player ids, sorted by join time
+ *   - connect()                   subscribe + start presence tracking
  *
- * Register all room.on(...) and room.onPresence(...) handlers
- * BEFORE calling room.connect(), so nothing is missed once the
- * channel goes live.
+ * IMPORTANT: call on(...)/onPresence(...) BEFORE connect(), so
+ * nothing sent right after connecting gets missed.
  *
- * Host model: presence entries are sorted by join time; whoever
- * joined earliest is "host" (room.amHost, kept live-updated).
- * Games that need one authoritative simulator (e.g. to referee
- * moves so two teammates can't both act on the same turn) should
- * gate that logic behind amHost(). If the host disconnects,
- * presence re-sorts and the next-earliest player automatically
- * becomes host — the game should re-broadcast its current state
- * right after such a promotion so everyone reconciles.
+ * Games that need one authoritative "referee" (e.g. so two
+ * teammates can't both act on the same turn) should track that
+ * explicitly in their OWN state (e.g. a `hostId` field set once
+ * at room creation), rather than re-deriving "who's in charge"
+ * from presence data on every message. Presence is great for
+ * "is everyone still connected" but its ordering can briefly
+ * disagree across clients right after a join/leave, which is
+ * exactly the wrong moment to be silently gating message
+ * handling on it. Use onPresence() only to notice when the
+ * current authoritative player has disconnected, and hand off
+ * explicitly at that point.
  *
  * @param {Object} opts
  * @param {string} opts.gamePrefix  short game id, e.g. "ttt"
@@ -60,14 +64,13 @@ export function openRoom({ gamePrefix, roomCode, myId }) {
     },
   });
 
-  let hostFlag = false;
-
   function on(eventName, handler) {
     channel.on('broadcast', { event: eventName }, ({ payload }) => handler(payload));
   }
 
   /**
-   * @param {(info: {ids: string[], isHost: boolean, count: number, justBecameHost: boolean}) => void} handler
+   * @param {(info: {ids: string[], count: number}) => void} handler
+   *   ids is every currently-connected player's id, sorted by join time (oldest first).
    */
   function onPresence(handler) {
     channel.on('presence', { event: 'sync' }, () => {
@@ -77,15 +80,8 @@ export function openRoom({ gamePrefix, roomCode, myId }) {
         joinedAt: metas[0]?.joinedAt ?? Infinity,
       }));
       entries.sort((a, b) => a.joinedAt - b.joinedAt);
-      const ids = entries.map((e) => e.key);
-      const wasHost = hostFlag;
-      hostFlag = ids.length > 0 && ids[0] === myId;
-      handler({ ids, isHost: hostFlag, count: ids.length, justBecameHost: hostFlag && !wasHost });
+      handler({ ids: entries.map((e) => e.key), count: entries.length });
     });
-  }
-
-  function amHost() {
-    return hostFlag;
   }
 
   function connect() {
@@ -107,5 +103,5 @@ export function openRoom({ gamePrefix, roomCode, myId }) {
     channel.unsubscribe();
   }
 
-  return { channel, myId, on, onPresence, amHost, connect, send, leave };
+  return { channel, myId, on, onPresence, connect, send, leave };
 }
