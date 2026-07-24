@@ -1,8 +1,7 @@
 // =========================================================
 // SHARED SUPABASE SETUP — one project, used by every game.
-// Fill these in once you have a Supabase project; every
-// game on the site imports from here, so you only set it
-// up in one place.
+// Every game on the site imports from here, so it's only
+// configured in one place.
 // =========================================================
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
@@ -13,9 +12,9 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* No database tables are required for any of these games.
    Rooms live entirely as Supabase Realtime channels, named
-   "<gamePrefix>:<ROOMCODE>", e.g. "ttt:QK7RM".
-   The prefix keeps rooms for different games from colliding
-   even if two people happen to pick the same room code. */
+   "<gamePrefix>:<ROOMCODE>", e.g. "ttt:QK7RM". The prefix
+   keeps rooms for different games from colliding even if
+   two people pick the same room code. */
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I ambiguity
 
@@ -28,24 +27,32 @@ export function makeRoomCode(length = 5) {
 }
 
 /**
- * Connects to a 2-player room for a given game.
+ * Opens a room (a Supabase Realtime channel) for a game.
+ *
+ * This is deliberately low-level and game-agnostic: it does NOT
+ * assign roles/teams/turns. Each game builds its own protocol on
+ * top using room.on(eventName, handler) for messages it cares
+ * about, and room.send(eventName, payload) to broadcast.
+ *
+ * Register all room.on(...) and room.onPresence(...) handlers
+ * BEFORE calling room.connect(), so nothing is missed once the
+ * channel goes live.
+ *
+ * Host model: presence entries are sorted by join time; whoever
+ * joined earliest is "host" (room.amHost, kept live-updated).
+ * Games that need one authoritative simulator (e.g. to referee
+ * moves so two teammates can't both act on the same turn) should
+ * gate that logic behind amHost(). If the host disconnects,
+ * presence re-sorts and the next-earliest player automatically
+ * becomes host — the game should re-broadcast its current state
+ * right after such a promotion so everyone reconciles.
  *
  * @param {Object} opts
- * @param {string} opts.gamePrefix   short game id, e.g. "ttt"
- * @param {string} opts.roomCode     the room code (created or joined)
- * @param {string} opts.myId         a stable id for this browser tab (crypto.randomUUID())
- * @param {(roleInfo: {role: 'p1'|'p2', opponentPresent: boolean}) => void} opts.onRoleChange
- *        called whenever presence changes; tells you your role and whether
- *        the other seat is filled. Role is assigned by join order (first = p1).
- * @param {(payload: any) => void} opts.onMessage
- *        called for every broadcast event of type "move" from ANY peer
- *        (including yourself, since self:true — filter by senderId if needed).
- *
- * @returns {Promise<{channel, send, leave}>}
- *   send(payload) broadcasts a "move" event to the room.
- *   leave() unsubscribes cleanly.
+ * @param {string} opts.gamePrefix  short game id, e.g. "ttt"
+ * @param {string} opts.roomCode
+ * @param {string} opts.myId        stable id for this tab (crypto.randomUUID())
  */
-export async function connectRoom({ gamePrefix, roomCode, myId, onRoleChange, onMessage }) {
+export function openRoom({ gamePrefix, roomCode, myId }) {
   const channel = supabase.channel(`${gamePrefix}:${roomCode}`, {
     config: {
       broadcast: { self: true },
@@ -53,37 +60,52 @@ export async function connectRoom({ gamePrefix, roomCode, myId, onRoleChange, on
     },
   });
 
-  function computeRole() {
-    const state = channel.presenceState();
-    // Flatten to [{key, joinedAt}] and sort by join order for a stable role assignment.
-    const entries = Object.entries(state).map(([key, metas]) => ({
-      key,
-      joinedAt: metas[0]?.joinedAt ?? 0,
-    }));
-    entries.sort((a, b) => a.joinedAt - b.joinedAt);
+  let hostFlag = false;
 
-    const myIndex = entries.findIndex((e) => e.key === myId);
-    const role = myIndex === 0 ? 'p1' : 'p2';
-    const opponentPresent = entries.length >= 2;
-    onRoleChange({ role, opponentPresent });
+  function on(eventName, handler) {
+    channel.on('broadcast', { event: eventName }, ({ payload }) => handler(payload));
   }
 
-  channel.on('presence', { event: 'sync' }, computeRole);
-  channel.on('broadcast', { event: 'move' }, ({ payload }) => onMessage(payload));
+  /**
+   * @param {(info: {ids: string[], isHost: boolean, count: number, justBecameHost: boolean}) => void} handler
+   */
+  function onPresence(handler) {
+    channel.on('presence', { event: 'sync' }, () => {
+      const state = channel.presenceState();
+      const entries = Object.entries(state).map(([key, metas]) => ({
+        key,
+        joinedAt: metas[0]?.joinedAt ?? Infinity,
+      }));
+      entries.sort((a, b) => a.joinedAt - b.joinedAt);
+      const ids = entries.map((e) => e.key);
+      const wasHost = hostFlag;
+      hostFlag = ids.length > 0 && ids[0] === myId;
+      handler({ ids, isHost: hostFlag, count: ids.length, justBecameHost: hostFlag && !wasHost });
+    });
+  }
 
-  await channel.subscribe(async (status) => {
-    if (status === 'SUBSCRIBED') {
-      await channel.track({ joinedAt: Date.now() });
-    }
-  });
+  function amHost() {
+    return hostFlag;
+  }
 
-  function send(payload) {
-    channel.send({ type: 'broadcast', event: 'move', payload: { senderId: myId, ...payload } });
+  function connect() {
+    return new Promise((resolve) => {
+      channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({ joinedAt: Date.now() });
+          resolve();
+        }
+      });
+    });
+  }
+
+  function send(eventName, payload = {}) {
+    channel.send({ type: 'broadcast', event: eventName, payload: { senderId: myId, ...payload } });
   }
 
   function leave() {
     channel.unsubscribe();
   }
 
-  return { channel, send, leave };
+  return { channel, myId, on, onPresence, amHost, connect, send, leave };
 }

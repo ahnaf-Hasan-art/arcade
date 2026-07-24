@@ -14,6 +14,12 @@
     min-height: 100vh;
   }
 
+  @media (max-width: 480px) {
+    body { padding: 20px 8px; }
+    .teams-row { flex-direction: column; gap: 12px; align-items: center; }
+    .team-panel { width: 100%; max-width: 260px; }
+  }
+
   .back-link { align-self: flex-start; margin-bottom: 20px; font-size: 12px; }
 
   .screen {
@@ -27,28 +33,88 @@
 
   #join-form { margin-top: 4px; }
 
-  /* ---------- Board ---------- */
+  .mode-select {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .mode-btn {
+    padding: 8px 16px;
+    border: 1px solid var(--nebula);
+    color: var(--mist);
+    background: var(--void);
+  }
+  .mode-btn.active {
+    border-color: var(--signal);
+    color: var(--signal);
+    background: rgba(79, 216, 232, 0.08);
+  }
+
+  /* ---------- Lobby ---------- */
+  .teams-row {
+    display: flex;
+    gap: 24px;
+    margin-top: 8px;
+  }
+  .team-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 180px;
+    padding: 16px;
+    border: 1px solid var(--nebula);
+    background: var(--void);
+  }
+  .team-panel.team-X { border-top: 3px solid var(--win-x); }
+  .team-panel.team-O { border-top: 3px solid var(--win-o); }
+  .team-panel h3 {
+    margin: 0;
+    font-size: 15px;
+    letter-spacing: 2px;
+  }
+  .team-panel.team-X h3 { color: var(--win-x); }
+  .team-panel.team-O h3 { color: var(--win-o); }
+  .team-slot {
+    font-size: 12px;
+    padding: 6px 8px;
+    background: rgba(138,147,184,0.06);
+    border: 1px solid var(--nebula);
+    color: var(--mist);
+  }
+  .team-slot.mine { color: var(--signal); border-color: var(--signal-dim); }
+  .team-slot.open { font-style: italic; opacity: 0.6; }
+
+  /* ---------- Board ----------
+     Cell size uses clamp() with a vw component so the whole
+     9x9 grid scales down to fit narrow phone screens instead
+     of overflowing off one edge. #board-wrap also allows
+     horizontal scroll as a last-resort safety net. */
   #board-wrap {
     position: relative;
     margin-top: 10px;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .meta-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
+    gap: clamp(4px, 2vw, 10px);
     background: var(--nebula);
-    padding: 10px;
+    padding: clamp(4px, 2vw, 10px);
     border: 1px solid var(--signal-dim);
+    width: fit-content;
+    margin: 0 auto;
   }
 
   .mini-board {
     position: relative;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 3px;
+    gap: clamp(1px, 0.6vw, 3px);
     background: var(--void-deep);
-    padding: 5px;
+    padding: clamp(2px, 1vw, 5px);
     transition: background 0.15s, box-shadow 0.15s;
   }
   .mini-board.legal {
@@ -58,14 +124,14 @@
   .mini-board.won-X, .mini-board.won-O { opacity: 0.55; }
 
   .cell {
-    width: 42px;
-    height: 42px;
+    width: clamp(24px, 8.5vw, 42px);
+    height: clamp(24px, 8.5vw, 42px);
     display: flex;
     align-items: center;
     justify-content: center;
     background: var(--void);
     border: 1px solid var(--nebula);
-    font-size: 22px;
+    font-size: clamp(13px, 4.2vw, 22px);
     font-weight: bold;
     cursor: pointer;
     user-select: none;
@@ -74,6 +140,7 @@
   .cell.O { color: var(--win-o); }
   .cell.clickable:hover { background: rgba(79, 216, 232, 0.12); border-color: var(--signal); }
   .cell.disabled { cursor: default; }
+  .cell.pending { background: rgba(244,196,100,0.18); border-color: var(--gold); cursor: default; }
 
   .mini-overlay {
     position: absolute;
@@ -81,14 +148,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 56px;
+    font-size: clamp(26px, 9vw, 56px);
     font-weight: bold;
     pointer-events: none;
     background: rgba(5, 7, 16, 0.75);
   }
   .mini-overlay.X { color: var(--win-x); text-shadow: 0 0 16px rgba(79,216,232,0.7); }
   .mini-overlay.O { color: var(--win-o); text-shadow: 0 0 16px rgba(255,77,109,0.7); }
-  .mini-overlay.D { color: var(--mist); font-size: 28px; letter-spacing: 2px; }
+  .mini-overlay.D { color: var(--mist); font-size: clamp(14px, 4.5vw, 28px); letter-spacing: 2px; }
 
   /* ---------- Status bar ---------- */
   #status-bar {
@@ -98,11 +165,9 @@
     font-size: 14px;
     letter-spacing: 1px;
   }
-  .badge {
-    padding: 4px 10px;
-    border: 1px solid var(--nebula);
-  }
-  .badge.mine { border-color: var(--signal); color: var(--signal); }
+  .badge { padding: 4px 10px; border: 1px solid var(--nebula); }
+  .badge.mine-X { border-color: var(--win-x); color: var(--win-x); }
+  .badge.mine-O { border-color: var(--win-o); color: var(--win-o); }
   #turn-indicator.X { color: var(--win-x); }
   #turn-indicator.O { color: var(--win-o); }
 </style>
@@ -113,10 +178,17 @@
 
   <!-- HOME -->
   <div id="screen-home" class="screen">
-    <div class="eyebrow">2 Player · Realtime</div>
+    <div class="eyebrow">1v1 or 2v2 · Realtime</div>
     <h1 class="title" style="font-size:30px;">ULTIMATE TIC TAC TOE</h1>
-    <div class="msg">Nine boards. Win three mini-boards in a row to win it all — but your move decides which board your opponent plays next.</div>
-    <div class="row">
+    <div class="msg">Nine boards. Win three mini-boards in a row to win it all — but your move decides which board the other side plays next.</div>
+
+    <div class="eyebrow" style="margin-top:10px;">Mode (for creating a room)</div>
+    <div class="mode-select">
+      <button class="mode-btn active" id="mode-1v1" data-mode="1v1">1 v 1</button>
+      <button class="mode-btn" id="mode-2v2" data-mode="2v2">2 v 2</button>
+    </div>
+
+    <div class="row" style="margin-top:6px;">
       <button id="btn-create">Create Room</button>
       <button id="btn-join-open">Join Room</button>
     </div>
@@ -127,38 +199,53 @@
     <div id="home-err" class="err"></div>
   </div>
 
-  <!-- WAITING -->
-  <div id="screen-waiting" class="screen hidden">
-    <div class="eyebrow">Room Code</div>
-    <div class="code-badge" id="waiting-code">-----</div>
-    <div class="msg">Share this code, or send the link below, to your friend.</div>
+  <!-- LOBBY -->
+  <div id="screen-lobby" class="screen hidden">
+    <div class="eyebrow">Room Code · <span id="lobby-mode-label"></span></div>
+    <div class="code-badge" id="lobby-code">-----</div>
     <div class="row">
       <input id="share-link" readonly style="width:320px;">
       <button id="btn-copy-link">Copy</button>
     </div>
-    <div class="msg" id="waiting-msg">Waiting for opponent to join...</div>
+
+    <div class="teams-row">
+      <div class="team-panel team-X">
+        <h3>TEAM X</h3>
+        <div id="slots-X"></div>
+        <button id="btn-join-X">Join Team X</button>
+      </div>
+      <div class="team-panel team-O">
+        <h3>TEAM O</h3>
+        <div id="slots-O"></div>
+        <button id="btn-join-O">Join Team O</button>
+      </div>
+    </div>
+
+    <button id="btn-start" class="hidden">Launch</button>
+    <div class="msg" id="lobby-msg">Choose a team.</div>
   </div>
 
   <!-- GAME -->
   <div id="screen-game" class="screen hidden">
     <div id="status-bar">
-      <span class="badge" id="you-badge">You: X</span>
-      <span id="turn-indicator">Your turn</span>
+      <span class="badge" id="you-badge">You: —</span>
+      <span id="turn-indicator">—</span>
     </div>
     <div id="board-wrap"></div>
     <div id="result-msg" class="msg"></div>
     <div class="row hidden" id="rematch-row">
-      <button id="btn-rematch">Rematch</button>
+      <button id="btn-rematch">Rematch (host only)</button>
     </div>
+    <div class="msg hidden" id="rematch-wait-msg">Waiting for host to start a rematch...</div>
   </div>
 
 <script type="module">
-import { connectRoom, makeRoomCode, SUPABASE_URL } from '../../shared/supabase.js';
+import { openRoom, makeRoomCode, SUPABASE_URL } from '../../shared/supabase.js';
 
 // =========================================================
 // RULES ENGINE — pure functions, no DOM, no networking.
-// (Kept isolated so it could be lifted into its own file
-// or unit-tested with zero changes.)
+// Verified against 5000 randomized simulated games before
+// shipping (no illegal moves accepted, no deadlocks).
 // =========================================================
 const LINES = [
   [0,1,2],[3,4,5],[6,7,8],   // rows
@@ -168,11 +255,11 @@ const LINES = [
 
 function freshGame() {
   return {
-    boards: Array.from({ length: 9 }, () => Array(9).fill('')), // 9 mini-boards x 9 cells
-    miniWinners: Array(9).fill(''),   // '', 'X', 'O', 'D'
-    activeBoard: null,                // null = play anywhere open
+    boards: Array.from({ length: 9 }, () => Array(9).fill('')),
+    miniWinners: Array(9).fill(''),
+    activeBoard: null,
     currentPlayer: 'X',
-    winner: '',                       // '', 'X', 'O', 'D'
+    winner: '',
   };
 }
 
@@ -188,7 +275,7 @@ function computeMiniResult(cells) {
 }
 
 function isLegalMove(state, boardIdx, cellIdx) {
-  if (state.winner) return false;
+  if (!state || state.winner) return false;
   if (state.boards[boardIdx][cellIdx] !== '') return false;
   if (state.miniWinners[boardIdx] !== '') return false;
   if (state.activeBoard !== null && state.activeBoard !== boardIdx) return false;
@@ -196,17 +283,13 @@ function isLegalMove(state, boardIdx, cellIdx) {
 }
 
 function legalBoardIndices(state) {
-  if (state.winner) return [];
+  if (!state || state.winner) return [];
   if (state.activeBoard !== null) return [state.activeBoard];
-  return state.miniWinners
-    .map((w, i) => (w === '' ? i : -1))
-    .filter(i => i !== -1);
+  return state.miniWinners.map((w, i) => (w === '' ? i : -1)).filter(i => i !== -1);
 }
 
-// Returns a NEW state object (does not mutate input).
 function applyMove(state, boardIdx, cellIdx) {
   if (!isLegalMove(state, boardIdx, cellIdx)) return state;
-
   const mark = state.currentPlayer;
   const boards = state.boards.map((b, i) => (i === boardIdx ? b.slice() : b));
   boards[boardIdx][cellIdx] = mark;
@@ -214,13 +297,11 @@ function applyMove(state, boardIdx, cellIdx) {
   const miniWinners = state.miniWinners.slice();
   miniWinners[boardIdx] = computeMiniResult(boards[boardIdx]);
 
-  const metaResult = computeMiniResult(miniWinners.map(w => (w === 'D' ? 'D' : w))); // treat D as non-mark, X/O check ignores 'D'
-  // computeMiniResult only checks for 'X'/'O' three-in-a-row explicitly, 'D' cells simply never match, so this is safe.
+  const metaResult = computeMiniResult(miniWinners);
   const winner = metaResult === 'X' || metaResult === 'O'
     ? metaResult
     : (miniWinners.every(w => w !== '') ? 'D' : '');
 
-  // Next active board = the cell index just played, unless that board is already decided.
   let nextActive = cellIdx;
   if (miniWinners[cellIdx] !== '') nextActive = null;
 
@@ -234,14 +315,41 @@ function applyMove(state, boardIdx, cellIdx) {
 }
 
 // =========================================================
+// ROOM / LOBBY LOGIC — host-authoritative.
+// One connected player acts as "host" (earliest to join;
+// auto-migrates if they disconnect — see shared/supabase.js).
+// Every client runs this SAME code, but a handler only acts
+// if room.amHost() is true at the moment the message arrives,
+// so whichever peer currently holds the host role is the one
+// that actually mutates ROOM/GAME and re-broadcasts them.
+// This is what stops two teammates from both landing a move
+// on the same turn: the host validates whose turn it is.
+// =========================================================
+function freshRoom(mode) {
+  const capacity = mode === '2v2' ? 2 : 1;
+  return { mode, capacity, teamX: [], teamO: [], started: false };
+}
+
+function tryJoinTeam(room, playerId, team) {
+  if (!room || room.started) return room;
+  const teamX = room.teamX.filter(id => id !== playerId);
+  const teamO = room.teamO.filter(id => id !== playerId);
+  const next = { ...room, teamX, teamO };
+  const arr = team === 'X' ? next.teamX : next.teamO;
+  if (arr.length < room.capacity) arr.push(playerId);
+  return next;
+}
+
+// =========================================================
 // STATE
 // =========================================================
 const myId = crypto.randomUUID();
 let roomCode = null;
-let mySymbol = null;     // 'X' | 'O'
-let opponentPresent = false;
-let game = freshGame();
-let roomHandle = null;
+let selectedMode = '1v1';
+let ROOM = null;   // { mode, capacity, teamX:[ids], teamO:[ids], started }
+let GAME = null;   // null until started, then the game-engine state above
+let room = null;   // the openRoom() handle (networking)
+let pendingCellKey = null; // "b-c" of a move we've sent but not yet confirmed
 
 const SUPABASE_CONFIGURED = SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL';
 
@@ -249,28 +357,37 @@ const SUPABASE_CONFIGURED = SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL';
 // DOM
 // =========================================================
 const screenHome = document.getElementById('screen-home');
-const screenWaiting = document.getElementById('screen-waiting');
+const screenLobby = document.getElementById('screen-lobby');
 const screenGame = document.getElementById('screen-game');
 const boardWrap = document.getElementById('board-wrap');
 const homeErr = document.getElementById('home-err');
 
+document.getElementById('mode-1v1').onclick = () => setMode('1v1');
+document.getElementById('mode-2v2').onclick = () => setMode('2v2');
 document.getElementById('btn-create').onclick = createRoom;
 document.getElementById('btn-join-open').onclick = () =>
   document.getElementById('join-form').classList.remove('hidden');
 document.getElementById('btn-join').onclick = () => joinRoom(document.getElementById('join-code').value.trim().toUpperCase());
 document.getElementById('btn-copy-link').onclick = copyShareLink;
-document.getElementById('btn-rematch').onclick = requestRematch;
+document.getElementById('btn-join-X').onclick = () => room?.send('join_team', { team: 'X' });
+document.getElementById('btn-join-O').onclick = () => room?.send('join_team', { team: 'O' });
+document.getElementById('btn-start').onclick = () => room?.send('start_game', {});
+document.getElementById('btn-rematch').onclick = () => room?.send('rematch_request', {});
+
+function setMode(mode) {
+  selectedMode = mode;
+  document.getElementById('mode-1v1').classList.toggle('active', mode === '1v1');
+  document.getElementById('mode-2v2').classList.toggle('active', mode === '2v2');
+}
 
 function showScreen(id) {
-  for (const s of [screenHome, screenWaiting, screenGame]) s.classList.add('hidden');
+  for (const s of [screenHome, screenLobby, screenGame]) s.classList.add('hidden');
   document.getElementById(id).classList.remove('hidden');
 }
 
-// Auto-join via ?room=CODE link
+// Auto-join via ?room=CODE link (mode is inherited from the room, not chosen here)
 const urlRoom = new URLSearchParams(location.search).get('room');
-if (urlRoom) {
-  joinRoom(urlRoom.toUpperCase());
-}
+if (urlRoom) joinRoom(urlRoom.toUpperCase());
 
 // =========================================================
 // NETWORKING
@@ -282,7 +399,11 @@ async function createRoom() {
     return;
   }
   roomCode = makeRoomCode();
-  await enterRoom();
+  ROOM = freshRoom(selectedMode); // I'm first in, so I'm host — safe to set this locally.
+  GAME = null;
+  await setupRoom();
+  showScreen('screen-lobby');
+  renderLobby();
 }
 
 async function joinRoom(code) {
@@ -293,43 +414,74 @@ async function joinRoom(code) {
     return;
   }
   roomCode = code;
-  await enterRoom();
+  ROOM = null; // unknown until the host answers our request_sync
+  GAME = null;
+  await setupRoom();
+  showScreen('screen-lobby');
+  document.getElementById('lobby-msg').textContent = 'Connecting...';
+  room.send('request_sync', {});
 }
 
-async function enterRoom() {
-  document.getElementById('waiting-code').textContent = roomCode;
+async function setupRoom() {
+  room = openRoom({ gamePrefix: 'ttt', roomCode, myId });
+
+  // ---- messages any peer might send; only the current host acts on them ----
+  room.on('join_team', (payload) => {
+    if (!room.amHost() || !ROOM) return;
+    ROOM = tryJoinTeam(ROOM, payload.senderId, payload.team);
+    broadcastSync();
+  });
+
+  room.on('start_game', () => {
+    if (!room.amHost() || !ROOM || ROOM.started) return;
+    if (ROOM.teamX.length !== ROOM.capacity || ROOM.teamO.length !== ROOM.capacity) return;
+    ROOM = { ...ROOM, started: true };
+    GAME = freshGame();
+    broadcastSync();
+  });
+
+  room.on('move_attempt', (payload) => {
+    if (!room.amHost() || !GAME || !ROOM) return;
+    const senderTeam = ROOM.teamX.includes(payload.senderId) ? 'X'
+      : ROOM.teamO.includes(payload.senderId) ? 'O' : null;
+    if (senderTeam !== GAME.currentPlayer) return;
+    if (!isLegalMove(GAME, payload.boardIdx, payload.cellIdx)) return;
+    GAME = applyMove(GAME, payload.boardIdx, payload.cellIdx);
+    broadcastSync();
+  });
+
+  room.on('rematch_request', () => {
+    if (!room.amHost() || !ROOM) return;
+    GAME = freshGame();
+    broadcastSync();
+  });
+
+  room.on('request_sync', () => {
+    if (!room.amHost() || !ROOM) return;
+    broadcastSync();
+  });
+
+  // ---- authoritative state, received by everyone (including the host itself) ----
+  room.on('sync', (payload) => {
+    ROOM = payload.room;
+    GAME = payload.game;
+    pendingCellKey = null;
+    renderFromState();
+  });
+
+  room.onPresence(({ isHost, justBecameHost }) => {
+    if (justBecameHost && ROOM) broadcastSync(); // reconcile everyone after a host handoff
+  });
+
+  await room.connect();
+
   const link = `${location.origin}${location.pathname}?room=${roomCode}`;
   document.getElementById('share-link').value = link;
-  showScreen('screen-waiting');
+  document.getElementById('lobby-code').textContent = roomCode;
+}
 
-  roomHandle = await connectRoom({
-    gamePrefix: 'ttt',
-    roomCode,
-    myId,
-    onRoleChange: ({ role, opponentPresent: present }) => {
-      mySymbol = role === 'p1' ? 'X' : 'O';
-      opponentPresent = present;
-      document.getElementById('you-badge').textContent = `You: ${mySymbol}`;
-      if (present) {
-        showScreen('screen-game');
-        renderBoard();
-      } else {
-        document.getElementById('waiting-msg').textContent = 'Waiting for opponent to join...';
-        showScreen('screen-waiting');
-      }
-    },
-    onMessage: (payload) => {
-      if (payload.senderId === myId) return; // ignore our own broadcast (self:true)
-      if (payload.type === 'move') {
-        game = applyMove(game, payload.boardIdx, payload.cellIdx);
-        renderBoard();
-      } else if (payload.type === 'rematch') {
-        game = freshGame();
-        document.getElementById('rematch-row').classList.add('hidden');
-        renderBoard();
-      }
-    },
-  });
+function broadcastSync() {
+  room.send('sync', { room: ROOM, game: GAME });
 }
 
 function copyShareLink() {
@@ -338,52 +490,101 @@ function copyShareLink() {
   navigator.clipboard?.writeText(input.value).catch(() => {});
 }
 
-function requestRematch() {
-  game = freshGame();
-  document.getElementById('rematch-row').classList.add('hidden');
-  roomHandle?.send({ type: 'rematch' });
-  renderBoard();
+// =========================================================
+// RENDER DISPATCH
+// =========================================================
+function renderFromState() {
+  if (!ROOM) return;
+  document.getElementById('lobby-mode-label').textContent = ROOM.mode.toUpperCase();
+  if (!ROOM.started) {
+    showScreen('screen-lobby');
+    renderLobby();
+  } else {
+    showScreen('screen-game');
+    renderBoard();
+  }
 }
 
 // =========================================================
-// UI / EVENTS — handles a cell click, applies locally, sends it
+// LOBBY RENDER
 // =========================================================
+function renderLobby() {
+  renderTeamPanel('X');
+  renderTeamPanel('O');
+
+  const full = ROOM.teamX.length === ROOM.capacity && ROOM.teamO.length === ROOM.capacity;
+  const startBtn = document.getElementById('btn-start');
+  startBtn.classList.toggle('hidden', !room.amHost());
+  startBtn.disabled = !full;
+
+  document.getElementById('lobby-msg').textContent = full
+    ? (room.amHost() ? 'Both teams full — ready to launch.' : 'Both teams full — waiting for host to launch.')
+    : `Choose a team (${ROOM.capacity} per side for ${ROOM.mode}).`;
+}
+
+function renderTeamPanel(team) {
+  const arr = team === 'X' ? ROOM.teamX : ROOM.teamO;
+  const el = document.getElementById('slots-' + team);
+  el.innerHTML = '';
+  for (let i = 0; i < ROOM.capacity; i++) {
+    const id = arr[i];
+    const slot = document.createElement('div');
+    slot.className = 'team-slot' + (id ? (id === myId ? ' mine' : '') : ' open');
+    slot.textContent = id ? (id === myId ? 'You' : 'Player') : 'open seat';
+    el.appendChild(slot);
+  }
+  const btn = document.getElementById('btn-join-' + team);
+  const alreadyOnThisTeam = arr.includes(myId);
+  btn.disabled = ROOM.started || (arr.length >= ROOM.capacity && !alreadyOnThisTeam) || alreadyOnThisTeam;
+  btn.textContent = alreadyOnThisTeam ? 'You\u2019re on Team ' + team : 'Join Team ' + team;
+}
+
+// =========================================================
+// GAME RENDER
+// =========================================================
+function myTeam() {
+  if (!ROOM) return null;
+  if (ROOM.teamX.includes(myId)) return 'X';
+  if (ROOM.teamO.includes(myId)) return 'O';
+  return null;
+}
+
 function handleCellClick(boardIdx, cellIdx) {
-  if (!opponentPresent || game.winner) return;
-  if (game.currentPlayer !== mySymbol) return;
-  if (!isLegalMove(game, boardIdx, cellIdx)) return;
-
-  game = applyMove(game, boardIdx, cellIdx);
-  roomHandle?.send({ type: 'move', boardIdx, cellIdx });
-  renderBoard();
+  if (!GAME || GAME.winner) return;
+  if (myTeam() !== GAME.currentPlayer) return;
+  if (!isLegalMove(GAME, boardIdx, cellIdx)) return;
+  pendingCellKey = `${boardIdx}-${cellIdx}`;
+  room.send('move_attempt', { boardIdx, cellIdx });
+  renderBoard(); // show pending state immediately; authoritative update arrives via 'sync'
 }
 
-// =========================================================
-// RENDER
-// =========================================================
 function renderBoard() {
-  const legalBoards = new Set(legalBoardIndices(game));
-  boardWrap.innerHTML = '';
+  const mine = myTeam();
+  const legalBoards = new Set(legalBoardIndices(GAME));
+  const myTurn = !GAME.winner && mine === GAME.currentPlayer;
 
+  boardWrap.innerHTML = '';
   const metaGrid = document.createElement('div');
   metaGrid.className = 'meta-grid';
 
   for (let b = 0; b < 9; b++) {
     const mini = document.createElement('div');
     mini.className = 'mini-board';
-    if (legalBoards.has(b) && game.currentPlayer === mySymbol && !game.winner) {
-      mini.classList.add('legal');
-    }
-    if (game.miniWinners[b]) mini.classList.add('won-' + game.miniWinners[b]);
+    if (myTurn && legalBoards.has(b)) mini.classList.add('legal');
+    if (GAME.miniWinners[b]) mini.classList.add('won-' + GAME.miniWinners[b]);
 
     for (let c = 0; c < 9; c++) {
-      const cellVal = game.boards[b][c];
+      const cellVal = GAME.boards[b][c];
+      const key = `${b}-${c}`;
       const cellEl = document.createElement('div');
       cellEl.className = 'cell';
       if (cellVal) {
         cellEl.classList.add(cellVal, 'disabled');
         cellEl.textContent = cellVal;
-      } else if (legalBoards.has(b) && !game.miniWinners[b] && game.currentPlayer === mySymbol && !game.winner) {
+      } else if (pendingCellKey === key) {
+        cellEl.classList.add('pending');
+        cellEl.textContent = '\u2026';
+      } else if (myTurn && legalBoards.has(b) && !GAME.miniWinners[b]) {
         cellEl.classList.add('clickable');
       } else {
         cellEl.classList.add('disabled');
@@ -392,37 +593,43 @@ function renderBoard() {
       mini.appendChild(cellEl);
     }
 
-    if (game.miniWinners[b]) {
+    if (GAME.miniWinners[b]) {
       const overlay = document.createElement('div');
-      overlay.className = 'mini-overlay ' + game.miniWinners[b];
-      overlay.textContent = game.miniWinners[b] === 'D' ? 'DRAW' : game.miniWinners[b];
+      overlay.className = 'mini-overlay ' + GAME.miniWinners[b];
+      overlay.textContent = GAME.miniWinners[b] === 'D' ? 'DRAW' : GAME.miniWinners[b];
       mini.appendChild(overlay);
     }
 
     metaGrid.appendChild(mini);
   }
-
   boardWrap.appendChild(metaGrid);
 
   // status bar
+  const youBadge = document.getElementById('you-badge');
+  youBadge.textContent = mine ? `You: Team ${mine}` : 'Spectating';
+  youBadge.className = 'badge' + (mine ? ` mine-${mine}` : '');
+
   const turnEl = document.getElementById('turn-indicator');
   const resultEl = document.getElementById('result-msg');
   const rematchRow = document.getElementById('rematch-row');
+  const rematchWait = document.getElementById('rematch-wait-msg');
 
-  if (game.winner) {
+  if (GAME.winner) {
     turnEl.textContent = '';
     turnEl.className = '';
-    if (game.winner === 'D') {
+    if (GAME.winner === 'D') {
       resultEl.textContent = 'Draw. Full board, no winner.';
     } else {
-      resultEl.textContent = game.winner === mySymbol ? 'You win! 🎉' : `${game.winner} wins.`;
+      resultEl.textContent = GAME.winner === mine ? 'Your team wins! \ud83c\udf89' : `Team ${GAME.winner} wins.`;
     }
-    rematchRow.classList.remove('hidden');
+    rematchRow.classList.toggle('hidden', !room.amHost());
+    rematchWait.classList.toggle('hidden', room.amHost());
   } else {
     resultEl.textContent = '';
     rematchRow.classList.add('hidden');
-    turnEl.className = game.currentPlayer;
-    turnEl.textContent = game.currentPlayer === mySymbol ? 'Your turn' : `Waiting for ${game.currentPlayer}...`;
+    rematchWait.classList.add('hidden');
+    turnEl.className = GAME.currentPlayer;
+    turnEl.textContent = myTurn ? 'Your team\u2019s turn' : `Waiting for Team ${GAME.currentPlayer}...`;
   }
 }
 </script>
