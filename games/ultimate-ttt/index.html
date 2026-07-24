@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ultimate Tic Tac Toe</title>
+<link rel="stylesheet" href="../../shared/style.css">
+<style>
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    min-height: 100vh;
+  }
+
+  .back-link { align-self: flex-start; margin-bottom: 20px; font-size: 12px; }
+
+  .screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    text-align: center;
+  }
+  .hidden { display: none !important; }
+
+  #join-form { margin-top: 4px; }
+
+  /* ---------- Board ---------- */
+  #board-wrap {
+    position: relative;
+    margin-top: 10px;
+  }
+
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    background: var(--nebula);
+    padding: 10px;
+    border: 1px solid var(--signal-dim);
+  }
+
+  .mini-board {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3px;
+    background: var(--void-deep);
+    padding: 5px;
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+  .mini-board.legal {
+    background: rgba(79, 216, 232, 0.08);
+    box-shadow: 0 0 0 2px var(--signal) inset;
+  }
+  .mini-board.won-X, .mini-board.won-O { opacity: 0.55; }
+
+  .cell {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--void);
+    border: 1px solid var(--nebula);
+    font-size: 22px;
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+  }
+  .cell.X { color: var(--win-x); }
+  .cell.O { color: var(--win-o); }
+  .cell.clickable:hover { background: rgba(79, 216, 232, 0.12); border-color: var(--signal); }
+  .cell.disabled { cursor: default; }
+
+  .mini-overlay {
+    position: absolute;
+    inset: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 56px;
+    font-weight: bold;
+    pointer-events: none;
+    background: rgba(5, 7, 16, 0.75);
+  }
+  .mini-overlay.X { color: var(--win-x); text-shadow: 0 0 16px rgba(79,216,232,0.7); }
+  .mini-overlay.O { color: var(--win-o); text-shadow: 0 0 16px rgba(255,77,109,0.7); }
+  .mini-overlay.D { color: var(--mist); font-size: 28px; letter-spacing: 2px; }
+
+  /* ---------- Status bar ---------- */
+  #status-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 14px;
+    letter-spacing: 1px;
+  }
+  .badge {
+    padding: 4px 10px;
+    border: 1px solid var(--nebula);
+  }
+  .badge.mine { border-color: var(--signal); color: var(--signal); }
+  #turn-indicator.X { color: var(--win-x); }
+  #turn-indicator.O { color: var(--win-o); }
+</style>
+</head>
+<body>
+
+  <a class="back-link link" href="../../">&larr; All games</a>
+
+  <!-- HOME -->
+  <div id="screen-home" class="screen">
+    <div class="eyebrow">2 Player · Realtime</div>
+    <h1 class="title" style="font-size:30px;">ULTIMATE TIC TAC TOE</h1>
+    <div class="msg">Nine boards. Win three mini-boards in a row to win it all — but your move decides which board your opponent plays next.</div>
+    <div class="row">
+      <button id="btn-create">Create Room</button>
+      <button id="btn-join-open">Join Room</button>
+    </div>
+    <div id="join-form" class="row hidden">
+      <input id="join-code" maxlength="5" placeholder="ROOM CODE" style="text-transform:uppercase; letter-spacing:3px; width:130px;">
+      <button id="btn-join">Join</button>
+    </div>
+    <div id="home-err" class="err"></div>
+  </div>
+
+  <!-- WAITING -->
+  <div id="screen-waiting" class="screen hidden">
+    <div class="eyebrow">Room Code</div>
+    <div class="code-badge" id="waiting-code">-----</div>
+    <div class="msg">Share this code, or send the link below, to your friend.</div>
+    <div class="row">
+      <input id="share-link" readonly style="width:320px;">
+      <button id="btn-copy-link">Copy</button>
+    </div>
+    <div class="msg" id="waiting-msg">Waiting for opponent to join...</div>
+  </div>
+
+  <!-- GAME -->
+  <div id="screen-game" class="screen hidden">
+    <div id="status-bar">
+      <span class="badge" id="you-badge">You: X</span>
+      <span id="turn-indicator">Your turn</span>
+    </div>
+    <div id="board-wrap"></div>
+    <div id="result-msg" class="msg"></div>
+    <div class="row hidden" id="rematch-row">
+      <button id="btn-rematch">Rematch</button>
+    </div>
+  </div>
+
+<script type="module">
+import { connectRoom, makeRoomCode, SUPABASE_URL } from '../../shared/supabase.js';
+
+// =========================================================
+// RULES ENGINE — pure functions, no DOM, no networking.
+// (Kept isolated so it could be lifted into its own file
+// or unit-tested with zero changes.)
+// =========================================================
+const LINES = [
+  [0,1,2],[3,4,5],[6,7,8],   // rows
+  [0,3,6],[1,4,7],[2,5,8],   // cols
+  [0,4,8],[2,4,6],           // diagonals
+];
+
+function freshGame() {
+  return {
+    boards: Array.from({ length: 9 }, () => Array(9).fill('')), // 9 mini-boards x 9 cells
+    miniWinners: Array(9).fill(''),   // '', 'X', 'O', 'D'
+    activeBoard: null,                // null = play anywhere open
+    currentPlayer: 'X',
+    winner: '',                       // '', 'X', 'O', 'D'
+  };
+}
+
+function checkThreeInRow(cells, mark) {
+  return LINES.some(line => line.every(i => cells[i] === mark));
+}
+
+function computeMiniResult(cells) {
+  if (checkThreeInRow(cells, 'X')) return 'X';
+  if (checkThreeInRow(cells, 'O')) return 'O';
+  if (cells.every(c => c !== '')) return 'D';
+  return '';
+}
+
+function isLegalMove(state, boardIdx, cellIdx) {
+  if (state.winner) return false;
+  if (state.boards[boardIdx][cellIdx] !== '') return false;
+  if (state.miniWinners[boardIdx] !== '') return false;
+  if (state.activeBoard !== null && state.activeBoard !== boardIdx) return false;
+  return true;
+}
+
+function legalBoardIndices(state) {
+  if (state.winner) return [];
+  if (state.activeBoard !== null) return [state.activeBoard];
+  return state.miniWinners
+    .map((w, i) => (w === '' ? i : -1))
+    .filter(i => i !== -1);
+}
+
+// Returns a NEW state object (does not mutate input).
+function applyMove(state, boardIdx, cellIdx) {
+  if (!isLegalMove(state, boardIdx, cellIdx)) return state;
+
+  const mark = state.currentPlayer;
+  const boards = state.boards.map((b, i) => (i === boardIdx ? b.slice() : b));
+  boards[boardIdx][cellIdx] = mark;
+
+  const miniWinners = state.miniWinners.slice();
+  miniWinners[boardIdx] = computeMiniResult(boards[boardIdx]);
+
+  const metaResult = computeMiniResult(miniWinners.map(w => (w === 'D' ? 'D' : w))); // treat D as non-mark, X/O check ignores 'D'
+  // computeMiniResult only checks for 'X'/'O' three-in-a-row explicitly, 'D' cells simply never match, so this is safe.
+  const winner = metaResult === 'X' || metaResult === 'O'
+    ? metaResult
+    : (miniWinners.every(w => w !== '') ? 'D' : '');
+
+  // Next active board = the cell index just played, unless that board is already decided.
+  let nextActive = cellIdx;
+  if (miniWinners[cellIdx] !== '') nextActive = null;
+
+  return {
+    boards,
+    miniWinners,
+    activeBoard: winner ? state.activeBoard : nextActive,
+    currentPlayer: mark === 'X' ? 'O' : 'X',
+    winner,
+  };
+}
+
+// =========================================================
+// STATE
+// =========================================================
+const myId = crypto.randomUUID();
+let roomCode = null;
+let mySymbol = null;     // 'X' | 'O'
+let opponentPresent = false;
+let game = freshGame();
+let roomHandle = null;
+
+const SUPABASE_CONFIGURED = SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL';
+
+// =========================================================
+// DOM
+// =========================================================
+const screenHome = document.getElementById('screen-home');
+const screenWaiting = document.getElementById('screen-waiting');
+const screenGame = document.getElementById('screen-game');
+const boardWrap = document.getElementById('board-wrap');
+const homeErr = document.getElementById('home-err');
+
+document.getElementById('btn-create').onclick = createRoom;
+document.getElementById('btn-join-open').onclick = () =>
+  document.getElementById('join-form').classList.remove('hidden');
+document.getElementById('btn-join').onclick = () => joinRoom(document.getElementById('join-code').value.trim().toUpperCase());
+document.getElementById('btn-copy-link').onclick = copyShareLink;
+document.getElementById('btn-rematch').onclick = requestRematch;
+
+function showScreen(id) {
+  for (const s of [screenHome, screenWaiting, screenGame]) s.classList.add('hidden');
+  document.getElementById(id).classList.remove('hidden');
+}
+
+// Auto-join via ?room=CODE link
+const urlRoom = new URLSearchParams(location.search).get('room');
+if (urlRoom) {
+  joinRoom(urlRoom.toUpperCase());
+}
+
+// =========================================================
+// NETWORKING
+// =========================================================
+async function createRoom() {
+  homeErr.textContent = '';
+  if (!SUPABASE_CONFIGURED) {
+    homeErr.textContent = 'Multiplayer isn\u2019t connected yet \u2014 add your Supabase URL/key in shared/supabase.js.';
+    return;
+  }
+  roomCode = makeRoomCode();
+  await enterRoom();
+}
+
+async function joinRoom(code) {
+  homeErr.textContent = '';
+  if (!code) { homeErr.textContent = 'Enter a room code.'; return; }
+  if (!SUPABASE_CONFIGURED) {
+    homeErr.textContent = 'Multiplayer isn\u2019t connected yet \u2014 add your Supabase URL/key in shared/supabase.js.';
+    return;
+  }
+  roomCode = code;
+  await enterRoom();
+}
+
+async function enterRoom() {
+  document.getElementById('waiting-code').textContent = roomCode;
+  const link = `${location.origin}${location.pathname}?room=${roomCode}`;
+  document.getElementById('share-link').value = link;
+  showScreen('screen-waiting');
+
+  roomHandle = await connectRoom({
+    gamePrefix: 'ttt',
+    roomCode,
+    myId,
+    onRoleChange: ({ role, opponentPresent: present }) => {
+      mySymbol = role === 'p1' ? 'X' : 'O';
+      opponentPresent = present;
+      document.getElementById('you-badge').textContent = `You: ${mySymbol}`;
+      if (present) {
+        showScreen('screen-game');
+        renderBoard();
+      } else {
+        document.getElementById('waiting-msg').textContent = 'Waiting for opponent to join...';
+        showScreen('screen-waiting');
+      }
+    },
+    onMessage: (payload) => {
+      if (payload.senderId === myId) return; // ignore our own broadcast (self:true)
+      if (payload.type === 'move') {
+        game = applyMove(game, payload.boardIdx, payload.cellIdx);
+        renderBoard();
+      } else if (payload.type === 'rematch') {
+        game = freshGame();
+        document.getElementById('rematch-row').classList.add('hidden');
+        renderBoard();
+      }
+    },
+  });
+}
+
+function copyShareLink() {
+  const input = document.getElementById('share-link');
+  input.select();
+  navigator.clipboard?.writeText(input.value).catch(() => {});
+}
+
+function requestRematch() {
+  game = freshGame();
+  document.getElementById('rematch-row').classList.add('hidden');
+  roomHandle?.send({ type: 'rematch' });
+  renderBoard();
+}
+
+// =========================================================
+// UI / EVENTS — handles a cell click, applies locally, sends it
+// =========================================================
+function handleCellClick(boardIdx, cellIdx) {
+  if (!opponentPresent || game.winner) return;
+  if (game.currentPlayer !== mySymbol) return;
+  if (!isLegalMove(game, boardIdx, cellIdx)) return;
+
+  game = applyMove(game, boardIdx, cellIdx);
+  roomHandle?.send({ type: 'move', boardIdx, cellIdx });
+  renderBoard();
+}
+
+// =========================================================
+// RENDER
+// =========================================================
+function renderBoard() {
+  const legalBoards = new Set(legalBoardIndices(game));
+  boardWrap.innerHTML = '';
+
+  const metaGrid = document.createElement('div');
+  metaGrid.className = 'meta-grid';
+
+  for (let b = 0; b < 9; b++) {
+    const mini = document.createElement('div');
+    mini.className = 'mini-board';
+    if (legalBoards.has(b) && game.currentPlayer === mySymbol && !game.winner) {
+      mini.classList.add('legal');
+    }
+    if (game.miniWinners[b]) mini.classList.add('won-' + game.miniWinners[b]);
+
+    for (let c = 0; c < 9; c++) {
+      const cellVal = game.boards[b][c];
+      const cellEl = document.createElement('div');
+      cellEl.className = 'cell';
+      if (cellVal) {
+        cellEl.classList.add(cellVal, 'disabled');
+        cellEl.textContent = cellVal;
+      } else if (legalBoards.has(b) && !game.miniWinners[b] && game.currentPlayer === mySymbol && !game.winner) {
+        cellEl.classList.add('clickable');
+      } else {
+        cellEl.classList.add('disabled');
+      }
+      cellEl.addEventListener('click', () => handleCellClick(b, c));
+      mini.appendChild(cellEl);
+    }
+
+    if (game.miniWinners[b]) {
+      const overlay = document.createElement('div');
+      overlay.className = 'mini-overlay ' + game.miniWinners[b];
+      overlay.textContent = game.miniWinners[b] === 'D' ? 'DRAW' : game.miniWinners[b];
+      mini.appendChild(overlay);
+    }
+
+    metaGrid.appendChild(mini);
+  }
+
+  boardWrap.appendChild(metaGrid);
+
+  // status bar
+  const turnEl = document.getElementById('turn-indicator');
+  const resultEl = document.getElementById('result-msg');
+  const rematchRow = document.getElementById('rematch-row');
+
+  if (game.winner) {
+    turnEl.textContent = '';
+    turnEl.className = '';
+    if (game.winner === 'D') {
+      resultEl.textContent = 'Draw. Full board, no winner.';
+    } else {
+      resultEl.textContent = game.winner === mySymbol ? 'You win! 🎉' : `${game.winner} wins.`;
+    }
+    rematchRow.classList.remove('hidden');
+  } else {
+    resultEl.textContent = '';
+    rematchRow.classList.add('hidden');
+    turnEl.className = game.currentPlayer;
+    turnEl.textContent = game.currentPlayer === mySymbol ? 'Your turn' : `Waiting for ${game.currentPlayer}...`;
+  }
+}
+</script>
+</body>
+</html>
