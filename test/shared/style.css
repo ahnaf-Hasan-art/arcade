@@ -1,0 +1,83 @@
+/* =========================================================
+   SHARED THEME — used by hub page + every game
+   Keep this in sync across games by always linking to
+   /shared/style.css rather than copy-pasting variables.
+   ========================================================= */
+
+:root {
+  --void: #0a0e1a;
+  --void-deep: #050710;
+  --nebula: #1b2440;
+  --signal: #4fd8e8;
+  --signal-dim: #2a7a85;
+  --alert: #ff4d6d;
+  --gold: #f4c464;
+  --mist: #8a93b8;
+  --win-x: #4fd8e8;
+  --win-o: #ff4d6d;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--void-deep);
+  color: #e8ecff;
+  font-family: 'Courier New', ui-monospace, monospace;
+}
+
+.eyebrow {
+  letter-spacing: 4px;
+  font-size: 11px;
+  color: var(--mist);
+  text-transform: uppercase;
+}
+
+h1.title {
+  font-size: 42px;
+  letter-spacing: 6px;
+  margin: 0;
+  color: var(--signal);
+  text-shadow: 0 0 18px rgba(79, 216, 232, 0.6);
+}
+
+.msg { font-size: 13px; color: var(--mist); max-width: 480px; }
+.err { color: var(--alert); font-size: 13px; min-height: 16px; }
+
+input, select, button {
+  font-family: inherit;
+  font-size: 14px;
+  padding: 9px 14px;
+  background: var(--void-deep);
+  border: 1px solid var(--signal-dim);
+  color: #e8ecff;
+  border-radius: 3px;
+}
+input:focus, select:focus { outline: none; border-color: var(--signal); }
+
+button {
+  cursor: pointer;
+  border-color: var(--signal);
+  color: var(--signal);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  transition: background 0.15s, color 0.15s;
+}
+button:hover { background: var(--signal); color: var(--void-deep); }
+button:disabled { opacity: 0.35; cursor: not-allowed; }
+button:disabled:hover { background: none; color: var(--signal); }
+
+.row { display: flex; gap: 10px; align-items: center; }
+
+.code-badge {
+  font-size: 28px;
+  letter-spacing: 8px;
+  color: var(--gold);
+  border: 1px dashed var(--gold);
+  padding: 6px 18px;
+}
+
+.hidden { display: none !important; }
+
+a.link { color: var(--signal); }

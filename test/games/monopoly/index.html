@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monopoly Board</title>
+<style>
+  /* =========================================================
+     BOARD STYLES — copied exactly from the provided board file.
+     Do not restyle spaces/colors/corners here; anything new
+     (HUD, lobby, tokens) lives in the second <style> block below.
+     ========================================================= */
+  :root{
+    --board-green:#c5e4d1;
+    --board-cream:#f7f3e9;
+    --border:#1a1a1a;
+    --ink:#20221f;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:radial-gradient(circle at 50% 40%, #24493a 0%, #12261d 75%, #0c1a13 100%);
+    font-family:'Times New Roman', Times, serif;
+  }
+  .board{
+    width:min(94vmin,1000px);
+    height:min(94vmin,1000px);
+    background:var(--board-cream);
+    display:grid;
+    grid-template-columns:repeat(11,1fr);
+    grid-template-rows:repeat(11,1fr);
+    border:5px solid var(--border);
+    border-radius:6px;
+    position:relative;
+    box-shadow:
+      0 25px 60px -15px rgba(0,0,0,.65),
+      0 0 0 10px #0e2419,
+      0 0 0 11px rgba(255,255,255,.06);
+  }
+  .cell{
+    border:1px solid rgba(0,0,0,.55);
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    background:var(--board-cream);
+    overflow:hidden;
+    color:var(--ink);
+  }
+  .side-bottom, .side-top{ justify-content:flex-end; }
+  .price{
+    font-size:1.7vmin;
+    text-align:center;
+    padding:2px 0;
+    font-weight:bold;
+    color:#3a3a3a;
+    letter-spacing:.3px;
+  }
+  .name{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    font-size:1.1vmin;
+    font-weight:700;
+    text-transform:uppercase;
+    padding:2px 3px;
+    line-height:1.15;
+    letter-spacing:.3px;
+  }
+  .color-bar{
+    height:15%;
+    width:100%;
+    border-bottom:1px solid rgba(0,0,0,.6);
+    background-image:linear-gradient(180deg, rgba(255,255,255,.35), rgba(0,0,0,.12));
+    box-shadow:inset 0 -2px 3px rgba(0,0,0,.18);
+    position:relative;
+  }
+  .side-top .color-bar{
+    order:3;
+    border-bottom:none;
+    border-top:1px solid rgba(0,0,0,.6);
+    background-image:linear-gradient(0deg, rgba(255,255,255,.35), rgba(0,0,0,.12));
+  }
+  .side-top .name{ order:2; }
+  .side-top .price{ order:1; }
+  .side-left, .side-right{ writing-mode:vertical-rl; }
+  .side-left .name{ transform:rotate(180deg); }
+  .side-left .price{ transform:rotate(180deg); }
+  .side-left .color-bar{ order:0; }
+  .side-right{ writing-mode:vertical-lr; }
+  .side-right .color-bar{ order:2; }
+  .side-right .name{ order:1; transform:rotate(180deg); }
+  .side-right .price{ order:0; transform:rotate(180deg);}
+
+  .corner{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:900;
+    text-align:center;
+    font-size:1.5vmin;
+    padding:4px;
+    background:radial-gradient(circle at 50% 30%, #fffdf6 0%, var(--board-cream) 70%);
+    letter-spacing:.4px;
+  }
+  .corner .big{
+    font-size:2.6vmin;
+    line-height:1;
+    filter:drop-shadow(0 2px 2px rgba(0,0,0,.25));
+  }
+
+  .center{
+    grid-column:2/11;
+    grid-row:2/11;
+    background:
+      repeating-linear-gradient(135deg, rgba(255,255,255,.05) 0 2px, transparent 2px 18px),
+      radial-gradient(circle at 30% 25%, #d9efe2 0%, var(--board-green) 60%, #a9d3ba 100%);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    box-shadow:inset 0 0 0 2px rgba(0,0,0,.15);
+  }
+  .logo{
+    font-size:7vmin;
+    font-weight:900;
+    color:#e3141b;
+    transform:rotate(-33deg);
+    text-shadow:
+      2px 2px 0 #000,
+      -2px -2px 0 #000,
+      2px -2px 0 #000,
+      -2px 2px 0 #000,
+      4px 4px 6px rgba(0,0,0,.35);
+    letter-spacing:2px;
+    font-family:Georgia, 'Times New Roman', serif;
+    -webkit-text-stroke:1px #000;
+  }
+
+  .card-stack{ position:absolute; width:15%; aspect-ratio:0.68; z-index:1; }
+  .chance-stack{ top:9%; left:10%; transform:rotate(-10deg); }
+  .chest-stack{ bottom:9%; right:10%; transform:rotate(9deg); }
+  .card-face{
+    position:relative;
+    width:100%;
+    height:100%;
+    background:var(--board-cream);
+    border:2px solid #000;
+    border-radius:8%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    font-weight:900;
+    text-align:center;
+    box-shadow:0 3px 6px rgba(0,0,0,.3);
+  }
+  .card-face::before, .card-face::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    border:2px solid #000;
+    border-radius:8%;
+    background:var(--board-cream);
+    z-index:-1;
+  }
+  .card-face::before{ transform:translate(5%,5%); }
+  .card-face::after{ transform:translate(10%,10%); z-index:-2; }
+  .chance-stack .card-face{ color:#e8580f; }
+  .chest-stack .card-face{ color:#1a73c9; }
+  .card-icon{ font-size:2.6vmin; filter:drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
+  .card-label{ font-size:1vmin; letter-spacing:.5px; margin-top:4px; line-height:1.2; }
+
+  .brown{background:linear-gradient(160deg,#a2694a,#7a4128);}
+  .lightblue{background:linear-gradient(160deg,#c3ecff,#8fd2f5);}
+  .pink{background:linear-gradient(160deg,#e85cad,#c22384);}
+  .orange{background:linear-gradient(160deg,#ffa63d,#e87f0f);}
+  .red{background:linear-gradient(160deg,#f2434a,#d21017);}
+  .yellow{background:linear-gradient(160deg,#fff65c,#f0d800);}
+  .green{background:linear-gradient(160deg,#3ec97c,#149249);}
+  .blue{background:linear-gradient(160deg,#2a8fd1,#00568f);}
+
+  .chest, .chance, .tax, .rail, .util{
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+  }
+  .rail .name{ font-size:0.85vmin; letter-spacing:0; padding:2px 2px; word-break:break-word; }
+  .icon{
+    font-size:2.6vmin; flex:1; display:flex; align-items:center; justify-content:center;
+    filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));
+  }
+  .side-left .icon, .side-right .icon{ writing-mode:horizontal-tb; }
+
+  .go-corner{ background:radial-gradient(circle at 50% 30%, #fffdf6 0%, var(--board-cream) 70%); }
+  .go-arrow{ color:#e3141b; font-size:1.9vmin; margin-top:2px; filter:drop-shadow(0 1px 1px rgba(0,0,0,.2)); }
+
+  .jail-corner{
+    background:radial-gradient(circle at 50% 30%, #fffdf6 0%, var(--board-cream) 70%);
+    display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; padding:0;
+  }
+  .jail-label{
+    grid-column:1/2; grid-row:2/3;
+    display:flex; align-items:flex-end; justify-content:flex-start;
+    font-size:1.05vmin; font-weight:900; padding:4px;
+  }
+  .jail-visiting{
+    grid-column:1/2; grid-row:1/2;
+    font-size:.75vmin; padding:4px; writing-mode: vertical-rl; transform:rotate(180deg);
+    display:flex; align-items:flex-start; justify-content:flex-end;
+    color:#555;
+  }
+  .jail-cell{
+    grid-column:2/3; grid-row:1/3;
+    background:radial-gradient(circle at 35% 30%, #ffb347 0%, #ff8c1a 55%, #e0740a 100%);
+    border:2px solid #000;
+    display:flex; align-items:center; justify-content:center;
+    font-size:2.6vmin; color:#fff;
+    box-shadow:inset 0 2px 4px rgba(255,255,255,.4), inset 0 -3px 6px rgba(0,0,0,.35);
+  }
+  .park-corner{ color:#e3141b; }
+  .goto-jail-corner{ color:#0072bb; }
+</style>
+<style>
+  /* =========================================================
+     EVERYTHING BELOW IS NEW — HUD, lobby, tokens, modals.
+     The board rules above are completely untouched, and this
+     page deliberately does NOT load shared/style.css — the
+     rest of the arcade uses a neon theme, but Monopoly gets
+     its own consistent world: cream, gold, serif, matching
+     the board itself rather than bolting a second look onto it.
+     ========================================================= */
+  :root{
+    --gold:#c9a227;
+    --gold-dark:#8a6d16;
+    --panel-bg: radial-gradient(circle at 50% 20%, #fffdf6 0%, var(--board-cream) 75%);
+    --panel-border: var(--border);
+    --accent-red:#a01015;
+  }
+  html, body { overflow-x: hidden; }
+  body {
+    display: block;
+    min-height: 100vh;
+    font-family:'Times New Roman', Times, serif;
+    color: var(--ink);
+    /* background gradient below is the board's own original — unchanged from the source file */
+  }
+  .board { margin: 0 auto; }
+
+  .back-link {
+    display: inline-block; margin: 14px 0 0 16px; font-size: 13px;
+    color: var(--board-cream); text-decoration: none; letter-spacing:.5px;
+  }
+  .back-link:hover { text-decoration: underline; }
+
+  .screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--board-cream);
+  }
+  .hidden { display: none !important; }
+
+  .eyebrow { letter-spacing:3px; font-size:11px; color:#cfe3d8; text-transform:uppercase; }
+  .title {
+    font-size:34px; font-weight:900; margin:0; color:var(--gold);
+    text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+    letter-spacing:2px;
+  }
+  .msg { font-size:14px; color:#dfe9e2; max-width:480px; }
+  .err { color:#ff8a8a; font-size:13px; min-height:16px; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center; }
+  a.link { color: var(--gold); }
+
+  input, select, button {
+    font-family:'Times New Roman', Times, serif;
+    font-size:14px; padding:9px 14px;
+    background: var(--panel-bg);
+    border: 2px solid var(--panel-border);
+    color: var(--ink);
+    border-radius: 3px;
+  }
+  button { cursor:pointer; font-weight:700; letter-spacing:.5px; }
+  button:hover { background: linear-gradient(160deg,#fffdf6,#eee7d4); }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+
+  .code-badge {
+    font-size:26px; letter-spacing:6px; color:var(--gold);
+    border:2px dashed var(--gold); padding:6px 18px; background: rgba(0,0,0,.15);
+  }
+
+  .seat-select { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-top:4px; }
+  .seat-btn { padding:8px 14px; }
+  .seat-btn.active { border-color: var(--gold); color: var(--gold-dark); background: var(--panel-bg); box-shadow: 0 0 0 1px var(--gold) inset; }
+  .seat-btn:disabled { opacity:.5; }
+
+  .seat-list { display:flex; flex-direction:column; gap:6px; width:100%; max-width:360px; margin-top:8px; }
+  .seat-row {
+    display:flex; align-items:center; gap:10px; padding:8px 12px;
+    border:1px solid #3a5a49; background: rgba(0,0,0,.2); font-size:13px; color:#cfe3d8;
+  }
+  .seat-row.mine { border-color: var(--gold); }
+  .token-dot { width:16px; height:16px; border-radius:50%; border:2px solid #000; flex-shrink:0; }
+  .seat-row .who { flex:1; text-align:left; }
+  .seat-row.filled .who { color: var(--board-cream); font-weight:700; }
+
+  /* ---- game layout ---- */
+  #game-shell {
+    display: none;
+    flex-direction: row;
+    gap: 20px;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 16px;
+    flex-wrap: wrap;
+  }
+  #game-shell.active { display: flex; }
+
+  #board-outer { position: relative; flex: 0 0 auto; }
+
+  .token {
+    position: absolute;
+    width: 3.6%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 2px solid #000;
+    box-shadow: 0 1px 3px rgba(0,0,0,.5);
+    z-index: 5;
+    transition: left .3s ease, top .3s ease;
+  }
+
+  #hud {
+    width: 300px;
+    flex: 0 0 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    color: var(--ink);
+  }
+  .hud-box {
+    border: 2px solid var(--panel-border);
+    background: var(--panel-bg);
+    padding: 12px;
+    border-radius: 4px;
+    box-shadow: 0 6px 16px rgba(0,0,0,.35);
+  }
+  .hud-box h4 {
+    margin:0 0 8px; font-size:12px; letter-spacing:2px; color: var(--gold-dark);
+    text-transform:uppercase; border-bottom:1px solid #d8cfb0; padding-bottom:6px;
+  }
+
+  .player-row { display:flex; align-items:center; gap:8px; padding:5px 0; font-size:13px; }
+  .player-row.turn { color: var(--accent-red); font-weight:900; }
+  .player-row.bankrupt { opacity:.4; text-decoration: line-through; }
+  .player-row .cash { margin-left:auto; font-weight:700; }
+
+  .dice-row { display:flex; gap:8px; justify-content:center; font-size:28px; margin-bottom:8px; }
+  .die {
+    width:40px; height:40px; display:flex; align-items:center; justify-content:center;
+    background:#fff; color:#000; border-radius:6px; border:2px solid #000; font-weight:900;
+  }
+
+  .action-row { display:flex; flex-wrap:wrap; gap:6px; }
+  .action-row button { flex:1 1 auto; font-size:12px; padding:8px 10px; }
+
+  #log-box { max-height: 160px; overflow-y: auto; font-size: 11px; color:#5a5744; display:flex; flex-direction:column-reverse; gap:4px; font-style: italic; }
+
+  .props-list { max-height: 160px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; }
+  .prop-row { display:flex; align-items:center; gap:6px; font-size:11px; }
+  .prop-row .swatch { width:10px; height:10px; flex-shrink:0; border:1px solid #000; }
+  .prop-row button { font-size:10px; padding:3px 6px; margin-left:auto; }
+
+  @media (max-width: 900px) {
+    #game-shell { flex-direction: column; align-items: center; }
+    #hud { width: 100%; max-width: 480px; flex-basis: auto; }
+  }
+</style>
+</head>
+<body>
+
+<a class="back-link" href="../../">&larr; All games</a>
+
+<!-- HOME -->
+<div id="screen-home" class="screen">
+  <div class="eyebrow">2\u20136 Players \u00b7 Realtime</div>
+  <h1 class="title" style="font-size:30px;">MONOPOLY</h1>
+  <div class="msg">Buy, build, and bankrupt your friends. Host picks how many can play.</div>
+  <div class="row" style="margin-top:6px;">
+    <button id="btn-create">Create Room</button>
+    <button id="btn-join-open">Join Room</button>
+  </div>
+  <div id="join-form" class="row hidden">
+    <input id="join-code" maxlength="5" placeholder="ROOM CODE" style="text-transform:uppercase; letter-spacing:3px; width:130px;">
+    <button id="btn-join">Join</button>
+  </div>
+  <div id="home-err" class="err"></div>
+</div>
+
+<!-- LOBBY -->
+<div id="screen-lobby" class="screen hidden">
+  <div class="eyebrow">Room Code</div>
+  <div class="code-badge" id="lobby-code">-----</div>
+  <div class="row">
+    <input id="share-link" readonly style="width:320px;">
+    <button id="btn-copy-link">Copy</button>
+  </div>
+
+  <div class="eyebrow" style="margin-top:8px;">Player count <span id="host-tag" class="hidden">(you're host \u2014 pick below)</span></div>
+  <div class="seat-select" id="seat-count-select"></div>
+
+  <div class="seat-list" id="seat-list"></div>
+
+  <button id="btn-join-seat">Take a Seat</button>
+  <button id="btn-start" class="hidden">Launch</button>
+  <div class="msg" id="lobby-msg">Waiting...</div>
+</div>
+
+<!-- GAME -->
+<div id="game-shell">
+  <div id="board-outer">
+    <div class="board" id="board">
+
+      <div class="cell corner park-corner" style="grid-column:1/2;grid-row:1/2;" data-idx="20">
+        <div><div class="big">\ud83c\udd7f\ufe0f</div>FREE<br>PARKING</div>
+      </div>
+
+      <div class="cell side-top" data-idx="21"><div class="color-bar red"></div><div class="name">Dhaka</div><div class="price">Tk220</div></div>
+      <div class="cell side-top chance" data-idx="22"><div class="icon">\u2753</div><div class="name">Chance</div></div>
+      <div class="cell side-top" data-idx="23"><div class="color-bar red"></div><div class="name">Sylhet</div><div class="price">Tk220</div></div>
+      <div class="cell side-top" data-idx="24"><div class="color-bar red"></div><div class="name">Khulna</div><div class="price">Tk240</div></div>
+      <div class="cell side-top rail" data-idx="25"><div class="icon">\ud83d\ude82</div><div class="name">B. &amp; O. Railroad</div><div class="price">Tk200</div></div>
+      <div class="cell side-top" data-idx="26"><div class="color-bar yellow"></div><div class="name">Madrid</div><div class="price">Tk260</div></div>
+      <div class="cell side-top" data-idx="27"><div class="color-bar yellow"></div><div class="name">Barcelona</div><div class="price">Tk260</div></div>
+      <div class="cell side-top util" data-idx="28"><div class="icon">\ud83d\udebf</div><div class="name">Water Works</div><div class="price">Tk150</div></div>
+      <div class="cell side-top" data-idx="29"><div class="color-bar yellow"></div><div class="name">Seville</div><div class="price">Tk280</div></div>
+
+      <div class="cell corner goto-jail-corner" style="grid-column:11/12;grid-row:1/2;" data-idx="30">
+        <div><div class="big">\ud83d\udc6e</div>GO TO<br>JAIL</div>
+      </div>
+
+      <div class="cell side-left" style="grid-column:1/2;grid-row:2/3;" data-idx="19"><div class="color-bar orange"></div><div class="name">New York</div><div class="price">Tk200</div></div>
+      <div class="cell side-left" style="grid-column:1/2;grid-row:3/4;" data-idx="18"><div class="color-bar orange"></div><div class="name">San Francisco</div><div class="price">Tk180</div></div>
+      <div class="cell side-left chest" style="grid-column:1/2;grid-row:4/5;" data-idx="17"><div class="icon">\ud83c\udf81</div><div class="name">Community Chest</div></div>
+      <div class="cell side-left" style="grid-column:1/2;grid-row:5/6;" data-idx="16"><div class="color-bar orange"></div><div class="name">Chicago</div><div class="price">Tk180</div></div>
+      <div class="cell side-left rail" style="grid-column:1/2;grid-row:6/7;" data-idx="15"><div class="icon">\ud83d\ude82</div><div class="name">Pennsylvania Railroad</div><div class="price">Tk200</div></div>
+      <div class="cell side-left" style="grid-column:1/2;grid-row:7/8;" data-idx="14"><div class="color-bar pink"></div><div class="name">Kuala Lumpur</div><div class="price">Tk160</div></div>
+      <div class="cell side-left" style="grid-column:1/2;grid-row:8/9;" data-idx="13"><div class="color-bar pink"></div><div class="name">Langkawi</div><div class="price">Tk140</div></div>
+      <div class="cell side-left util" style="grid-column:1/2;grid-row:9/10;" data-idx="12"><div class="icon">\ud83d\udca1</div><div class="name">Electric Company</div><div class="price">Tk150</div></div>
+      <div class="cell side-left" style="grid-column:1/2;grid-row:10/11;" data-idx="11"><div class="color-bar pink"></div><div class="name">Melaka</div><div class="price">Tk140</div></div>
+
+      <div class="center">
+        <div class="card-stack chance-stack"><div class="card-face"><div class="card-icon">\u2753</div><div class="card-label">CHANCE</div></div></div>
+        <div class="card-stack chest-stack"><div class="card-face"><div class="card-icon">\ud83c\udf81</div><div class="card-label">COMMUNITY<br>CHEST</div></div></div>
+        <div class="logo">MONOPOLY</div>
+      </div>
+
+      <div class="cell side-right" style="grid-column:11/12;grid-row:2/3;" data-idx="31"><div class="color-bar green"></div><div class="name">Delhi</div><div class="price">Tk300</div></div>
+      <div class="cell side-right" style="grid-column:11/12;grid-row:3/4;" data-idx="32"><div class="color-bar green"></div><div class="name">Bangalore</div><div class="price">Tk300</div></div>
+      <div class="cell side-right chest" style="grid-column:11/12;grid-row:4/5;" data-idx="33"><div class="icon">\ud83c\udf81</div><div class="name">Community Chest</div></div>
+      <div class="cell side-right" style="grid-column:11/12;grid-row:5/6;" data-idx="34"><div class="color-bar green"></div><div class="name">Mumbai</div><div class="price">Tk320</div></div>
+      <div class="cell side-right rail" style="grid-column:11/12;grid-row:6/7;" data-idx="35"><div class="icon">\ud83d\ude82</div><div class="name">Short Line</div><div class="price">Tk200</div></div>
+      <div class="cell side-right chance" style="grid-column:11/12;grid-row:7/8;" data-idx="36"><div class="icon">\u2753</div><div class="name">Chance</div></div>
+      <div class="cell side-right" style="grid-column:11/12;grid-row:8/9;" data-idx="37"><div class="color-bar blue"></div><div class="name">Toronto</div><div class="price">Tk350</div></div>
+      <div class="cell side-right tax" style="grid-column:11/12;grid-row:9/10;" data-idx="38"><div class="icon">\ud83d\udc8e</div><div class="name">Luxury Tax</div><div class="price">Pay Tk100</div></div>
+      <div class="cell side-right" style="grid-column:11/12;grid-row:10/11;" data-idx="39"><div class="color-bar blue"></div><div class="name">Ottawa</div><div class="price">Tk400</div></div>
+
+      <div class="cell corner jail-corner" style="grid-column:1/2;grid-row:11/12;" data-idx="10">
+        <div class="jail-visiting">VISITING</div>
+        <div class="jail-label">IN<br>JAIL</div>
+        <div class="jail-cell">\ud83d\udd12</div>
+      </div>
+
+      <div class="cell side-bottom" data-idx="9"><div class="name">Manchester</div><div class="price">Tk120</div><div class="color-bar lightblue"></div></div>
+      <div class="cell side-bottom" data-idx="8"><div class="name">London</div><div class="price">Tk100</div><div class="color-bar lightblue"></div></div>
+      <div class="cell side-bottom chance" data-idx="7"><div class="name">Chance</div><div class="icon">\u2753</div></div>
+      <div class="cell side-bottom" data-idx="6"><div class="name">Liverpool</div><div class="price">Tk100</div><div class="color-bar lightblue"></div></div>
+      <div class="cell side-bottom rail" data-idx="5"><div class="name">Reading Railroad</div><div class="icon">\ud83d\ude82</div><div class="price">Tk200</div></div>
+      <div class="cell side-bottom tax" data-idx="4"><div class="name">Income Tax</div><div class="icon">\u25c6</div><div class="price">Pay Tk200</div></div>
+      <div class="cell side-bottom" data-idx="3"><div class="name">Karachi</div><div class="price">Tk60</div><div class="color-bar brown"></div></div>
+      <div class="cell side-bottom chest" data-idx="2"><div class="name">Community Chest</div><div class="icon">\ud83c\udf81</div></div>
+      <div class="cell side-bottom" data-idx="1"><div class="name">Islamabad</div><div class="price">Tk60</div><div class="color-bar brown"></div></div>
+
+      <div class="cell corner go-corner" style="grid-column:11/12;grid-row:11/12;" data-idx="0">
+        <div>COLLECT Tk200<br>START HERE<div class="go-arrow">\u27f5</div><div class="big">GO</div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="hud">
+    <div class="hud-box">
+      <h4>Players</h4>
+      <div id="players-box"></div>
+    </div>
+    <div class="hud-box">
+      <h4>Turn</h4>
+      <div class="dice-row" id="dice-row"><div class="die">-</div><div class="die">-</div></div>
+      <div class="msg" id="turn-msg" style="margin-bottom:8px;"></div>
+      <div class="action-row" id="action-row"></div>
+    </div>
+    <div class="hud-box">
+      <h4>My Properties</h4>
+      <div class="props-list" id="props-box"></div>
+    </div>
+    <div class="hud-box">
+      <h4>Log</h4>
+      <div id="log-box"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { openRoom, makeRoomCode, SUPABASE_URL } from '../../shared/supabase.js';
+
+// =========================================================
+// BOARD DATA — derived directly from the prices printed on
+// the board itself, which match classic Monopoly's numbers
+// 1:1, so the real classic rent/house-cost tables are reused.
+// idx 0-39 follows the board clockwise starting at GO.
+// =========================================================
+const GROUP_HOUSE_COST = { brown:50, lightblue:50, pink:100, orange:100, red:150, yellow:150, green:200, blue:200 };
+const RAIL_RENTS = [25, 50, 100, 200]; // by count owned (1..4)
+
+const SPACES = [
+  { idx:0,  type:'go',       name:'GO' },
+  { idx:1,  type:'property', name:'Islamabad',       price:60,  group:'brown',     rent:[2,10,30,90,160,250] },
+  { idx:2,  type:'chest',    name:'Community Chest' },
+  { idx:3,  type:'property', name:'Karachi',         price:60,  group:'brown',     rent:[4,20,60,180,320,450] },
+  { idx:4,  type:'tax',      name:'Income Tax',      amount:200 },
+  { idx:5,  type:'rail',     name:'Reading Railroad', price:200 },
+  { idx:6,  type:'property', name:'Liverpool',       price:100, group:'lightblue', rent:[6,30,90,270,400,550] },
+  { idx:7,  type:'chance',   name:'Chance' },
+  { idx:8,  type:'property', name:'London',          price:100, group:'lightblue', rent:[6,30,90,270,400,550] },
+  { idx:9,  type:'property', name:'Manchester',      price:120, group:'lightblue', rent:[8,40,100,300,450,600] },
+  { idx:10, type:'jail',     name:'In Jail / Just Visiting' },
+  { idx:11, type:'property', name:'Melaka',          price:140, group:'pink',      rent:[10,50,150,450,625,750] },
+  { idx:12, type:'util',     name:'Electric Company', price:150 },
+  { idx:13, type:'property', name:'Langkawi',        price:140, group:'pink',      rent:[10,50,150,450,625,750] },
+  { idx:14, type:'property', name:'Kuala Lumpur',    price:160, group:'pink',      rent:[12,60,180,500,700,900] },
+  { idx:15, type:'rail',     name:'Pennsylvania Railroad', price:200 },
+  { idx:16, type:'property', name:'Chicago',         price:180, group:'orange',    rent:[14,70,200,550,750,950] },
+  { idx:17, type:'chest',    name:'Community Chest' },
+  { idx:18, type:'property', name:'San Francisco',   price:180, group:'orange',    rent:[14,70,200,550,750,950] },
+  { idx:19, type:'property', name:'New York',        price:200, group:'orange',    rent:[16,80,220,600,800,1000] },
+  { idx:20, type:'parking',  name:'Free Parking' },
+  { idx:21, type:'property', name:'Dhaka',           price:220, group:'red',       rent:[18,90,250,700,875,1050] },
+  { idx:22, type:'chance',   name:'Chance' },
+  { idx:23, type:'property', name:'Sylhet',          price:220, group:'red',       rent:[18,90,250,700,875,1050] },
+  { idx:24, type:'property', name:'Khulna',          price:240, group:'red',       rent:[20,100,300,750,925,1100] },
+  { idx:25, type:'rail',     name:'B. & O. Railroad', price:200 },
+  { idx:26, type:'property', name:'Madrid',          price:260, group:'yellow',    rent:[22,110,330,800,975,1150] },
+  { idx:27, type:'property', name:'Barcelona',       price:260, group:'yellow',    rent:[22,110,330,800,975,1150] },
+  { idx:28, type:'util',     name:'Water Works',     price:150 },
+  { idx:29, type:'property', name:'Seville',         price:280, group:'yellow',    rent:[24,120,360,850,1025,1200] },
+  { idx:30, type:'gotojail', name:'Go To Jail' },
+  { idx:31, type:'property', name:'Delhi',           price:300, group:'green',     rent:[26,130,390,900,1100,1275] },
+  { idx:32, type:'property', name:'Bangalore',       price:300, group:'green',     rent:[26,130,390,900,1100,1275] },
+  { idx:33, type:'chest',    name:'Community Chest' },
+  { idx:34, type:'property', name:'Mumbai',          price:320, group:'green',     rent:[28,150,450,1000,1200,1400] },
+  { idx:35, type:'rail',     name:'Short Line',      price:200 },
+  { idx:36, type:'chance',   name:'Chance' },
+  { idx:37, type:'property', name:'Toronto',         price:350, group:'blue',      rent:[35,175,500,1100,1300,1500] },
+  { idx:38, type:'tax',      name:'Luxury Tax',      amount:100 },
+  { idx:39, type:'property', name:'Ottawa',          price:400, group:'blue',      rent:[50,200,600,1400,1700,2000] },
+];
+const RAIL_IDXS = [5,15,25,35];
+const UTIL_IDXS = [12,28];
+const GROUPS = {};
+SPACES.forEach(s => { if (s.type === 'property') (GROUPS[s.group] ||= []).push(s.idx); });
+
+// Card effects: {type:'collect'|'pay'|'moveTo'|'moveRelative'|'gotojail'|'getoutfree'|'payEach'|'collectEach'|'repairs', ...}
+const CHANCE_CARDS = [
+  { text: 'Advance to GO (Collect Tk200)', effect: { type:'moveTo', idx:0 } },
+  { text: 'Advance to Ottawa', effect: { type:'moveTo', idx:39 } },
+  { text: 'Advance to Islamabad. If you pass GO, collect Tk200', effect: { type:'moveTo', idx:1 } },
+  { text: 'Advance to nearest Railroad. Pay double rent.', effect: { type:'nearestRail' } },
+  { text: 'Advance to nearest Utility. Pay 10x dice roll.', effect: { type:'nearestUtil' } },
+  { text: 'Bank pays you dividend of Tk50', effect: { type:'collect', amount:50 } },
+  { text: 'Get out of Jail Free', effect: { type:'getoutfree' } },
+  { text: 'Go back 3 spaces', effect: { type:'moveRelative', delta:-3 } },
+  { text: 'Go directly to Jail', effect: { type:'gotojail' } },
+  { text: 'Make general repairs: pay Tk25/house, Tk100/hotel', effect: { type:'repairs', perHouse:25, perHotel:100 } },
+  { text: 'Pay poor tax of Tk15', effect: { type:'pay', amount:15 } },
+  { text: 'Take a trip to Reading Railroad', effect: { type:'moveTo', idx:5 } },
+  { text: 'Advance to Toronto', effect: { type:'moveTo', idx:37 } },
+  { text: 'You have been elected chairman \u2014 pay each player Tk50', effect: { type:'payEach', amount:50 } },
+  { text: 'Your building loan matures \u2014 collect Tk150', effect: { type:'collect', amount:150 } },
+  { text: 'You win a crossword competition \u2014 collect Tk100', effect: { type:'collect', amount:100 } },
+];
+const CHEST_CARDS = [
+  { text: 'Advance to GO (Collect Tk200)', effect: { type:'moveTo', idx:0 } },
+  { text: 'Bank error in your favor \u2014 collect Tk200', effect: { type:'collect', amount:200 } },
+  { text: 'Doctor\u2019s fee \u2014 pay Tk50', effect: { type:'pay', amount:50 } },
+  { text: 'From sale of stock you get Tk50', effect: { type:'collect', amount:50 } },
+  { text: 'Get out of Jail Free', effect: { type:'getoutfree' } },
+  { text: 'Go directly to Jail', effect: { type:'gotojail' } },
+  { text: 'Holiday fund matures \u2014 collect Tk100', effect: { type:'collect', amount:100 } },
+  { text: 'Income tax refund \u2014 collect Tk20', effect: { type:'collect', amount:20 } },
+  { text: 'It\u2019s your birthday \u2014 collect Tk10 from every player', effect: { type:'collectEach', amount:10 } },
+  { text: 'Life insurance matures \u2014 collect Tk100', effect: { type:'collect', amount:100 } },
+  { text: 'Pay hospital fees of Tk100', effect: { type:'pay', amount:100 } },
+  { text: 'Pay school fees of Tk50', effect: { type:'pay', amount:50 } },
+  { text: 'Receive Tk25 consultancy fee', effect: { type:'collect', amount:25 } },
+  { text: 'Repairs: pay Tk40/house, Tk115/hotel', effect: { type:'repairs', perHouse:40, perHotel:115 } },
+  { text: 'You have won second prize in a beauty contest \u2014 collect Tk10', effect: { type:'collect', amount:10 } },
+  { text: 'You inherit Tk100', effect: { type:'collect', amount:100 } },
+];
+
+const TOKEN_COLORS = ['#ff4d6d', '#4fd8e8', '#f4c464', '#8fe388', '#c77dff', '#ff9f5a'];
+
+function shuffled(arr) {
+  const a = arr.map((_, i) => i);
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// =========================================================
+// GAME ENGINE — host mutates this directly, then broadcasts
+// the full object as JSON. No trading / mortgaging / auctions
+// (scope decision — see conversation).
+// =========================================================
+function freshGame(order) {
+  const cash = {}, pos = {}, jail = {}, cards = {}, bankrupt = {};
+  order.forEach(id => { cash[id] = 1500; pos[id] = 0; jail[id] = { in:false, turns:0 }; cards[id] = 0; bankrupt[id] = false; });
+  return {
+    order, cash, pos, owner: {}, houses: {}, jail, cards, bankrupt,
+    turnIdx: 0, phase: 'roll', lastRoll: [1,1], doublesStreak: 0,
+    pendingBuySpace: null,
+    chanceDeck: shuffled(CHANCE_CARDS), chanceIdx: 0,
+    chestDeck: shuffled(CHEST_CARDS), chestIdx: 0,
+    log: ['Game started.'], winnerId: null,
+  };
+}
+
+function currentPlayer(g) { return g.order[g.turnIdx]; }
+function pushLog(g, msg) { g.log = [...g.log.slice(-11), msg]; }
+
+function livingOrder(g) { return g.order.filter(id => !g.bankrupt[id]); }
+
+function advanceTurn(g) {
+  g.doublesStreak = 0;
+  g.phase = 'roll';
+  const n = g.order.length;
+  for (let i = 1; i <= n; i++) {
+    const next = (g.turnIdx + i) % n;
+    if (!g.bankrupt[g.order[next]]) { g.turnIdx = next; return; }
+  }
+}
+
+function checkWin(g) {
+  const alive = livingOrder(g);
+  if (alive.length <= 1) {
+    g.phase = 'gameover';
+    g.winnerId = alive[0] || null;
+    pushLog(g, alive.length === 1 ? `${nameOf(alive[0])} wins the game!` : 'Game over.');
+  }
+}
+function nameOf(id) { return id ? 'Player ' + (id.slice(0,4)) : 'nobody'; }
+
+function ownerCountInGroup(g, ownerId, groupIdxs) {
+  return groupIdxs.filter(i => g.owner[i] === ownerId).length;
+}
+
+function houseGroupComplete(g, ownerId, group) {
+  const idxs = GROUPS[group];
+  return idxs.every(i => g.owner[i] === ownerId);
+}
+
+function computeRent(g, spaceIdx, ownerId, diceSum) {
+  const space = SPACES[spaceIdx];
+  if (space.type === 'rail') {
+    const count = RAIL_IDXS.filter(i => g.owner[i] === ownerId).length;
+    return RAIL_RENTS[Math.max(0, count - 1)];
+  }
+  if (space.type === 'util') {
+    const count = UTIL_IDXS.filter(i => g.owner[i] === ownerId).length;
+    return diceSum * (count >= 2 ? 10 : 4);
+  }
+  const houses = g.houses[spaceIdx] || 0;
+  if (houses > 0) return space.rent[houses];
+  const monopoly = houseGroupComplete(g, ownerId, space.group);
+  return monopoly ? space.rent[0] * 2 : space.rent[0];
+}
+
+// Pays `amount` from `fromId` toward `toId` ('bank' or a player id).
+// Handles bankruptcy: if it would go below zero, player goes bankrupt,
+// pays what they have, and their properties/houses transfer (to the
+// creditor if a player, or clear back to the bank if owed to the bank).
+function payAmount(g, fromId, toId, amount) {
+  if (amount <= 0) return;
+  if (g.cash[fromId] >= amount) {
+    g.cash[fromId] -= amount;
+    if (toId !== 'bank') g.cash[toId] += amount;
+    return;
+  }
+  // Bankrupt: pay what they have, forfeit everything.
+  const paid = Math.max(0, g.cash[fromId]);
+  if (toId !== 'bank') g.cash[toId] += paid;
+  g.cash[fromId] = 0;
+  g.bankrupt[fromId] = true;
+  pushLog(g, `${nameOf(fromId)} went bankrupt!`);
+  for (const idxStr of Object.keys(g.owner)) {
+    const idx = Number(idxStr);
+    if (g.owner[idx] === fromId) {
+      if (toId !== 'bank') { g.owner[idx] = toId; }
+      else { delete g.owner[idx]; }
+      g.houses[idx] = 0;
+    }
+  }
+  checkWin(g);
+}
+
+function collectFromEach(g, toId, amount) {
+  g.order.forEach(id => { if (id !== toId && !g.bankrupt[id]) payAmount(g, id, toId, amount); });
+}
+function payToEach(g, fromId, amount) {
+  g.order.forEach(id => { if (id !== fromId && !g.bankrupt[id]) payAmount(g, fromId, id, amount); });
+}
+
+function movePlayerTo(g, playerId, newPos, { awardGo = true } = {}) {
+  const old = g.pos[playerId];
+  if (awardGo && newPos <= old) { g.cash[playerId] += 200; pushLog(g, `${nameOf(playerId)} passed GO, collected Tk200.`); }
+  g.pos[playerId] = newPos;
+}
+
+function applyCard(g, playerId, deckName) {
+  const deck = deckName === 'chance' ? g.chanceDeck : g.chestDeck;
+  let idxKey = deckName === 'chance' ? 'chanceIdx' : 'chestIdx';
+  const card = (deckName === 'chance' ? CHANCE_CARDS : CHEST_CARDS)[deck[g[idxKey]]];
+  g[idxKey] = (g[idxKey] + 1) % deck.length;
+  pushLog(g, `${nameOf(playerId)} drew: ${card.text}`);
+  const e = card.effect;
+  if (e.type === 'collect') g.cash[playerId] += e.amount;
+  else if (e.type === 'pay') payAmount(g, playerId, 'bank', e.amount);
+  else if (e.type === 'collectEach') collectFromEach(g, playerId, e.amount);
+  else if (e.type === 'payEach') payToEach(g, playerId, e.amount);
+  else if (e.type === 'getoutfree') g.cards[playerId]++;
+  else if (e.type === 'gotojail') sendToJail(g, playerId);
+  else if (e.type === 'moveRelative') {
+    let np = (g.pos[playerId] + e.delta + 40) % 40;
+    movePlayerTo(g, playerId, np, { awardGo:false });
+    landOn(g, playerId, np, g.lastRoll[0] + g.lastRoll[1]);
+  } else if (e.type === 'moveTo') {
+    movePlayerTo(g, playerId, e.idx);
+    landOn(g, playerId, e.idx, g.lastRoll[0] + g.lastRoll[1]);
+  } else if (e.type === 'nearestRail') {
+    const np = RAIL_IDXS.find(i => i > g.pos[playerId]) ?? RAIL_IDXS[0];
+    movePlayerTo(g, playerId, np);
+    landOn(g, playerId, np, g.lastRoll[0] + g.lastRoll[1], { doubleRent:true });
+  } else if (e.type === 'nearestUtil') {
+    const np = UTIL_IDXS.find(i => i > g.pos[playerId]) ?? UTIL_IDXS[0];
+    movePlayerTo(g, playerId, np);
+    landOn(g, playerId, np, g.lastRoll[0] + g.lastRoll[1], { tenXUtil:true });
+  } else if (e.type === 'repairs') {
+    let total = 0;
+    for (const idxStr of Object.keys(g.owner)) {
+      const idx = Number(idxStr);
+      if (g.owner[idx] === playerId) {
+        const h = g.houses[idx] || 0;
+        total += h === 5 ? e.perHotel : h * e.perHouse;
+      }
+    }
+    payAmount(g, playerId, 'bank', total);
+  }
+}
+
+function sendToJail(g, playerId) {
+  g.pos[playerId] = 10;
+  g.jail[playerId] = { in:true, turns:0 };
+  g.phase = 'resolve';
+  pushLog(g, `${nameOf(playerId)} was sent to Jail.`);
+}
+
+// Resolves whatever space a player just landed on. May set phase to
+// 'buy' (waiting on the player) or 'resolve' (done, ready to end turn).
+function landOn(g, playerId, spaceIdx, diceSum, opts = {}) {
+  const space = SPACES[spaceIdx];
+  if (space.type === 'property' || space.type === 'rail' || space.type === 'util') {
+    const owner = g.owner[spaceIdx];
+    if (owner === undefined) {
+      g.pendingBuySpace = spaceIdx;
+      g.phase = 'buy';
+      pushLog(g, `${nameOf(playerId)} landed on ${space.name} (unowned, Tk${space.price}).`);
+      return;
+    }
+    if (owner !== playerId) {
+      let rent = computeRent(g, spaceIdx, owner, diceSum);
+      if (opts.doubleRent) rent *= 2;
+      if (opts.tenXUtil) rent = diceSum * 10;
+      payAmount(g, playerId, owner, rent);
+      pushLog(g, `${nameOf(playerId)} paid Tk${rent} rent to ${nameOf(owner)} for ${space.name}.`);
+    }
+    g.phase = 'resolve';
+  } else if (space.type === 'tax') {
+    payAmount(g, playerId, 'bank', space.amount);
+    pushLog(g, `${nameOf(playerId)} paid Tk${space.amount} tax.`);
+    g.phase = 'resolve';
+  } else if (space.type === 'chance') {
+    applyCard(g, playerId, 'chance');
+    if (g.phase !== 'buy') g.phase = 'resolve';
+  } else if (space.type === 'chest') {
+    applyCard(g, playerId, 'chest');
+    if (g.phase !== 'buy') g.phase = 'resolve';
+  } else if (space.type === 'gotojail') {
+    sendToJail(g, playerId);
+  } else {
+    g.phase = 'resolve'; // go, jail(visiting), parking
+  }
+  checkWin(g);
+}
+
+function doRoll(g, playerId) {
+  const d1 = 1 + Math.floor(Math.random() * 6);
+  const d2 = 1 + Math.floor(Math.random() * 6);
+  g.lastRoll = [d1, d2];
+  const isDouble = d1 === d2;
+
+  if (g.jail[playerId].in) {
+    if (isDouble) {
+      g.jail[playerId] = { in:false, turns:0 };
+      pushLog(g, `${nameOf(playerId)} rolled doubles and left Jail.`);
+      const np = (g.pos[playerId] + d1 + d2) % 40;
+      movePlayerTo(g, playerId, np);
+      landOn(g, playerId, np, d1 + d2);
+    } else {
+      g.jail[playerId].turns++;
+      if (g.jail[playerId].turns >= 3) {
+        payAmount(g, playerId, 'bank', 50);
+        g.jail[playerId] = { in:false, turns:0 };
+        pushLog(g, `${nameOf(playerId)} paid Tk50 to leave Jail after 3 tries.`);
+        const np = (g.pos[playerId] + d1 + d2) % 40;
+        movePlayerTo(g, playerId, np);
+        landOn(g, playerId, np, d1 + d2);
+      } else {
+        pushLog(g, `${nameOf(playerId)} stayed in Jail (try ${g.jail[playerId].turns}/3).`);
+        g.phase = 'resolve';
+      }
+    }
+    return;
+  }
+
+  if (isDouble) {
+    g.doublesStreak++;
+    if (g.doublesStreak >= 3) {
+      sendToJail(g, playerId);
+      return;
+    }
+  } else {
+    g.doublesStreak = 0;
+  }
+  const np = (g.pos[playerId] + d1 + d2) % 40;
+  movePlayerTo(g, playerId, np);
+  landOn(g, playerId, np, d1 + d2);
+}
+
+function doEndTurn(g) {
+  const p = currentPlayer(g);
+  if (g.doublesStreak > 0 && !g.jail[p].in && !g.bankrupt[p]) {
+    g.phase = 'roll'; // same player rolls again
+  } else {
+    advanceTurn(g);
+  }
+}
+
+// =========================================================
+// NETWORKING — same host-authoritative pattern as Ultimate
+// Tic Tac Toe: ROOM.hostId is explicit state, not re-derived
+// from presence timing on every message.
+// =========================================================
+const myId = crypto.randomUUID();
+let roomCode = null;
+let ROOM = null;   // { hostId, capacity, seats:[ids in turn order], started }
+let GAME = null;
+let room = null;
+
+const SUPABASE_CONFIGURED = SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL';
+
+function isHost() { return !!ROOM && ROOM.hostId === myId; }
+function isMyTurn() { return GAME && currentPlayer(GAME) === myId; }
+
+function freshRoom(hostId) {
+  return { hostId, capacity: 4, seats: [], started: false };
+}
+
+const screenHome = document.getElementById('screen-home');
+const screenLobby = document.getElementById('screen-lobby');
+const gameShell = document.getElementById('game-shell');
+const homeErr = document.getElementById('home-err');
+
+document.getElementById('btn-create').onclick = createRoom;
+document.getElementById('btn-join-open').onclick = () => document.getElementById('join-form').classList.remove('hidden');
+document.getElementById('btn-join').onclick = () => joinRoom(document.getElementById('join-code').value.trim().toUpperCase());
+document.getElementById('btn-copy-link').onclick = copyShareLink;
+document.getElementById('btn-join-seat').onclick = () => room?.send('join_seat', {});
+document.getElementById('btn-start').onclick = () => room?.send('start_game', {});
+
+const seatSelectEl = document.getElementById('seat-count-select');
+[2,3,4,5,6].forEach(n => {
+  const b = document.createElement('button');
+  b.className = 'seat-btn';
+  b.textContent = n + ' players';
+  b.onclick = () => { if (isHost()) room.send('set_capacity', { capacity: n }); };
+  b.dataset.n = n;
+  seatSelectEl.appendChild(b);
+});
+
+function showHomeOrLobby(id) {
+  screenHome.classList.add('hidden');
+  screenLobby.classList.add('hidden');
+  gameShell.classList.remove('active');
+  document.getElementById(id).classList.remove('hidden');
+}
+
+const urlRoom = new URLSearchParams(location.search).get('room');
+if (urlRoom) joinRoom(urlRoom.toUpperCase());
+
+async function createRoom() {
+  homeErr.textContent = '';
+  if (!SUPABASE_CONFIGURED) { homeErr.textContent = 'Multiplayer isn\u2019t connected yet.'; return; }
+  roomCode = makeRoomCode();
+  ROOM = freshRoom(myId);
+  GAME = null;
+  await setupRoom();
+  showHomeOrLobby('screen-lobby');
+  renderLobby();
+}
+
+async function joinRoom(code) {
+  homeErr.textContent = '';
+  if (!code) { homeErr.textContent = 'Enter a room code.'; return; }
+  if (!SUPABASE_CONFIGURED) { homeErr.textContent = 'Multiplayer isn\u2019t connected yet.'; return; }
+  roomCode = code;
+  ROOM = null; GAME = null;
+  await setupRoom();
+  showHomeOrLobby('screen-lobby');
+  document.getElementById('lobby-msg').textContent = 'Connecting...';
+  room.send('request_sync', {});
+}
+
+async function setupRoom() {
+  room = openRoom({ gamePrefix: 'monopoly', roomCode, myId });
+
+  room.on('set_capacity', (payload) => {
+    if (!isHost() || ROOM.started) return;
+    const cap = Math.max(2, Math.min(6, payload.capacity | 0));
+    ROOM = { ...ROOM, capacity: cap, seats: ROOM.seats.slice(0, cap) };
+    broadcastSync();
+  });
+
+  room.on('join_seat', (payload) => {
+    if (!isHost() || ROOM.started) return;
+    if (ROOM.seats.includes(payload.senderId)) return;
+    if (ROOM.seats.length >= ROOM.capacity) return;
+    ROOM = { ...ROOM, seats: [...ROOM.seats, payload.senderId] };
+    broadcastSync();
+  });
+
+  room.on('start_game', () => {
+    if (!isHost() || ROOM.started) return;
+    if (ROOM.seats.length < 2) return;
+    ROOM = { ...ROOM, started: true };
+    GAME = freshGame(ROOM.seats);
+    broadcastSync();
+  });
+
+  room.on('roll', (payload) => {
+    if (!isHost() || !GAME || GAME.phase !== 'roll') return;
+    if (currentPlayer(GAME) !== payload.senderId) return;
+    doRoll(GAME, payload.senderId);
+    broadcastSync();
+  });
+
+  room.on('buy_yes', (payload) => {
+    if (!isHost() || !GAME || GAME.phase !== 'buy') return;
+    if (currentPlayer(GAME) !== payload.senderId) return;
+    const space = SPACES[GAME.pendingBuySpace];
+    if (GAME.cash[payload.senderId] >= space.price) {
+      GAME.cash[payload.senderId] -= space.price;
+      GAME.owner[GAME.pendingBuySpace] = payload.senderId;
+      pushLog(GAME, `${nameOf(payload.senderId)} bought ${space.name} for Tk${space.price}.`);
+    }
+    GAME.pendingBuySpace = null;
+    GAME.phase = 'resolve';
+    broadcastSync();
+  });
+
+  room.on('buy_no', (payload) => {
+    if (!isHost() || !GAME || GAME.phase !== 'buy') return;
+    if (currentPlayer(GAME) !== payload.senderId) return;
+    pushLog(GAME, `${nameOf(payload.senderId)} declined to buy ${SPACES[GAME.pendingBuySpace].name}.`);
+    GAME.pendingBuySpace = null;
+    GAME.phase = 'resolve';
+    broadcastSync();
+  });
+
+  room.on('build_house', (payload) => {
+    if (!isHost() || !GAME || GAME.phase !== 'roll') return;
+    if (currentPlayer(GAME) !== payload.senderId) return;
+    const idx = payload.spaceIdx;
+    const space = SPACES[idx];
+    if (!space || space.type !== 'property') return;
+    if (GAME.owner[idx] !== payload.senderId) return;
+    if (!houseGroupComplete(GAME, payload.senderId, space.group)) return;
+    const current = GAME.houses[idx] || 0;
+    if (current >= 5) return;
+    const groupMin = Math.min(...GROUPS[space.group].map(i => GAME.houses[i] || 0));
+    if (current > groupMin) return; // even-building rule
+    const cost = GROUP_HOUSE_COST[space.group];
+    if (GAME.cash[payload.senderId] < cost) return;
+    GAME.cash[payload.senderId] -= cost;
+    GAME.houses[idx] = current + 1;
+    pushLog(GAME, `${nameOf(payload.senderId)} built on ${space.name} (now ${GAME.houses[idx] >= 5 ? 'hotel' : GAME.houses[idx] + ' house(s)'}).`);
+    broadcastSync();
+  });
+
+  room.on('pay_jail_fine', (payload) => {
+    if (!isHost() || !GAME || GAME.phase !== 'roll') return;
+    if (currentPlayer(GAME) !== payload.senderId) return;
+    if (!GAME.jail[payload.senderId].in) return;
+    if (GAME.cash[payload.senderId] < 50) return;
+    GAME.cash[payload.senderId] -= 50;
+    GAME.jail[payload.senderId] = { in:false, turns:0 };
+    pushLog(GAME, `${nameOf(payload.senderId)} paid Tk50 bail.`);
+    broadcastSync();
+  });
+
+  room.on('use_jail_card', (payload) => {
+    if (!isHost() || !GAME || GAME.phase !== 'roll') return;
+    if (currentPlayer(GAME) !== payload.senderId) return;
+    if (!GAME.jail[payload.senderId].in || GAME.cards[payload.senderId] <= 0) return;
+    GAME.cards[payload.senderId]--;
+    GAME.jail[payload.senderId] = { in:false, turns:0 };
+    pushLog(GAME, `${nameOf(payload.senderId)} used a Get Out of Jail Free card.`);
+    broadcastSync();
+  });
+
+  room.on('end_turn', (payload) => {
+    if (!isHost() || !GAME || GAME.phase !== 'resolve') return;
+    if (currentPlayer(GAME) !== payload.senderId) return;
+    doEndTurn(GAME);
+    broadcastSync();
+  });
+
+  room.on('rematch_request', () => {
+    if (!isHost() || !ROOM) return;
+    GAME = freshGame(ROOM.seats);
+    broadcastSync();
+  });
+
+  room.on('request_sync', () => { if (isHost()) broadcastSync(); });
+
+  room.on('sync', (payload) => {
+    ROOM = payload.room;
+    GAME = payload.game;
+    renderFromState();
+  });
+
+  room.onPresence(({ ids }) => {
+    if (!ROOM || ids.length === 0) return;
+    if (ids.includes(ROOM.hostId)) return;
+    if (ids[0] === myId) { ROOM = { ...ROOM, hostId: myId }; broadcastSync(); }
+  });
+
+  await room.connect();
+  document.getElementById('share-link').value = `${location.origin}${location.pathname}?room=${roomCode}`;
+  document.getElementById('lobby-code').textContent = roomCode;
+}
+
+function broadcastSync() { room.send('sync', { room: ROOM, game: GAME }); }
+function copyShareLink() {
+  const el = document.getElementById('share-link');
+  el.select();
+  navigator.clipboard?.writeText(el.value).catch(() => {});
+}
+
+// =========================================================
+// RENDER
+// =========================================================
+function renderFromState() {
+  if (!ROOM) return;
+  if (!ROOM.started) { showHomeOrLobby('screen-lobby'); renderLobby(); }
+  else { gameShell.classList.add('active'); screenHome.classList.add('hidden'); screenLobby.classList.add('hidden'); renderGame(); }
+}
+
+function renderLobby() {
+  document.getElementById('host-tag').classList.toggle('hidden', !isHost());
+  seatSelectEl.querySelectorAll('.seat-btn').forEach(b => {
+    b.classList.toggle('active', Number(b.dataset.n) === ROOM.capacity);
+    b.disabled = !isHost() || ROOM.started;
+  });
+
+  const listEl = document.getElementById('seat-list');
+  listEl.innerHTML = '';
+  for (let i = 0; i < ROOM.capacity; i++) {
+    const id = ROOM.seats[i];
+    const row = document.createElement('div');
+    row.className = 'seat-row' + (id ? ' filled' : '') + (id === myId ? ' mine' : '');
+    const dot = document.createElement('div');
+    dot.className = 'token-dot';
+    dot.style.background = id ? TOKEN_COLORS[i] : '#333';
+    const who = document.createElement('div');
+    who.className = 'who';
+    who.textContent = id ? (id === myId ? 'You' : `Player ${i + 1}`) : 'open seat';
+    row.appendChild(dot); row.appendChild(who);
+    listEl.appendChild(row);
+  }
+
+  const joinBtn = document.getElementById('btn-join-seat');
+  const alreadyIn = ROOM.seats.includes(myId);
+  joinBtn.disabled = alreadyIn || ROOM.seats.length >= ROOM.capacity || ROOM.started;
+  joinBtn.textContent = alreadyIn ? 'You\u2019re seated' : 'Take a Seat';
+
+  const startBtn = document.getElementById('btn-start');
+  startBtn.classList.toggle('hidden', !isHost());
+  startBtn.disabled = ROOM.seats.length < 2;
+
+  document.getElementById('lobby-msg').textContent = ROOM.seats.length < 2
+    ? 'Need at least 2 players.'
+    : (isHost() ? 'Ready to launch whenever you are.' : 'Waiting for host to launch.');
+}
+
+function renderGame() {
+  if (!GAME) return;
+  // tokens
+  document.querySelectorAll('.token').forEach(t => t.remove());
+  const boardEl = document.getElementById('board');
+  GAME.order.forEach((id, seatIdx) => {
+    if (GAME.bankrupt[id]) return;
+    const spaceIdx = GAME.pos[id];
+    const cellEl = boardEl.querySelector(`[data-idx="${spaceIdx}"]`);
+    if (!cellEl) return;
+    const boardRect = boardEl.getBoundingClientRect();
+    const cellRect = cellEl.getBoundingClientRect();
+    const t = document.createElement('div');
+    t.className = 'token';
+    t.style.background = TOKEN_COLORS[seatIdx];
+    const offX = (seatIdx % 3) * 30 + 15;
+    const offY = Math.floor(seatIdx / 3) * 30 + 15;
+    t.style.left = (cellRect.left - boardRect.left + offX) + 'px';
+    t.style.top = (cellRect.top - boardRect.top + offY) + 'px';
+    boardEl.appendChild(t);
+  });
+
+  // players box
+  const playersBox = document.getElementById('players-box');
+  playersBox.innerHTML = '';
+  GAME.order.forEach((id, i) => {
+    const row = document.createElement('div');
+    row.className = 'player-row' + (currentPlayer(GAME) === id && GAME.phase !== 'gameover' ? ' turn' : '') + (GAME.bankrupt[id] ? ' bankrupt' : '');
+    const dot = document.createElement('div');
+    dot.className = 'token-dot'; dot.style.background = TOKEN_COLORS[i]; dot.style.width='12px'; dot.style.height='12px';
+    const label = document.createElement('span');
+    label.textContent = (id === myId ? 'You' : `Player ${i + 1}`) + (GAME.jail[id].in ? ' \ud83d\udd12' : '');
+    const cash = document.createElement('span');
+    cash.className = 'cash';
+    cash.textContent = 'Tk' + GAME.cash[id];
+    row.appendChild(dot); row.appendChild(label); row.appendChild(cash);
+    playersBox.appendChild(row);
+  });
+
+  // dice
+  const diceRow = document.getElementById('dice-row');
+  diceRow.innerHTML = `<div class="die">${GAME.lastRoll[0]}</div><div class="die">${GAME.lastRoll[1]}</div>`;
+
+  // turn message + actions
+  const turnMsg = document.getElementById('turn-msg');
+  const actionRow = document.getElementById('action-row');
+  actionRow.innerHTML = '';
+
+  if (GAME.phase === 'gameover') {
+    turnMsg.textContent = GAME.winnerId === myId ? 'You win! \ud83c\udf89' : (GAME.winnerId ? 'Game over \u2014 you were eliminated.' : 'Game over.');
+    if (isHost()) addBtn(actionRow, 'Rematch', () => room.send('rematch_request', {}));
+  } else {
+    const mine = isMyTurn();
+    const cp = currentPlayer(GAME);
+    turnMsg.textContent = mine ? 'Your turn' : `Waiting for ${cp === myId ? 'you' : 'Player ' + (GAME.order.indexOf(cp) + 1)}...`;
+
+    if (mine && GAME.phase === 'roll') {
+      if (GAME.jail[myId].in) {
+        addBtn(actionRow, 'Roll (try to escape)', () => room.send('roll', {}));
+        if (GAME.cash[myId] >= 50) addBtn(actionRow, 'Pay Tk50 bail', () => room.send('pay_jail_fine', {}));
+        if (GAME.cards[myId] > 0) addBtn(actionRow, 'Use Jail card', () => room.send('use_jail_card', {}));
+      } else {
+        addBtn(actionRow, 'Roll Dice', () => room.send('roll', {}));
+      }
+    } else if (mine && GAME.phase === 'buy') {
+      const space = SPACES[GAME.pendingBuySpace];
+      turnMsg.textContent = `Buy ${space.name} for Tk${space.price}?`;
+      addBtn(actionRow, 'Buy', () => room.send('buy_yes', {}));
+      addBtn(actionRow, 'Pass', () => room.send('buy_no', {}));
+    } else if (mine && GAME.phase === 'resolve') {
+      addBtn(actionRow, GAME.doublesStreak > 0 ? 'Roll Again (doubles)' : 'End Turn', () => room.send('end_turn', {}));
+    }
+  }
+
+  // my properties + build controls (available on my turn, phase roll)
+  const propsBox = document.getElementById('props-box');
+  propsBox.innerHTML = '';
+  Object.keys(GAME.owner).map(Number).filter(idx => GAME.owner[idx] === myId).forEach(idx => {
+    const space = SPACES[idx];
+    const row = document.createElement('div');
+    row.className = 'prop-row';
+    const sw = document.createElement('div');
+    sw.className = 'swatch';
+    sw.style.background = space.group ? getComputedGroupColor(space.group) : '#888';
+    const label = document.createElement('span');
+    const houses = GAME.houses[idx] || 0;
+    label.textContent = space.name + (houses > 0 ? (houses >= 5 ? ' \ud83c\udfe8' : ' ' + '\ud83c\udfe0'.repeat(houses)) : '');
+    row.appendChild(sw); row.appendChild(label);
+    if (space.type === 'property' && isMyTurn() && GAME.phase === 'roll' && houses < 5 &&
+        houseGroupComplete(GAME, myId, space.group) &&
+        houses <= Math.min(...GROUPS[space.group].map(i => GAME.houses[i] || 0))) {
+      const cost = GROUP_HOUSE_COST[space.group];
+      const btn = document.createElement('button');
+      btn.textContent = `Build (Tk${cost})`;
+      btn.disabled = GAME.cash[myId] < cost;
+      btn.onclick = () => room.send('build_house', { spaceIdx: idx });
+      row.appendChild(btn);
+    }
+    propsBox.appendChild(row);
+  });
+
+  // log
+  const logBox = document.getElementById('log-box');
+  logBox.innerHTML = '';
+  GAME.log.slice().reverse().forEach(line => {
+    const d = document.createElement('div');
+    d.textContent = line;
+    logBox.appendChild(d);
+  });
+}
+
+function addBtn(container, label, onClick) {
+  const b = document.createElement('button');
+  b.textContent = label;
+  b.onclick = onClick;
+  container.appendChild(b);
+}
+
+function getComputedGroupColor(group) {
+  const map = { brown:'#7a4128', lightblue:'#8fd2f5', pink:'#c22384', orange:'#e87f0f', red:'#d21017', yellow:'#f0d800', green:'#149249', blue:'#00568f' };
+  return map[group] || '#888';
+}
+
+// Re-render tokens on resize since positions are computed from live cell rects.
+window.addEventListener('resize', () => { if (GAME && ROOM?.started) renderGame(); });
+</script>
+</body>
+</html>

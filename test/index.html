@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arcade</title>
+<link rel="stylesheet" href="./shared/style.css">
+<style>
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 60px 20px;
+  }
+  .hub-header { text-align: center; margin-bottom: 48px; }
+  .hub-header .msg { margin: 10px auto 0; }
+
+  .game-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 20px;
+    width: 100%;
+    max-width: 780px;
+  }
+
+  .game-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--void);
+    border: 1px solid var(--nebula);
+    padding: 22px;
+    text-decoration: none;
+    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  }
+  .game-card:hover {
+    border-color: var(--signal);
+    transform: translateY(-2px);
+    box-shadow: 0 0 24px rgba(79, 216, 232, 0.15);
+  }
+  .game-card h2 {
+    margin: 0;
+    color: var(--signal);
+    font-size: 20px;
+    letter-spacing: 2px;
+  }
+  .game-card p {
+    margin: 0;
+    color: var(--mist);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .game-card .tag {
+    align-self: flex-start;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+    border: 1px solid var(--gold);
+    padding: 3px 8px;
+  }
+
+  /* Placeholder card for games not built yet */
+  .game-card.coming-soon {
+    opacity: 0.4;
+    pointer-events: none;
+    border-style: dashed;
+  }
+</style>
+</head>
+<body>
+  <div class="hub-header">
+    <div class="eyebrow">Co-op Arcade</div>
+    <h1 class="title">ARCADE</h1>
+    <p class="msg">Pick a game, share the room code with a friend, play.</p>
+  </div>
+
+  <div class="game-grid">
+    <a class="game-card" href="./games/ultimate-ttt/">
+      <span class="tag">2 Player</span>
+      <h2>Ultimate Tic Tac Toe</h2>
+      <p>Nine boards in one. Win small boards to claim the big one — but where you play sends your opponent next.</p>
+    </a>
+
+    <a class="game-card" href="./games/monopoly/">
+      <span class="tag">2\u20136 Player</span>
+      <h2>Monopoly</h2>
+      <p>Buy properties, build houses and hotels, collect rent, avoid bankruptcy. Host picks the player count.</p>
+    </a>
+
+    <!-- Add more games here as they're built, e.g.:
+    <a class="game-card" href="./games/space-menace/">
+      <span class="tag">Up to 3 Player</span>
+      <h2>Space Menace</h2>
+      <p>Co-op arcade defense. Survive the drift.</p>
+    </a>
+    -->
+
+    <div class="game-card coming-soon">
+      <span class="tag">Soon</span>
+      <h2>More games</h2>
+      <p>New games get added here over time.</p>
+    </div>
+  </div>
+</body>
+</html>
