@@ -513,6 +513,34 @@
       <div class="props-list" id="props-box"></div>
     </div>
     <div class="hud-box">
+      <h4>Trade</h4>
+      <div id="trades-box"></div>
+      <button id="btn-open-trade" style="width:100%; margin-top:6px;">Propose Trade</button>
+      <div id="trade-form" class="hidden" style="margin-top:8px; display:flex; flex-direction:column; gap:8px; text-align:left;">
+        <label style="font-size:11px;">With:
+          <select id="trade-target" style="width:100%;"></select>
+        </label>
+        <div style="display:flex; gap:8px;">
+          <div style="flex:1;">
+            <div style="font-size:11px; font-weight:700;">You give</div>
+            <div id="trade-give-props" style="max-height:90px; overflow-y:auto; font-size:11px;"></div>
+            <label style="font-size:11px;">Tk <input id="trade-give-cash" type="number" min="0" value="0" style="width:70px;"></label><br>
+            <label id="trade-give-jail-wrap" class="hidden" style="font-size:11px;"><input type="checkbox" id="trade-give-jail"> Jail card</label>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:11px; font-weight:700;">You get</div>
+            <div id="trade-get-props" style="max-height:90px; overflow-y:auto; font-size:11px;"></div>
+            <label style="font-size:11px;">Tk <input id="trade-get-cash" type="number" min="0" value="0" style="width:70px;"></label><br>
+            <label id="trade-get-jail-wrap" class="hidden" style="font-size:11px;"><input type="checkbox" id="trade-get-jail"> Jail card</label>
+          </div>
+        </div>
+        <div class="row">
+          <button id="btn-send-trade">Send Offer</button>
+          <button id="btn-cancel-trade-form">Cancel</button>
+        </div>
+      </div>
+    </div>
+    <div class="hud-box">
       <h4>Log</h4>
       <div id="log-box"></div>
     </div>
@@ -629,8 +657,9 @@ function shuffled(arr) {
 
 // =========================================================
 // GAME ENGINE — host mutates this directly, then broadcasts
-// the full object as JSON. No trading / mortgaging / auctions
-// (scope decision — see conversation).
+// the full object as JSON. Trading is supported (cash,
+// properties, Get Out of Jail Free cards); mortgaging and
+// auctions are still out of scope.
 // =========================================================
 function freshGame(order) {
   const cash = {}, pos = {}, jail = {}, cards = {}, bankrupt = {};
@@ -641,6 +670,7 @@ function freshGame(order) {
     pendingBuySpace: null,
     chanceDeck: shuffled(CHANCE_CARDS), chanceIdx: 0,
     chestDeck: shuffled(CHEST_CARDS), chestIdx: 0,
+    trades: [], nextTradeId: 1,
     log: ['Game started.'], winnerId: null,
   };
 }
@@ -876,6 +906,54 @@ function doEndTurn(g) {
 }
 
 // =========================================================
+// TRADING — any player can propose a trade to any other
+// player at any time (not gated by turn/phase). A trade can
+// include cash, whole properties (no houses on them — sell
+// houses first, matching the classic rule), and Get Out of
+// Jail Free cards. The recipient accepts or declines; the
+// proposer can cancel a still-pending offer. Conditions are
+// re-checked at accept time in case anything changed since
+// the offer was made (e.g. the property got mortgaged... it
+// can't in this build, but cash/ownership still can).
+// =========================================================
+function isTradeable(g, spaceIdx, ownerId) {
+  const space = SPACES[spaceIdx];
+  return space && space.type === 'property' && g.owner[spaceIdx] === ownerId && (g.houses[spaceIdx] || 0) === 0;
+}
+
+function canExecuteTrade(g, t) {
+  if (g.bankrupt[t.fromId] || g.bankrupt[t.toId]) return false;
+  if (g.cash[t.fromId] < t.offerCash) return false;
+  if (g.cash[t.toId] < t.reqCash) return false;
+  if (!t.offerProps.every(idx => isTradeable(g, idx, t.fromId))) return false;
+  if (!t.reqProps.every(idx => isTradeable(g, idx, t.toId))) return false;
+  if (t.offerJail && g.cards[t.fromId] < 1) return false;
+  if (t.reqJail && g.cards[t.toId] < 1) return false;
+  return true;
+}
+
+function executeTrade(g, t) {
+  g.cash[t.fromId] -= t.offerCash; g.cash[t.toId] += t.offerCash;
+  g.cash[t.toId] -= t.reqCash; g.cash[t.fromId] += t.reqCash;
+  t.offerProps.forEach(idx => { g.owner[idx] = t.toId; });
+  t.reqProps.forEach(idx => { g.owner[idx] = t.fromId; });
+  if (t.offerJail) { g.cards[t.fromId]--; g.cards[t.toId]++; }
+  if (t.reqJail) { g.cards[t.toId]--; g.cards[t.fromId]++; }
+}
+
+function tradeSummary(t) {
+  const give = [];
+  if (t.offerCash) give.push(`Tk${t.offerCash}`);
+  t.offerProps.forEach(idx => give.push(SPACES[idx].name));
+  if (t.offerJail) give.push('Jail card');
+  const get = [];
+  if (t.reqCash) get.push(`Tk${t.reqCash}`);
+  t.reqProps.forEach(idx => get.push(SPACES[idx].name));
+  if (t.reqJail) get.push('Jail card');
+  return `${nameOf(t.fromId)} offers ${give.join(', ') || 'nothing'} for ${get.join(', ') || 'nothing'} from ${nameOf(t.toId)}`;
+}
+
+// =========================================================
 // NETWORKING — same host-authoritative pattern as Ultimate
 // Tic Tac Toe: ROOM.hostId is explicit state, not re-derived
 // from presence timing on every message.
@@ -916,6 +994,17 @@ const seatSelectEl = document.getElementById('seat-count-select');
   b.dataset.n = n;
   seatSelectEl.appendChild(b);
 });
+
+document.getElementById('btn-open-trade').onclick = () => {
+  document.getElementById('trade-form').classList.remove('hidden');
+  populateTradeTargets();
+  renderTradeSides();
+};
+document.getElementById('btn-cancel-trade-form').onclick = () => {
+  document.getElementById('trade-form').classList.add('hidden');
+};
+document.getElementById('trade-target').onchange = renderTradeSides;
+document.getElementById('btn-send-trade').onclick = sendTradeOffer;
 
 function showHomeOrLobby(id) {
   screenHome.classList.add('hidden');
@@ -1051,6 +1140,53 @@ async function setupRoom() {
     if (!isHost() || !GAME || GAME.phase !== 'resolve') return;
     if (currentPlayer(GAME) !== payload.senderId) return;
     doEndTurn(GAME);
+    broadcastSync();
+  });
+
+  room.on('propose_trade', (payload) => {
+    if (!isHost() || !GAME) return;
+    const fromId = payload.senderId, toId = payload.toId;
+    if (!GAME.order.includes(toId) || toId === fromId) return;
+    if (GAME.bankrupt[fromId] || GAME.bankrupt[toId]) return;
+    const trade = {
+      id: GAME.nextTradeId++,
+      fromId, toId,
+      offerCash: Math.max(0, payload.offerCash | 0),
+      offerProps: (payload.offerProps || []).filter(idx => isTradeable(GAME, idx, fromId)),
+      offerJail: !!payload.offerJail,
+      reqCash: Math.max(0, payload.reqCash | 0),
+      reqProps: (payload.reqProps || []).filter(idx => isTradeable(GAME, idx, toId)),
+      reqJail: !!payload.reqJail,
+    };
+    GAME.trades.push(trade);
+    pushLog(GAME, `${nameOf(fromId)} proposed a trade to ${nameOf(toId)}.`);
+    broadcastSync();
+  });
+
+  room.on('respond_trade', (payload) => {
+    if (!isHost() || !GAME) return;
+    const trade = GAME.trades.find(t => t.id === payload.tradeId);
+    if (!trade || trade.toId !== payload.senderId) return;
+    GAME.trades = GAME.trades.filter(t => t.id !== payload.tradeId);
+    if (payload.accept) {
+      if (canExecuteTrade(GAME, trade)) {
+        executeTrade(GAME, trade);
+        pushLog(GAME, `Trade accepted: ${tradeSummary(trade)}.`);
+      } else {
+        pushLog(GAME, `Trade between ${nameOf(trade.fromId)} and ${nameOf(trade.toId)} fell through (conditions changed).`);
+      }
+    } else {
+      pushLog(GAME, `${nameOf(trade.toId)} declined a trade from ${nameOf(trade.fromId)}.`);
+    }
+    broadcastSync();
+  });
+
+  room.on('cancel_trade', (payload) => {
+    if (!isHost() || !GAME) return;
+    const trade = GAME.trades.find(t => t.id === payload.tradeId);
+    if (!trade || trade.fromId !== payload.senderId) return;
+    GAME.trades = GAME.trades.filter(t => t.id !== payload.tradeId);
+    pushLog(GAME, `${nameOf(trade.fromId)} withdrew a trade offer.`);
     broadcastSync();
   });
 
@@ -1233,6 +1369,9 @@ function renderGame() {
     propsBox.appendChild(row);
   });
 
+  renderTrades();
+  document.getElementById('btn-open-trade').disabled = GAME.phase === 'gameover';
+
   // log
   const logBox = document.getElementById('log-box');
   logBox.innerHTML = '';
@@ -1253,6 +1392,93 @@ function addBtn(container, label, onClick) {
 function getComputedGroupColor(group) {
   const map = { brown:'#7a4128', lightblue:'#8fd2f5', pink:'#c22384', orange:'#e87f0f', red:'#d21017', yellow:'#f0d800', green:'#149249', blue:'#00568f' };
   return map[group] || '#888';
+}
+
+// =========================================================
+// TRADE UI
+// =========================================================
+function populateTradeTargets() {
+  const sel = document.getElementById('trade-target');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  GAME.order.forEach((id, i) => {
+    if (id === myId || GAME.bankrupt[id]) return;
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = `Player ${i + 1}`;
+    sel.appendChild(opt);
+  });
+  if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+}
+
+function tradeablePropsOf(ownerId) {
+  return Object.keys(GAME.owner).map(Number).filter(idx => isTradeable(GAME, idx, ownerId));
+}
+
+function renderTradeSides() {
+  const targetId = document.getElementById('trade-target').value;
+  const giveBox = document.getElementById('trade-give-props');
+  const getBox = document.getElementById('trade-get-props');
+  giveBox.innerHTML = ''; getBox.innerHTML = '';
+
+  tradeablePropsOf(myId).forEach(idx => {
+    const label = document.createElement('label');
+    label.style.display = 'block';
+    label.innerHTML = `<input type="checkbox" value="${idx}"> ${SPACES[idx].name}`;
+    giveBox.appendChild(label);
+  });
+  if (targetId) {
+    tradeablePropsOf(targetId).forEach(idx => {
+      const label = document.createElement('label');
+      label.style.display = 'block';
+      label.innerHTML = `<input type="checkbox" value="${idx}"> ${SPACES[idx].name}`;
+      getBox.appendChild(label);
+    });
+  }
+
+  document.getElementById('trade-give-jail-wrap').classList.toggle('hidden', !(GAME.cards[myId] > 0));
+  document.getElementById('trade-get-jail-wrap').classList.toggle('hidden', !(targetId && GAME.cards[targetId] > 0));
+}
+
+function sendTradeOffer() {
+  const toId = document.getElementById('trade-target').value;
+  if (!toId) return;
+  const offerProps = [...document.querySelectorAll('#trade-give-props input:checked')].map(el => Number(el.value));
+  const reqProps = [...document.querySelectorAll('#trade-get-props input:checked')].map(el => Number(el.value));
+  const offerCash = Number(document.getElementById('trade-give-cash').value) || 0;
+  const reqCash = Number(document.getElementById('trade-get-cash').value) || 0;
+  const offerJail = document.getElementById('trade-give-jail').checked;
+  const reqJail = document.getElementById('trade-get-jail').checked;
+  room.send('propose_trade', { toId, offerCash, offerProps, offerJail, reqCash, reqProps, reqJail });
+  document.getElementById('trade-form').classList.add('hidden');
+}
+
+function renderTrades() {
+  const box = document.getElementById('trades-box');
+  box.innerHTML = '';
+  const mine = GAME.trades.filter(t => t.fromId === myId || t.toId === myId);
+  if (mine.length === 0) {
+    box.innerHTML = '<div class="msg" style="font-size:11px;">No active trades.</div>';
+    return;
+  }
+  mine.forEach(t => {
+    const row = document.createElement('div');
+    row.style.cssText = 'font-size:11px; border:1px solid #d8cfb0; padding:6px; margin-bottom:6px; text-align:left;';
+    const label = document.createElement('div');
+    label.textContent = tradeSummary(t);
+    row.appendChild(label);
+    const btnRow = document.createElement('div');
+    btnRow.className = 'row';
+    btnRow.style.marginTop = '4px';
+    if (t.toId === myId) {
+      addBtn(btnRow, 'Accept', () => room.send('respond_trade', { tradeId: t.id, accept: true }));
+      addBtn(btnRow, 'Decline', () => room.send('respond_trade', { tradeId: t.id, accept: false }));
+    } else {
+      addBtn(btnRow, 'Withdraw', () => room.send('cancel_trade', { tradeId: t.id }));
+    }
+    row.appendChild(btnRow);
+    box.appendChild(row);
+  });
 }
 
 // Re-render tokens on resize since positions are computed from live cell rects.
