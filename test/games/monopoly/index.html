@@ -339,6 +339,24 @@
     transition: left .3s ease, top .3s ease;
   }
 
+  /* on-board ownership indicator: a colored border matching the
+     owner's token color, applied directly to the property cell
+     (in addition to the token dots showing where players stand) */
+  .cell.owned {
+    box-shadow: inset 0 0 0 4px var(--owner-color, transparent);
+  }
+  .house-badge {
+    position: absolute;
+    bottom: 2px;
+    left: 0; right: 0;
+    text-align: center;
+    font-size: 1.6vmin;
+    line-height: 1;
+    pointer-events: none;
+    z-index: 4;
+    text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+  }
+
   #hud {
     width: 300px;
     flex: 0 0 300px;
@@ -1388,6 +1406,31 @@ function renderGame() {
     t.style.left = (cellRect.left - boardRect.left + offX) + 'px';
     t.style.top = (cellRect.top - boardRect.top + offY) + 'px';
     boardEl.appendChild(t);
+  });
+
+  // ownership markers — colored border matching the owner's token
+  // color, plus a small house/hotel badge, directly on the board.
+  boardEl.querySelectorAll('[data-idx]').forEach(el => {
+    el.classList.remove('owned');
+    el.style.removeProperty('--owner-color');
+  });
+  boardEl.querySelectorAll('.house-badge').forEach(b => b.remove());
+  Object.keys(GAME.owner).forEach(idxStr => {
+    const idx = Number(idxStr);
+    const ownerId = GAME.owner[idx];
+    const seatIdx = GAME.order.indexOf(ownerId);
+    if (seatIdx === -1) return;
+    const cellEl = boardEl.querySelector(`[data-idx="${idx}"]`);
+    if (!cellEl) return;
+    cellEl.classList.add('owned');
+    cellEl.style.setProperty('--owner-color', TOKEN_COLORS[seatIdx]);
+    const houses = GAME.houses[idx] || 0;
+    if (houses > 0) {
+      const badge = document.createElement('div');
+      badge.className = 'house-badge';
+      badge.textContent = houses >= 5 ? '🏨' : '🏠'.repeat(houses);
+      cellEl.appendChild(badge);
+    }
   });
 
   // players box
