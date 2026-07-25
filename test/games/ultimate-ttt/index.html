@@ -382,7 +382,7 @@ if (urlRoom) joinRoom(urlRoom.toUpperCase());
 async function createRoom() {
   homeErr.textContent = '';
   if (!SUPABASE_CONFIGURED) {
-    homeErr.textContent = 'Multiplayer isn\u2019t connected yet \u2014 add your Supabase URL/key in shared/supabase.js.';
+    homeErr.textContent = 'Multiplayer isn’t connected yet — add your Supabase URL/key in shared/supabase.js.';
     return;
   }
   roomCode = makeRoomCode();
@@ -397,7 +397,7 @@ async function joinRoom(code) {
   homeErr.textContent = '';
   if (!code) { homeErr.textContent = 'Enter a room code.'; return; }
   if (!SUPABASE_CONFIGURED) {
-    homeErr.textContent = 'Multiplayer isn\u2019t connected yet \u2014 add your Supabase URL/key in shared/supabase.js.';
+    homeErr.textContent = 'Multiplayer isn’t connected yet — add your Supabase URL/key in shared/supabase.js.';
     return;
   }
   roomCode = code;
@@ -542,7 +542,7 @@ function renderTeamPanel(team) {
   const btn = document.getElementById('btn-join-' + team);
   const alreadyOnThisTeam = arr.includes(myId);
   btn.disabled = ROOM.started || (arr.length >= ROOM.capacity && !alreadyOnThisTeam) || alreadyOnThisTeam;
-  btn.textContent = alreadyOnThisTeam ? 'You\u2019re on Team ' + team : 'Join Team ' + team;
+  btn.textContent = alreadyOnThisTeam ? 'You’re on Team ' + team : 'Join Team ' + team;
 }
 
 // =========================================================
@@ -589,7 +589,7 @@ function renderBoard() {
         cellEl.textContent = cellVal;
       } else if (pendingCellKey === key) {
         cellEl.classList.add('pending');
-        cellEl.textContent = '\u2026';
+        cellEl.textContent = '…';
       } else if (myTurn && legalBoards.has(b) && !GAME.miniWinners[b]) {
         cellEl.classList.add('clickable');
       } else {
@@ -626,7 +626,7 @@ function renderBoard() {
     if (GAME.winner === 'D') {
       resultEl.textContent = 'Draw. Full board, no winner.';
     } else {
-      resultEl.textContent = GAME.winner === mine ? 'Your team wins! \ud83c\udf89' : `Team ${GAME.winner} wins.`;
+      resultEl.textContent = GAME.winner === mine ? 'Your team wins! 🎉' : `Team ${GAME.winner} wins.`;
     }
     rematchRow.classList.toggle('hidden', !isHost());
     rematchWait.classList.toggle('hidden', isHost());
@@ -635,7 +635,7 @@ function renderBoard() {
     rematchRow.classList.add('hidden');
     rematchWait.classList.add('hidden');
     turnEl.className = GAME.currentPlayer;
-    turnEl.textContent = myTurn ? 'Your team\u2019s turn' : `Waiting for Team ${GAME.currentPlayer}...`;
+    turnEl.textContent = myTurn ? 'Your team’s turn' : `Waiting for Team ${GAME.currentPlayer}...`;
   }
 }
 </script>

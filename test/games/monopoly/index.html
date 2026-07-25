@@ -176,14 +176,18 @@
   .card-icon{ font-size:2.6vmin; filter:drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
   .card-label{ font-size:1vmin; letter-spacing:.5px; margin-top:4px; line-height:1.2; }
 
-  .brown{background:linear-gradient(160deg,#a2694a,#7a4128);}
-  .lightblue{background:linear-gradient(160deg,#c3ecff,#8fd2f5);}
-  .pink{background:linear-gradient(160deg,#e85cad,#c22384);}
-  .orange{background:linear-gradient(160deg,#ffa63d,#e87f0f);}
-  .red{background:linear-gradient(160deg,#f2434a,#d21017);}
-  .yellow{background:linear-gradient(160deg,#fff65c,#f0d800);}
-  .green{background:linear-gradient(160deg,#3ec97c,#149249);}
-  .blue{background:linear-gradient(160deg,#2a8fd1,#00568f);}
+  /* colors — compound with .color-bar so these reliably beat the
+     .side-top/.side-left/.side-right .color-bar rules above, which
+     were otherwise silently winning on specificity (2 classes) over
+     a bare .red/.yellow (1 class) and washing out the top row. */
+  .color-bar.brown{background:linear-gradient(160deg,#a2694a,#7a4128);}
+  .color-bar.lightblue{background:linear-gradient(160deg,#c3ecff,#8fd2f5);}
+  .color-bar.pink{background:linear-gradient(160deg,#e85cad,#c22384);}
+  .color-bar.orange{background:linear-gradient(160deg,#ffa63d,#e87f0f);}
+  .color-bar.red{background:linear-gradient(160deg,#f2434a,#d21017);}
+  .color-bar.yellow{background:linear-gradient(160deg,#fff65c,#f0d800);}
+  .color-bar.green{background:linear-gradient(160deg,#3ec97c,#149249);}
+  .color-bar.blue{background:linear-gradient(160deg,#2a8fd1,#00568f);}
 
   .chest, .chance, .tax, .rail, .util{
     display:flex; align-items:center; justify-content:center; flex-direction:column;
@@ -388,7 +392,7 @@
 
 <!-- HOME -->
 <div id="screen-home" class="screen">
-  <div class="eyebrow">2\u20136 Players \u00b7 Realtime</div>
+  <div class="eyebrow">2–6 Players · Realtime</div>
   <h1 class="title" style="font-size:30px;">MONOPOLY</h1>
   <div class="msg">Buy, build, and bankrupt your friends. Host picks how many can play.</div>
   <div class="row" style="margin-top:6px;">
@@ -411,7 +415,7 @@
     <button id="btn-copy-link">Copy</button>
   </div>
 
-  <div class="eyebrow" style="margin-top:8px;">Player count <span id="host-tag" class="hidden">(you're host \u2014 pick below)</span></div>
+  <div class="eyebrow" style="margin-top:8px;">Player count <span id="host-tag" class="hidden">(you're host — pick below)</span></div>
   <div class="seat-select" id="seat-count-select"></div>
 
   <div class="seat-list" id="seat-list"></div>
@@ -427,67 +431,67 @@
     <div class="board" id="board">
 
       <div class="cell corner park-corner" style="grid-column:1/2;grid-row:1/2;" data-idx="20">
-        <div><div class="big">\ud83c\udd7f\ufe0f</div>FREE<br>PARKING</div>
+        <div><div class="big">🅿️</div>FREE<br>PARKING</div>
       </div>
 
       <div class="cell side-top" data-idx="21"><div class="color-bar red"></div><div class="name">Dhaka</div><div class="price">Tk220</div></div>
-      <div class="cell side-top chance" data-idx="22"><div class="icon">\u2753</div><div class="name">Chance</div></div>
+      <div class="cell side-top chance" data-idx="22"><div class="icon">❓</div><div class="name">Chance</div></div>
       <div class="cell side-top" data-idx="23"><div class="color-bar red"></div><div class="name">Sylhet</div><div class="price">Tk220</div></div>
       <div class="cell side-top" data-idx="24"><div class="color-bar red"></div><div class="name">Khulna</div><div class="price">Tk240</div></div>
-      <div class="cell side-top rail" data-idx="25"><div class="icon">\ud83d\ude82</div><div class="name">B. &amp; O. Railroad</div><div class="price">Tk200</div></div>
+      <div class="cell side-top rail" data-idx="25"><div class="icon">🚂</div><div class="name">B. &amp; O. Railroad</div><div class="price">Tk200</div></div>
       <div class="cell side-top" data-idx="26"><div class="color-bar yellow"></div><div class="name">Madrid</div><div class="price">Tk260</div></div>
       <div class="cell side-top" data-idx="27"><div class="color-bar yellow"></div><div class="name">Barcelona</div><div class="price">Tk260</div></div>
-      <div class="cell side-top util" data-idx="28"><div class="icon">\ud83d\udebf</div><div class="name">Water Works</div><div class="price">Tk150</div></div>
+      <div class="cell side-top util" data-idx="28"><div class="icon">🚿</div><div class="name">Water Works</div><div class="price">Tk150</div></div>
       <div class="cell side-top" data-idx="29"><div class="color-bar yellow"></div><div class="name">Seville</div><div class="price">Tk280</div></div>
 
       <div class="cell corner goto-jail-corner" style="grid-column:11/12;grid-row:1/2;" data-idx="30">
-        <div><div class="big">\ud83d\udc6e</div>GO TO<br>JAIL</div>
+        <div><div class="big">👮</div>GO TO<br>JAIL</div>
       </div>
 
       <div class="cell side-left" style="grid-column:1/2;grid-row:2/3;" data-idx="19"><div class="color-bar orange"></div><div class="name">New York</div><div class="price">Tk200</div></div>
       <div class="cell side-left" style="grid-column:1/2;grid-row:3/4;" data-idx="18"><div class="color-bar orange"></div><div class="name">San Francisco</div><div class="price">Tk180</div></div>
-      <div class="cell side-left chest" style="grid-column:1/2;grid-row:4/5;" data-idx="17"><div class="icon">\ud83c\udf81</div><div class="name">Community Chest</div></div>
+      <div class="cell side-left chest" style="grid-column:1/2;grid-row:4/5;" data-idx="17"><div class="icon">🎁</div><div class="name">Community Chest</div></div>
       <div class="cell side-left" style="grid-column:1/2;grid-row:5/6;" data-idx="16"><div class="color-bar orange"></div><div class="name">Chicago</div><div class="price">Tk180</div></div>
-      <div class="cell side-left rail" style="grid-column:1/2;grid-row:6/7;" data-idx="15"><div class="icon">\ud83d\ude82</div><div class="name">Pennsylvania Railroad</div><div class="price">Tk200</div></div>
+      <div class="cell side-left rail" style="grid-column:1/2;grid-row:6/7;" data-idx="15"><div class="icon">🚂</div><div class="name">Pennsylvania Railroad</div><div class="price">Tk200</div></div>
       <div class="cell side-left" style="grid-column:1/2;grid-row:7/8;" data-idx="14"><div class="color-bar pink"></div><div class="name">Kuala Lumpur</div><div class="price">Tk160</div></div>
       <div class="cell side-left" style="grid-column:1/2;grid-row:8/9;" data-idx="13"><div class="color-bar pink"></div><div class="name">Langkawi</div><div class="price">Tk140</div></div>
-      <div class="cell side-left util" style="grid-column:1/2;grid-row:9/10;" data-idx="12"><div class="icon">\ud83d\udca1</div><div class="name">Electric Company</div><div class="price">Tk150</div></div>
+      <div class="cell side-left util" style="grid-column:1/2;grid-row:9/10;" data-idx="12"><div class="icon">💡</div><div class="name">Electric Company</div><div class="price">Tk150</div></div>
       <div class="cell side-left" style="grid-column:1/2;grid-row:10/11;" data-idx="11"><div class="color-bar pink"></div><div class="name">Melaka</div><div class="price">Tk140</div></div>
 
       <div class="center">
-        <div class="card-stack chance-stack"><div class="card-face"><div class="card-icon">\u2753</div><div class="card-label">CHANCE</div></div></div>
-        <div class="card-stack chest-stack"><div class="card-face"><div class="card-icon">\ud83c\udf81</div><div class="card-label">COMMUNITY<br>CHEST</div></div></div>
+        <div class="card-stack chance-stack"><div class="card-face"><div class="card-icon">❓</div><div class="card-label">CHANCE</div></div></div>
+        <div class="card-stack chest-stack"><div class="card-face"><div class="card-icon">🎁</div><div class="card-label">COMMUNITY<br>CHEST</div></div></div>
         <div class="logo">MONOPOLY</div>
       </div>
 
       <div class="cell side-right" style="grid-column:11/12;grid-row:2/3;" data-idx="31"><div class="color-bar green"></div><div class="name">Delhi</div><div class="price">Tk300</div></div>
       <div class="cell side-right" style="grid-column:11/12;grid-row:3/4;" data-idx="32"><div class="color-bar green"></div><div class="name">Bangalore</div><div class="price">Tk300</div></div>
-      <div class="cell side-right chest" style="grid-column:11/12;grid-row:4/5;" data-idx="33"><div class="icon">\ud83c\udf81</div><div class="name">Community Chest</div></div>
+      <div class="cell side-right chest" style="grid-column:11/12;grid-row:4/5;" data-idx="33"><div class="icon">🎁</div><div class="name">Community Chest</div></div>
       <div class="cell side-right" style="grid-column:11/12;grid-row:5/6;" data-idx="34"><div class="color-bar green"></div><div class="name">Mumbai</div><div class="price">Tk320</div></div>
-      <div class="cell side-right rail" style="grid-column:11/12;grid-row:6/7;" data-idx="35"><div class="icon">\ud83d\ude82</div><div class="name">Short Line</div><div class="price">Tk200</div></div>
-      <div class="cell side-right chance" style="grid-column:11/12;grid-row:7/8;" data-idx="36"><div class="icon">\u2753</div><div class="name">Chance</div></div>
+      <div class="cell side-right rail" style="grid-column:11/12;grid-row:6/7;" data-idx="35"><div class="icon">🚂</div><div class="name">Short Line</div><div class="price">Tk200</div></div>
+      <div class="cell side-right chance" style="grid-column:11/12;grid-row:7/8;" data-idx="36"><div class="icon">❓</div><div class="name">Chance</div></div>
       <div class="cell side-right" style="grid-column:11/12;grid-row:8/9;" data-idx="37"><div class="color-bar blue"></div><div class="name">Toronto</div><div class="price">Tk350</div></div>
-      <div class="cell side-right tax" style="grid-column:11/12;grid-row:9/10;" data-idx="38"><div class="icon">\ud83d\udc8e</div><div class="name">Luxury Tax</div><div class="price">Pay Tk100</div></div>
+      <div class="cell side-right tax" style="grid-column:11/12;grid-row:9/10;" data-idx="38"><div class="icon">💎</div><div class="name">Luxury Tax</div><div class="price">Pay Tk100</div></div>
       <div class="cell side-right" style="grid-column:11/12;grid-row:10/11;" data-idx="39"><div class="color-bar blue"></div><div class="name">Ottawa</div><div class="price">Tk400</div></div>
 
       <div class="cell corner jail-corner" style="grid-column:1/2;grid-row:11/12;" data-idx="10">
         <div class="jail-visiting">VISITING</div>
         <div class="jail-label">IN<br>JAIL</div>
-        <div class="jail-cell">\ud83d\udd12</div>
+        <div class="jail-cell">🔒</div>
       </div>
 
       <div class="cell side-bottom" data-idx="9"><div class="name">Manchester</div><div class="price">Tk120</div><div class="color-bar lightblue"></div></div>
       <div class="cell side-bottom" data-idx="8"><div class="name">London</div><div class="price">Tk100</div><div class="color-bar lightblue"></div></div>
-      <div class="cell side-bottom chance" data-idx="7"><div class="name">Chance</div><div class="icon">\u2753</div></div>
+      <div class="cell side-bottom chance" data-idx="7"><div class="name">Chance</div><div class="icon">❓</div></div>
       <div class="cell side-bottom" data-idx="6"><div class="name">Liverpool</div><div class="price">Tk100</div><div class="color-bar lightblue"></div></div>
-      <div class="cell side-bottom rail" data-idx="5"><div class="name">Reading Railroad</div><div class="icon">\ud83d\ude82</div><div class="price">Tk200</div></div>
-      <div class="cell side-bottom tax" data-idx="4"><div class="name">Income Tax</div><div class="icon">\u25c6</div><div class="price">Pay Tk200</div></div>
+      <div class="cell side-bottom rail" data-idx="5"><div class="name">Reading Railroad</div><div class="icon">🚂</div><div class="price">Tk200</div></div>
+      <div class="cell side-bottom tax" data-idx="4"><div class="name">Income Tax</div><div class="icon">◆</div><div class="price">Pay Tk200</div></div>
       <div class="cell side-bottom" data-idx="3"><div class="name">Karachi</div><div class="price">Tk60</div><div class="color-bar brown"></div></div>
-      <div class="cell side-bottom chest" data-idx="2"><div class="name">Community Chest</div><div class="icon">\ud83c\udf81</div></div>
+      <div class="cell side-bottom chest" data-idx="2"><div class="name">Community Chest</div><div class="icon">🎁</div></div>
       <div class="cell side-bottom" data-idx="1"><div class="name">Islamabad</div><div class="price">Tk60</div><div class="color-bar brown"></div></div>
 
       <div class="cell corner go-corner" style="grid-column:11/12;grid-row:11/12;" data-idx="0">
-        <div>COLLECT Tk200<br>START HERE<div class="go-arrow">\u27f5</div><div class="big">GO</div></div>
+        <div>COLLECT Tk200<br>START HERE<div class="go-arrow">⟵</div><div class="big">GO</div></div>
       </div>
 
     </div>
@@ -589,26 +593,26 @@ const CHANCE_CARDS = [
   { text: 'Pay poor tax of Tk15', effect: { type:'pay', amount:15 } },
   { text: 'Take a trip to Reading Railroad', effect: { type:'moveTo', idx:5 } },
   { text: 'Advance to Toronto', effect: { type:'moveTo', idx:37 } },
-  { text: 'You have been elected chairman \u2014 pay each player Tk50', effect: { type:'payEach', amount:50 } },
-  { text: 'Your building loan matures \u2014 collect Tk150', effect: { type:'collect', amount:150 } },
-  { text: 'You win a crossword competition \u2014 collect Tk100', effect: { type:'collect', amount:100 } },
+  { text: 'You have been elected chairman — pay each player Tk50', effect: { type:'payEach', amount:50 } },
+  { text: 'Your building loan matures — collect Tk150', effect: { type:'collect', amount:150 } },
+  { text: 'You win a crossword competition — collect Tk100', effect: { type:'collect', amount:100 } },
 ];
 const CHEST_CARDS = [
   { text: 'Advance to GO (Collect Tk200)', effect: { type:'moveTo', idx:0 } },
-  { text: 'Bank error in your favor \u2014 collect Tk200', effect: { type:'collect', amount:200 } },
-  { text: 'Doctor\u2019s fee \u2014 pay Tk50', effect: { type:'pay', amount:50 } },
+  { text: 'Bank error in your favor — collect Tk200', effect: { type:'collect', amount:200 } },
+  { text: 'Doctor’s fee — pay Tk50', effect: { type:'pay', amount:50 } },
   { text: 'From sale of stock you get Tk50', effect: { type:'collect', amount:50 } },
   { text: 'Get out of Jail Free', effect: { type:'getoutfree' } },
   { text: 'Go directly to Jail', effect: { type:'gotojail' } },
-  { text: 'Holiday fund matures \u2014 collect Tk100', effect: { type:'collect', amount:100 } },
-  { text: 'Income tax refund \u2014 collect Tk20', effect: { type:'collect', amount:20 } },
-  { text: 'It\u2019s your birthday \u2014 collect Tk10 from every player', effect: { type:'collectEach', amount:10 } },
-  { text: 'Life insurance matures \u2014 collect Tk100', effect: { type:'collect', amount:100 } },
+  { text: 'Holiday fund matures — collect Tk100', effect: { type:'collect', amount:100 } },
+  { text: 'Income tax refund — collect Tk20', effect: { type:'collect', amount:20 } },
+  { text: 'It’s your birthday — collect Tk10 from every player', effect: { type:'collectEach', amount:10 } },
+  { text: 'Life insurance matures — collect Tk100', effect: { type:'collect', amount:100 } },
   { text: 'Pay hospital fees of Tk100', effect: { type:'pay', amount:100 } },
   { text: 'Pay school fees of Tk50', effect: { type:'pay', amount:50 } },
   { text: 'Receive Tk25 consultancy fee', effect: { type:'collect', amount:25 } },
   { text: 'Repairs: pay Tk40/house, Tk115/hotel', effect: { type:'repairs', perHouse:40, perHotel:115 } },
-  { text: 'You have won second prize in a beauty contest \u2014 collect Tk10', effect: { type:'collect', amount:10 } },
+  { text: 'You have won second prize in a beauty contest — collect Tk10', effect: { type:'collect', amount:10 } },
   { text: 'You inherit Tk100', effect: { type:'collect', amount:100 } },
 ];
 
@@ -925,7 +929,7 @@ if (urlRoom) joinRoom(urlRoom.toUpperCase());
 
 async function createRoom() {
   homeErr.textContent = '';
-  if (!SUPABASE_CONFIGURED) { homeErr.textContent = 'Multiplayer isn\u2019t connected yet.'; return; }
+  if (!SUPABASE_CONFIGURED) { homeErr.textContent = 'Multiplayer isn’t connected yet.'; return; }
   roomCode = makeRoomCode();
   ROOM = freshRoom(myId);
   GAME = null;
@@ -937,7 +941,7 @@ async function createRoom() {
 async function joinRoom(code) {
   homeErr.textContent = '';
   if (!code) { homeErr.textContent = 'Enter a room code.'; return; }
-  if (!SUPABASE_CONFIGURED) { homeErr.textContent = 'Multiplayer isn\u2019t connected yet.'; return; }
+  if (!SUPABASE_CONFIGURED) { homeErr.textContent = 'Multiplayer isn’t connected yet.'; return; }
   roomCode = code;
   ROOM = null; GAME = null;
   await setupRoom();
@@ -1117,7 +1121,7 @@ function renderLobby() {
   const joinBtn = document.getElementById('btn-join-seat');
   const alreadyIn = ROOM.seats.includes(myId);
   joinBtn.disabled = alreadyIn || ROOM.seats.length >= ROOM.capacity || ROOM.started;
-  joinBtn.textContent = alreadyIn ? 'You\u2019re seated' : 'Take a Seat';
+  joinBtn.textContent = alreadyIn ? 'You’re seated' : 'Take a Seat';
 
   const startBtn = document.getElementById('btn-start');
   startBtn.classList.toggle('hidden', !isHost());
@@ -1159,7 +1163,7 @@ function renderGame() {
     const dot = document.createElement('div');
     dot.className = 'token-dot'; dot.style.background = TOKEN_COLORS[i]; dot.style.width='12px'; dot.style.height='12px';
     const label = document.createElement('span');
-    label.textContent = (id === myId ? 'You' : `Player ${i + 1}`) + (GAME.jail[id].in ? ' \ud83d\udd12' : '');
+    label.textContent = (id === myId ? 'You' : `Player ${i + 1}`) + (GAME.jail[id].in ? ' 🔒' : '');
     const cash = document.createElement('span');
     cash.className = 'cash';
     cash.textContent = 'Tk' + GAME.cash[id];
@@ -1177,7 +1181,7 @@ function renderGame() {
   actionRow.innerHTML = '';
 
   if (GAME.phase === 'gameover') {
-    turnMsg.textContent = GAME.winnerId === myId ? 'You win! \ud83c\udf89' : (GAME.winnerId ? 'Game over \u2014 you were eliminated.' : 'Game over.');
+    turnMsg.textContent = GAME.winnerId === myId ? 'You win! 🎉' : (GAME.winnerId ? 'Game over — you were eliminated.' : 'Game over.');
     if (isHost()) addBtn(actionRow, 'Rematch', () => room.send('rematch_request', {}));
   } else {
     const mine = isMyTurn();
@@ -1214,7 +1218,7 @@ function renderGame() {
     sw.style.background = space.group ? getComputedGroupColor(space.group) : '#888';
     const label = document.createElement('span');
     const houses = GAME.houses[idx] || 0;
-    label.textContent = space.name + (houses > 0 ? (houses >= 5 ? ' \ud83c\udfe8' : ' ' + '\ud83c\udfe0'.repeat(houses)) : '');
+    label.textContent = space.name + (houses > 0 ? (houses >= 5 ? ' 🏨' : ' ' + '🏠'.repeat(houses)) : '');
     row.appendChild(sw); row.appendChild(label);
     if (space.type === 'property' && isMyTurn() && GAME.phase === 'roll' && houses < 5 &&
         houseGroupComplete(GAME, myId, space.group) &&
