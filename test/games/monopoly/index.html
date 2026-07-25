@@ -1388,24 +1388,49 @@ function renderLobby() {
 
 function renderGame() {
   if (!GAME) return;
-  // tokens
+
+  // tokens — group players by the space they're currently on, then
+  // place them as a small cluster centered on that cell (a single
+  // token sits dead-center; multiple tokens fan out symmetrically
+  // around the center, overlapping a bit rather than being pushed
+  // into a corner).
   document.querySelectorAll('.token').forEach(t => t.remove());
   const boardEl = document.getElementById('board');
+  const boardRect = boardEl.getBoundingClientRect();
+  const tokenPx = boardRect.width * 0.036; // matches .token { width: 3.6% }
+  const unit = tokenPx * 0.62;
+  const CLUSTER_OFFSETS = {
+    1: [[0,0]],
+    2: [[-0.55,0],[0.55,0]],
+    3: [[-0.6,-0.4],[0.6,-0.4],[0,0.55]],
+    4: [[-0.55,-0.55],[0.55,-0.55],[-0.55,0.55],[0.55,0.55]],
+    5: [[-0.65,-0.6],[0.65,-0.6],[0,0],[-0.65,0.6],[0.65,0.6]],
+    6: [[-0.7,-0.6],[0,-0.65],[0.7,-0.6],[-0.7,0.6],[0,0.65],[0.7,0.6]],
+  };
+
+  const bySpace = {};
   GAME.order.forEach((id, seatIdx) => {
     if (GAME.bankrupt[id]) return;
     const spaceIdx = GAME.pos[id];
-    const cellEl = boardEl.querySelector(`[data-idx="${spaceIdx}"]`);
+    (bySpace[spaceIdx] ||= []).push(seatIdx);
+  });
+
+  Object.entries(bySpace).forEach(([spaceIdxStr, seatIdxs]) => {
+    const cellEl = boardEl.querySelector(`[data-idx="${spaceIdxStr}"]`);
     if (!cellEl) return;
-    const boardRect = boardEl.getBoundingClientRect();
     const cellRect = cellEl.getBoundingClientRect();
-    const t = document.createElement('div');
-    t.className = 'token';
-    t.style.background = TOKEN_COLORS[seatIdx];
-    const offX = (seatIdx % 3) * 30 + 15;
-    const offY = Math.floor(seatIdx / 3) * 30 + 15;
-    t.style.left = (cellRect.left - boardRect.left + offX) + 'px';
-    t.style.top = (cellRect.top - boardRect.top + offY) + 'px';
-    boardEl.appendChild(t);
+    const centerX = cellRect.left - boardRect.left + cellRect.width / 2;
+    const centerY = cellRect.top - boardRect.top + cellRect.height / 2;
+    const offsets = CLUSTER_OFFSETS[Math.min(seatIdxs.length, 6)];
+    seatIdxs.forEach((seatIdx, i) => {
+      const [ux, uy] = offsets[i] || [0, 0];
+      const t = document.createElement('div');
+      t.className = 'token';
+      t.style.background = TOKEN_COLORS[seatIdx];
+      t.style.left = (centerX + ux * unit - tokenPx / 2) + 'px';
+      t.style.top = (centerY + uy * unit - tokenPx / 2) + 'px';
+      boardEl.appendChild(t);
+    });
   });
 
   // ownership markers — colored border matching the owner's token
