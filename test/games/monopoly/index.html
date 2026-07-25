@@ -380,6 +380,76 @@
   .prop-row .swatch { width:10px; height:10px; flex-shrink:0; border:1px solid #000; }
   .prop-row button { font-size:10px; padding:3px 6px; margin-left:auto; }
 
+  /* ---- pending trade offers (in the HUD) ---- */
+  .trade-offer-row { font-size: 13px; border: 1px solid #d8cfb0; background: rgba(255,255,255,.4); border-radius: 4px; padding: 10px; margin-bottom: 8px; text-align: left; line-height: 1.4; }
+  .trade-offer-row .row { margin-top: 8px; }
+  .trade-offer-row button { font-size: 12px; padding: 6px 12px; }
+
+  /* ---- trade modal ---- */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(10, 15, 10, .6);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .modal-card {
+    width: min(600px, 100%);
+    max-height: 88vh;
+    overflow-y: auto;
+    background: var(--panel-bg);
+    border: 3px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: 0 25px 70px rgba(0,0,0,.55);
+  }
+  .modal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom: 16px; }
+  .modal-head h3 { margin: 0; font-size: 22px; color: var(--gold-dark); letter-spacing: 1px; }
+  .modal-x { font-size: 16px; padding: 6px 10px; line-height: 1; }
+
+  .modal-label { display:block; font-size: 14px; font-weight: 700; margin-bottom: 14px; }
+  .modal-select { display:block; width:100%; margin-top:6px; font-size: 15px; padding: 10px; }
+
+  .trade-columns { display: flex; align-items: stretch; gap: 12px; }
+  .trade-col { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .trade-col-head {
+    font-size: 15px; font-weight: 900; text-align: center;
+    padding: 6px; background: rgba(0,0,0,.06); border-radius: 4px; letter-spacing: .5px;
+  }
+  .trade-arrow { align-self: center; font-size: 22px; color: var(--gold-dark); }
+
+  .prop-picker {
+    display: flex; flex-direction: column; gap: 6px;
+    max-height: 220px; overflow-y: auto;
+    border: 1px solid #d8cfb0; border-radius: 4px; padding: 6px;
+    background: rgba(255,255,255,.5);
+  }
+  .prop-picker .prop-option {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; padding: 7px 8px; border-radius: 4px;
+    cursor: pointer; border: 1px solid transparent;
+  }
+  .prop-picker .prop-option:hover { background: rgba(0,0,0,.05); }
+  .prop-picker .prop-option.checked { border-color: var(--gold); background: rgba(201,162,39,.15); font-weight: 700; }
+  .prop-picker .prop-option .swatch { width: 12px; height: 12px; flex-shrink:0; border: 1px solid #000; border-radius: 2px; }
+  .prop-picker .prop-option input { width: 15px; height: 15px; flex-shrink: 0; }
+  .prop-picker .empty-msg { font-size: 12px; color: #7a7458; font-style: italic; padding: 8px; text-align: center; }
+
+  .cash-row { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; }
+  .cash-row input { flex: 1; font-size: 15px; padding: 8px; }
+
+  .jail-check { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .jail-check input { width: 15px; height: 15px; }
+
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .modal-actions button { flex: 1; font-size: 15px; padding: 12px; }
+  .modal-primary { background: linear-gradient(160deg,#e8d98a,var(--gold)); border-color: var(--gold-dark); }
+  .modal-primary:hover { background: linear-gradient(160deg,#f5ecc0,#dcb93a); }
+
+  @media (max-width: 560px) {
+    .trade-columns { flex-direction: column; }
+    .trade-arrow { transform: rotate(90deg); }
+  }
+
   @media (max-width: 900px) {
     #game-shell { flex-direction: column; align-items: center; }
     #hud { width: 100%; max-width: 480px; flex-basis: auto; }
@@ -516,33 +586,55 @@
       <h4>Trade</h4>
       <div id="trades-box"></div>
       <button id="btn-open-trade" style="width:100%; margin-top:6px;">Propose Trade</button>
-      <div id="trade-form" class="hidden" style="margin-top:8px; display:flex; flex-direction:column; gap:8px; text-align:left;">
-        <label style="font-size:11px;">With:
-          <select id="trade-target" style="width:100%;"></select>
-        </label>
-        <div style="display:flex; gap:8px;">
-          <div style="flex:1;">
-            <div style="font-size:11px; font-weight:700;">You give</div>
-            <div id="trade-give-props" style="max-height:90px; overflow-y:auto; font-size:11px;"></div>
-            <label style="font-size:11px;">Tk <input id="trade-give-cash" type="number" min="0" value="0" style="width:70px;"></label><br>
-            <label id="trade-give-jail-wrap" class="hidden" style="font-size:11px;"><input type="checkbox" id="trade-give-jail"> Jail card</label>
-          </div>
-          <div style="flex:1;">
-            <div style="font-size:11px; font-weight:700;">You get</div>
-            <div id="trade-get-props" style="max-height:90px; overflow-y:auto; font-size:11px;"></div>
-            <label style="font-size:11px;">Tk <input id="trade-get-cash" type="number" min="0" value="0" style="width:70px;"></label><br>
-            <label id="trade-get-jail-wrap" class="hidden" style="font-size:11px;"><input type="checkbox" id="trade-get-jail"> Jail card</label>
-          </div>
-        </div>
-        <div class="row">
-          <button id="btn-send-trade">Send Offer</button>
-          <button id="btn-cancel-trade-form">Cancel</button>
-        </div>
-      </div>
     </div>
     <div class="hud-box">
       <h4>Log</h4>
       <div id="log-box"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TRADE MODAL -->
+<div id="trade-modal-overlay" class="modal-overlay hidden">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>Propose a Trade</h3>
+      <button id="btn-close-trade" class="modal-x" aria-label="Close">✕</button>
+    </div>
+
+    <label class="modal-label">Trade with
+      <select id="trade-target" class="modal-select"></select>
+    </label>
+
+    <div class="trade-columns">
+      <div class="trade-col">
+        <div class="trade-col-head">You Give</div>
+        <div id="trade-give-props" class="prop-picker"></div>
+        <div class="cash-row">
+          <span>Tk</span>
+          <input id="trade-give-cash" type="number" min="0" value="0">
+        </div>
+        <label id="trade-give-jail-wrap" class="jail-check hidden">
+          <input type="checkbox" id="trade-give-jail"> Get Out of Jail Free card
+        </label>
+      </div>
+      <div class="trade-arrow">⇄</div>
+      <div class="trade-col">
+        <div class="trade-col-head">You Get</div>
+        <div id="trade-get-props" class="prop-picker"></div>
+        <div class="cash-row">
+          <span>Tk</span>
+          <input id="trade-get-cash" type="number" min="0" value="0">
+        </div>
+        <label id="trade-get-jail-wrap" class="jail-check hidden">
+          <input type="checkbox" id="trade-get-jail"> Get Out of Jail Free card
+        </label>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button id="btn-send-trade" class="modal-primary">Send Offer</button>
+      <button id="btn-cancel-trade-form">Cancel</button>
     </div>
   </div>
 </div>
@@ -996,13 +1088,21 @@ const seatSelectEl = document.getElementById('seat-count-select');
 });
 
 document.getElementById('btn-open-trade').onclick = () => {
-  document.getElementById('trade-form').classList.remove('hidden');
+  document.getElementById('trade-modal-overlay').classList.remove('hidden');
   populateTradeTargets();
   renderTradeSides();
 };
-document.getElementById('btn-cancel-trade-form').onclick = () => {
-  document.getElementById('trade-form').classList.add('hidden');
-};
+function closeTradeModal() {
+  document.getElementById('trade-modal-overlay').classList.add('hidden');
+}
+document.getElementById('btn-close-trade').onclick = closeTradeModal;
+document.getElementById('btn-cancel-trade-form').onclick = closeTradeModal;
+document.getElementById('trade-modal-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'trade-modal-overlay') closeTradeModal();
+});
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeTradeModal();
+});
 document.getElementById('trade-target').onchange = renderTradeSides;
 document.getElementById('btn-send-trade').onclick = sendTradeOffer;
 
@@ -1415,27 +1515,52 @@ function tradeablePropsOf(ownerId) {
   return Object.keys(GAME.owner).map(Number).filter(idx => isTradeable(GAME, idx, ownerId));
 }
 
+function buildPropOption(idx, checked) {
+  const space = SPACES[idx];
+  const label = document.createElement('label');
+  label.className = 'prop-option' + (checked ? ' checked' : '');
+  const swatch = document.createElement('span');
+  swatch.className = 'swatch';
+  swatch.style.background = getComputedGroupColor(space.group);
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.value = idx;
+  cb.checked = checked;
+  cb.addEventListener('change', () => label.classList.toggle('checked', cb.checked));
+  const text = document.createElement('span');
+  text.textContent = `${space.name} (Tk${space.price})`;
+  label.appendChild(cb); label.appendChild(swatch); label.appendChild(text);
+  return label;
+}
+
 function renderTradeSides() {
   const targetId = document.getElementById('trade-target').value;
   const giveBox = document.getElementById('trade-give-props');
   const getBox = document.getElementById('trade-get-props');
   giveBox.innerHTML = ''; getBox.innerHTML = '';
 
-  tradeablePropsOf(myId).forEach(idx => {
-    const label = document.createElement('label');
-    label.style.display = 'block';
-    label.innerHTML = `<input type="checkbox" value="${idx}"> ${SPACES[idx].name}`;
-    giveBox.appendChild(label);
-  });
-  if (targetId) {
-    tradeablePropsOf(targetId).forEach(idx => {
-      const label = document.createElement('label');
-      label.style.display = 'block';
-      label.innerHTML = `<input type="checkbox" value="${idx}"> ${SPACES[idx].name}`;
-      getBox.appendChild(label);
-    });
+  const myProps = tradeablePropsOf(myId);
+  if (myProps.length === 0) {
+    giveBox.innerHTML = '<div class="empty-msg">You have no tradeable properties.</div>';
+  } else {
+    myProps.forEach(idx => giveBox.appendChild(buildPropOption(idx, false)));
   }
 
+  if (targetId) {
+    const theirProps = tradeablePropsOf(targetId);
+    if (theirProps.length === 0) {
+      getBox.innerHTML = '<div class="empty-msg">They have no tradeable properties.</div>';
+    } else {
+      theirProps.forEach(idx => getBox.appendChild(buildPropOption(idx, false)));
+    }
+  } else {
+    getBox.innerHTML = '<div class="empty-msg">Pick a player above.</div>';
+  }
+
+  document.getElementById('trade-give-cash').value = 0;
+  document.getElementById('trade-get-cash').value = 0;
+  document.getElementById('trade-give-jail').checked = false;
+  document.getElementById('trade-get-jail').checked = false;
   document.getElementById('trade-give-jail-wrap').classList.toggle('hidden', !(GAME.cards[myId] > 0));
   document.getElementById('trade-get-jail-wrap').classList.toggle('hidden', !(targetId && GAME.cards[targetId] > 0));
 }
@@ -1450,7 +1575,7 @@ function sendTradeOffer() {
   const offerJail = document.getElementById('trade-give-jail').checked;
   const reqJail = document.getElementById('trade-get-jail').checked;
   room.send('propose_trade', { toId, offerCash, offerProps, offerJail, reqCash, reqProps, reqJail });
-  document.getElementById('trade-form').classList.add('hidden');
+  closeTradeModal();
 }
 
 function renderTrades() {
@@ -1458,18 +1583,17 @@ function renderTrades() {
   box.innerHTML = '';
   const mine = GAME.trades.filter(t => t.fromId === myId || t.toId === myId);
   if (mine.length === 0) {
-    box.innerHTML = '<div class="msg" style="font-size:11px;">No active trades.</div>';
+    box.innerHTML = '<div class="msg" style="font-size:12px;">No active trades.</div>';
     return;
   }
   mine.forEach(t => {
     const row = document.createElement('div');
-    row.style.cssText = 'font-size:11px; border:1px solid #d8cfb0; padding:6px; margin-bottom:6px; text-align:left;';
+    row.className = 'trade-offer-row';
     const label = document.createElement('div');
     label.textContent = tradeSummary(t);
     row.appendChild(label);
     const btnRow = document.createElement('div');
     btnRow.className = 'row';
-    btnRow.style.marginTop = '4px';
     if (t.toId === myId) {
       addBtn(btnRow, 'Accept', () => room.send('respond_trade', { tradeId: t.id, accept: true }));
       addBtn(btnRow, 'Decline', () => room.send('respond_trade', { tradeId: t.id, accept: false }));
