@@ -468,6 +468,49 @@
     .trade-arrow { transform: rotate(90deg); }
   }
 
+  /* ---- settings modal ---- */
+  .settings-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 4px; }
+  .settings-group h4 {
+    margin: 0 0 6px; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--gold-dark); border-bottom: 1px solid #d8cfb0; padding-bottom: 4px;
+  }
+  .settings-row { display: flex; align-items: center; gap: 8px; padding: 5px 2px; font-size: 13px; }
+  .settings-row .swatch { width: 12px; height: 12px; flex-shrink: 0; border: 1px solid #000; border-radius: 2px; }
+  .settings-row .sname { flex: 1; }
+  .settings-row input { width: 90px; font-size: 13px; padding: 6px 8px; }
+  .settings-row input:disabled { opacity: .6; }
+
+  /* ---- chat panel ---- */
+  #chat-panel {
+    position: fixed; right: 16px; bottom: 16px; z-index: 90;
+    font-family: 'Times New Roman', Times, serif;
+  }
+  #chat-toggle {
+    padding: 10px 16px; border-radius: 20px; font-size: 14px;
+    box-shadow: 0 6px 16px rgba(0,0,0,.4);
+  }
+  #chat-body {
+    position: absolute; right: 0; bottom: 52px;
+    width: 280px; max-width: 80vw;
+    background: var(--panel-bg); border: 2px solid var(--panel-border); border-radius: 8px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.45);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  #chat-messages {
+    max-height: 260px; overflow-y: auto; padding: 10px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .chat-msg { font-size: 12px; line-height: 1.35; }
+  .chat-msg .who { font-weight: 900; color: var(--gold-dark); }
+  .chat-msg.mine .who { color: var(--accent-red); }
+  .chat-input-row { display: flex; border-top: 1px solid #d8cfb0; }
+  .chat-input-row input {
+    flex: 1; border: none; border-radius: 0; font-size: 13px; padding: 10px;
+    background: rgba(255,255,255,.6);
+  }
+  .chat-input-row button { border: none; border-radius: 0; font-size: 12px; padding: 10px 14px; }
+
   @media (max-width: 900px) {
     #game-shell { flex-direction: column; align-items: center; }
     #hud { width: 100%; max-width: 480px; flex-basis: auto; }
@@ -483,6 +526,18 @@
   <div class="eyebrow">2–6 Players · Realtime</div>
   <h1 class="title" style="font-size:30px;">MONOPOLY</h1>
   <div class="msg">Buy, build, and bankrupt your friends. Host picks how many can play.</div>
+
+  <label class="modal-label" style="margin-top:6px; max-width:320px; width:100%;">Waiting time for disconnected player
+    <select id="disconnect-timeout-select" class="modal-select">
+      <option value="30000">30 seconds</option>
+      <option value="60000">1 minute</option>
+      <option value="120000" selected>2 minutes (default)</option>
+      <option value="300000">5 minutes</option>
+      <option value="0">Never (no auto-skip)</option>
+    </select>
+  </label>
+  <div class="msg" style="font-size:11px;">If it's a disconnected player's turn and they don't reconnect within this time, the game auto-plays a safe default for them (roll / decline / end turn) so nobody's stuck waiting.</div>
+
   <div class="row" style="margin-top:6px;">
     <button id="btn-create">Create Room</button>
     <button id="btn-join-open">Join Room</button>
@@ -508,7 +563,10 @@
 
   <div class="seat-list" id="seat-list"></div>
 
-  <button id="btn-join-seat">Take a Seat</button>
+  <div class="row" style="margin-top:4px;">
+    <button id="btn-join-seat">Take a Seat</button>
+    <button id="btn-open-settings">Property Settings</button>
+  </div>
   <button id="btn-start" class="hidden">Launch</button>
   <div class="msg" id="lobby-msg">Waiting...</div>
 </div>
@@ -653,6 +711,36 @@
     <div class="modal-actions">
       <button id="btn-send-trade" class="modal-primary">Send Offer</button>
       <button id="btn-cancel-trade-form">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div id="settings-modal-overlay" class="modal-overlay hidden">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>Property Settings</h3>
+      <button id="btn-close-settings" class="modal-x" aria-label="Close">✕</button>
+    </div>
+    <div class="msg" id="settings-hint" style="margin-bottom:12px; font-size:12px;">
+      Purchase prices only \u2014 rent still follows the classic table for each space. Locked once the game launches.
+    </div>
+    <div id="settings-list" class="settings-list"></div>
+    <div class="modal-actions">
+      <button id="btn-save-settings" class="modal-primary">Save</button>
+      <button id="btn-reset-settings">Reset to Defaults</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHAT PANEL -->
+<div id="chat-panel" class="hidden">
+  <button id="chat-toggle">💬 Chat</button>
+  <div id="chat-body" class="hidden">
+    <div id="chat-messages"></div>
+    <div class="chat-input-row">
+      <input id="chat-input" type="text" maxlength="240" placeholder="Say something\u2026">
+      <button id="chat-send">Send</button>
     </div>
   </div>
 </div>
@@ -933,7 +1021,7 @@ function landOn(g, playerId, spaceIdx, diceSum, opts = {}) {
     if (owner === undefined) {
       g.pendingBuySpace = spaceIdx;
       g.phase = 'buy';
-      pushLog(g, `${nameOf(playerId)} landed on ${space.name} (unowned, Tk${space.price}).`);
+      pushLog(g, `${nameOf(playerId)} landed on ${space.name} (unowned, Tk${priceOf(spaceIdx)}).`);
       return;
     }
     if (owner !== playerId) {
@@ -1073,6 +1161,8 @@ let roomCode = null;
 let ROOM = null;   // { hostId, capacity, seats:[ids in turn order], started }
 let GAME = null;
 let room = null;
+let connectedIds = [];      // live presence list, updated by onPresence
+let disconnectSince = {};   // playerId -> timestamp they were first noticed missing (host-local bookkeeping)
 
 const SUPABASE_CONFIGURED = SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL';
 
@@ -1080,8 +1170,14 @@ function isHost() { return !!ROOM && ROOM.hostId === myId; }
 function isMyTurn() { return GAME && currentPlayer(GAME) === myId; }
 
 function freshRoom(hostId) {
-  return { hostId, capacity: 4, seats: [], started: false };
+  return { hostId, capacity: 4, seats: [], started: false, customPrices: {}, chat: [], disconnectTimeoutMs: 120000 };
 }
+
+function priceOf(spaceIdx) {
+  const custom = ROOM?.customPrices?.[spaceIdx];
+  return (typeof custom === 'number' && custom >= 0) ? custom : SPACES[spaceIdx].price;
+}
+
 
 const screenHome = document.getElementById('screen-home');
 const screenLobby = document.getElementById('screen-lobby');
@@ -1124,6 +1220,49 @@ window.addEventListener('keydown', (e) => {
 document.getElementById('trade-target').onchange = renderTradeSides;
 document.getElementById('btn-send-trade').onclick = sendTradeOffer;
 
+// ---- settings modal ----
+document.getElementById('btn-open-settings').onclick = () => {
+  document.getElementById('settings-modal-overlay').classList.remove('hidden');
+  renderSettingsList();
+};
+function closeSettingsModal() {
+  document.getElementById('settings-modal-overlay').classList.add('hidden');
+}
+document.getElementById('btn-close-settings').onclick = closeSettingsModal;
+document.getElementById('settings-modal-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'settings-modal-overlay') closeSettingsModal();
+});
+document.getElementById('btn-save-settings').onclick = () => {
+  if (!isHost()) return;
+  const prices = {};
+  document.querySelectorAll('#settings-list input[data-idx]').forEach(inp => {
+    prices[inp.dataset.idx] = Number(inp.value) || 0;
+  });
+  room.send('update_prices', { prices });
+  closeSettingsModal();
+};
+document.getElementById('btn-reset-settings').onclick = () => {
+  if (!isHost()) return;
+  room.send('reset_prices', {});
+  renderSettingsList();
+};
+
+// ---- chat panel ----
+document.getElementById('chat-toggle').onclick = () => {
+  document.getElementById('chat-body').classList.toggle('hidden');
+};
+document.getElementById('chat-send').onclick = sendChatMessage;
+document.getElementById('chat-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendChatMessage();
+});
+function sendChatMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text || !room) return;
+  room.send('send_chat', { text });
+  input.value = '';
+}
+
 function showHomeOrLobby(id) {
   screenHome.classList.add('hidden');
   screenLobby.classList.add('hidden');
@@ -1139,6 +1278,7 @@ async function createRoom() {
   if (!SUPABASE_CONFIGURED) { homeErr.textContent = 'Multiplayer isn’t connected yet.'; return; }
   roomCode = makeRoomCode();
   ROOM = freshRoom(myId);
+  ROOM.disconnectTimeoutMs = Number(document.getElementById('disconnect-timeout-select').value) || 0;
   GAME = null;
   await setupRoom();
   showHomeOrLobby('screen-lobby');
@@ -1164,6 +1304,34 @@ async function setupRoom() {
     if (!isHost() || ROOM.started) return;
     const cap = Math.max(2, Math.min(6, payload.capacity | 0));
     ROOM = { ...ROOM, capacity: cap, seats: ROOM.seats.slice(0, cap) };
+    broadcastSync();
+  });
+
+  room.on('update_prices', (payload) => {
+    if (!isHost() || ROOM.started) return;
+    const clean = {};
+    for (const [idxStr, price] of Object.entries(payload.prices || {})) {
+      const idx = Number(idxStr);
+      const space = SPACES[idx];
+      if (!space || (space.type !== 'property' && space.type !== 'rail' && space.type !== 'util')) continue;
+      const p = Math.max(0, Math.min(9999, Number(price) | 0));
+      clean[idx] = p;
+    }
+    ROOM = { ...ROOM, customPrices: { ...ROOM.customPrices, ...clean } };
+    broadcastSync();
+  });
+
+  room.on('reset_prices', () => {
+    if (!isHost() || ROOM.started) return;
+    ROOM = { ...ROOM, customPrices: {} };
+    broadcastSync();
+  });
+
+  room.on('send_chat', (payload) => {
+    if (!isHost() || !ROOM) return;
+    const text = String(payload.text || '').slice(0, 240).trim();
+    if (!text) return;
+    ROOM = { ...ROOM, chat: [...ROOM.chat, { senderId: payload.senderId, text, ts: Date.now() }].slice(-60) };
     broadcastSync();
   });
 
@@ -1194,10 +1362,11 @@ async function setupRoom() {
     if (!isHost() || !GAME || GAME.phase !== 'buy') return;
     if (currentPlayer(GAME) !== payload.senderId) return;
     const space = SPACES[GAME.pendingBuySpace];
-    if (GAME.cash[payload.senderId] >= space.price) {
-      GAME.cash[payload.senderId] -= space.price;
+    const price = priceOf(GAME.pendingBuySpace);
+    if (GAME.cash[payload.senderId] >= price) {
+      GAME.cash[payload.senderId] -= price;
       GAME.owner[GAME.pendingBuySpace] = payload.senderId;
-      pushLog(GAME, `${nameOf(payload.senderId)} bought ${space.name} for Tk${space.price}.`);
+      pushLog(GAME, `${nameOf(payload.senderId)} bought ${space.name} for Tk${price}.`);
     }
     GAME.pendingBuySpace = null;
     GAME.phase = 'resolve';
@@ -1323,9 +1492,20 @@ async function setupRoom() {
   });
 
   room.onPresence(({ ids }) => {
+    connectedIds = ids;
     if (!ROOM || ids.length === 0) return;
-    if (ids.includes(ROOM.hostId)) return;
-    if (ids[0] === myId) { ROOM = { ...ROOM, hostId: myId }; broadcastSync(); }
+    if (!ids.includes(ROOM.hostId) && ids[0] === myId) { ROOM = { ...ROOM, hostId: myId }; broadcastSync(); }
+
+    // Track who's currently missing, for the idle-turn auto-skip below.
+    // (Purely local bookkeeping on each client — not synced — so a
+    // freshly-promoted host simply starts timing from the moment it
+    // notices someone's gone, rather than trying to inherit an exact
+    // "how long have they been gone" figure from the previous host.)
+    const allKnownPlayers = ROOM.started ? GAME?.order : ROOM.seats;
+    (allKnownPlayers || []).forEach(id => {
+      if (ids.includes(id)) delete disconnectSince[id];
+      else if (!(id in disconnectSince)) disconnectSince[id] = Date.now();
+    });
   });
 
   await room.connect();
@@ -1345,6 +1525,9 @@ function copyShareLink() {
 // =========================================================
 function renderFromState() {
   if (!ROOM) return;
+  document.getElementById('chat-panel').classList.remove('hidden');
+  renderChat();
+  if (!document.getElementById('settings-modal-overlay').classList.contains('hidden')) renderSettingsList();
   if (!ROOM.started) { showHomeOrLobby('screen-lobby'); renderLobby(); }
   else { gameShell.classList.add('active'); screenHome.classList.add('hidden'); screenLobby.classList.add('hidden'); renderGame(); }
 }
@@ -1381,13 +1564,16 @@ function renderLobby() {
   startBtn.classList.toggle('hidden', !isHost());
   startBtn.disabled = ROOM.seats.length < 2;
 
-  document.getElementById('lobby-msg').textContent = ROOM.seats.length < 2
+  const timeoutLabel = { 0:'disabled', 30000:'30 seconds', 60000:'1 minute', 120000:'2 minutes', 300000:'5 minutes' }[ROOM.disconnectTimeoutMs] || `${Math.round(ROOM.disconnectTimeoutMs/1000)}s`;
+  document.getElementById('lobby-msg').textContent = (ROOM.seats.length < 2
     ? 'Need at least 2 players.'
-    : (isHost() ? 'Ready to launch whenever you are.' : 'Waiting for host to launch.');
+    : (isHost() ? 'Ready to launch whenever you are.' : 'Waiting for host to launch.'))
+    + ` Disconnected-player auto-skip: ${timeoutLabel}.`;
 }
 
 function renderGame() {
   if (!GAME) return;
+  applyPriceDisplay();
 
   // tokens — group players by the space they're currently on, then
   // place them as a small cluster centered on that cell (a single
@@ -1467,7 +1653,9 @@ function renderGame() {
     const dot = document.createElement('div');
     dot.className = 'token-dot'; dot.style.background = TOKEN_COLORS[i]; dot.style.width='12px'; dot.style.height='12px';
     const label = document.createElement('span');
-    label.textContent = (id === myId ? 'You' : `Player ${i + 1}`) + (GAME.jail[id].in ? ' 🔒' : '');
+    const offline = !connectedIds.includes(id) && !GAME.bankrupt[id];
+    label.textContent = (id === myId ? 'You' : `Player ${i + 1}`) + (GAME.jail[id].in ? ' 🔒' : '') + (offline ? ' [offline]' : '');
+    if (offline) label.style.opacity = '.6';
     const cash = document.createElement('span');
     cash.className = 'cash';
     cash.textContent = 'Tk' + GAME.cash[id];
@@ -1502,7 +1690,7 @@ function renderGame() {
       }
     } else if (mine && GAME.phase === 'buy') {
       const space = SPACES[GAME.pendingBuySpace];
-      turnMsg.textContent = `Buy ${space.name} for Tk${space.price}?`;
+      turnMsg.textContent = `Buy ${space.name} for Tk${priceOf(GAME.pendingBuySpace)}?`;
       addBtn(actionRow, 'Buy', () => room.send('buy_yes', {}));
       addBtn(actionRow, 'Pass', () => room.send('buy_no', {}));
     } else if (mine && GAME.phase === 'resolve') {
@@ -1596,7 +1784,7 @@ function buildPropOption(idx, checked) {
   cb.checked = checked;
   cb.addEventListener('change', () => label.classList.toggle('checked', cb.checked));
   const text = document.createElement('span');
-  text.textContent = `${space.name} (Tk${space.price})`;
+  text.textContent = `${space.name} (Tk${priceOf(idx)})`;
   label.appendChild(cb); label.appendChild(swatch); label.appendChild(text);
   return label;
 }
@@ -1672,6 +1860,133 @@ function renderTrades() {
     box.appendChild(row);
   });
 }
+
+// =========================================================
+// SETTINGS UI (prices) + BOARD PRICE DISPLAY
+// =========================================================
+function applyPriceDisplay() {
+  SPACES.forEach(space => {
+    if (space.type !== 'property' && space.type !== 'rail' && space.type !== 'util') return;
+    const cellEl = document.querySelector(`#board [data-idx="${space.idx}"]`);
+    if (!cellEl) return;
+    const priceEl = cellEl.querySelector('.price');
+    if (priceEl) priceEl.textContent = 'Tk' + priceOf(space.idx);
+  });
+}
+
+function renderSettingsList() {
+  const listEl = document.getElementById('settings-list');
+  listEl.innerHTML = '';
+  const editable = isHost() && !ROOM.started;
+
+  const groupsInOrder = ['brown','lightblue','pink','orange','red','yellow','green','blue'];
+  const groupLabels = { brown:'Brown', lightblue:'Light Blue', pink:'Pink', orange:'Orange', red:'Red', yellow:'Yellow', green:'Green', blue:'Blue' };
+  groupsInOrder.forEach(group => {
+    const groupDiv = document.createElement('div');
+    groupDiv.className = 'settings-group';
+    const h4 = document.createElement('h4');
+    h4.textContent = groupLabels[group];
+    groupDiv.appendChild(h4);
+    GROUPS[group].forEach(idx => groupDiv.appendChild(buildSettingsRow(idx)));
+    listEl.appendChild(groupDiv);
+  });
+
+  const railDiv = document.createElement('div');
+  railDiv.className = 'settings-group';
+  railDiv.innerHTML = '<h4>Railroads</h4>';
+  RAIL_IDXS.forEach(idx => railDiv.appendChild(buildSettingsRow(idx)));
+  listEl.appendChild(railDiv);
+
+  const utilDiv = document.createElement('div');
+  utilDiv.className = 'settings-group';
+  utilDiv.innerHTML = '<h4>Utilities</h4>';
+  UTIL_IDXS.forEach(idx => utilDiv.appendChild(buildSettingsRow(idx)));
+  listEl.appendChild(utilDiv);
+
+  document.getElementById('btn-save-settings').classList.toggle('hidden', !editable);
+  document.getElementById('btn-reset-settings').classList.toggle('hidden', !editable);
+  document.getElementById('settings-hint').textContent = ROOM.started
+    ? 'Prices are locked in for this game (settings can only be changed before launch).'
+    : (editable
+      ? 'Purchase prices only — rent still follows the classic table for each space.'
+      : 'Only the host can change prices. Purchase prices only — rent still follows the classic table.');
+
+  function buildSettingsRow(idx) {
+    const space = SPACES[idx];
+    const row = document.createElement('div');
+    row.className = 'settings-row';
+    const swatch = document.createElement('span');
+    swatch.className = 'swatch';
+    swatch.style.background = space.group ? getComputedGroupColor(space.group) : '#888';
+    const name = document.createElement('span');
+    name.className = 'sname';
+    name.textContent = space.name;
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = '0';
+    input.max = '9999';
+    input.dataset.idx = idx;
+    input.value = priceOf(idx);
+    input.disabled = !editable;
+    row.appendChild(swatch); row.appendChild(name); row.appendChild(input);
+    return row;
+  }
+}
+
+// =========================================================
+// CHAT
+// =========================================================
+function renderChat() {
+  const box = document.getElementById('chat-messages');
+  const wasNearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 30;
+  box.innerHTML = '';
+  (ROOM.chat || []).forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'chat-msg' + (m.senderId === myId ? ' mine' : '');
+    const seatIdx = ROOM.seats.indexOf(m.senderId);
+    const who = m.senderId === myId ? 'You' : (seatIdx >= 0 ? `Player ${seatIdx + 1}` : 'Player');
+    div.innerHTML = `<span class="who">${who}:</span> `;
+    div.appendChild(document.createTextNode(m.text));
+    box.appendChild(div);
+  });
+  if (wasNearBottom) box.scrollTop = box.scrollHeight;
+}
+
+// =========================================================
+// IDLE-TURN SAFETY NET
+// If it's a disconnected player's turn and they've been gone
+// longer than ROOM.disconnectTimeoutMs, the host auto-performs
+// a safe default for them using the exact same functions a real
+// action would use (doRoll / doEndTurn / decline-purchase) — so
+// this can never do anything a normal turn couldn't already do.
+// Disconnection itself never bankrupts anyone; only the normal
+// consequences of the auto-played action can (e.g. rent they
+// can't cover), same as if they'd taken that action themselves.
+// =========================================================
+function checkDisconnectTimeout() {
+  if (!isHost() || !GAME || !ROOM || ROOM.disconnectTimeoutMs <= 0 || GAME.phase === 'gameover') return;
+  const p = currentPlayer(GAME);
+  if (GAME.bankrupt[p]) return;
+  const since = disconnectSince[p];
+  if (!since || Date.now() - since < ROOM.disconnectTimeoutMs) return;
+
+  if (GAME.phase === 'buy') {
+    pushLog(GAME, `${nameOf(p)} was disconnected too long — auto-declined the purchase.`);
+    GAME.pendingBuySpace = null;
+    GAME.phase = 'resolve';
+  } else if (GAME.phase === 'roll') {
+    pushLog(GAME, `${nameOf(p)} was disconnected too long — auto-rolling for them.`);
+    doRoll(GAME, p);
+  } else if (GAME.phase === 'resolve') {
+    pushLog(GAME, `${nameOf(p)} was disconnected too long — auto-ending their turn.`);
+    doEndTurn(GAME);
+  } else {
+    return; // nothing actionable in this phase
+  }
+  checkWin(GAME);
+  broadcastSync();
+}
+setInterval(checkDisconnectTimeout, 5000);
 
 // Re-render tokens on resize since positions are computed from live cell rects.
 window.addEventListener('resize', () => { if (GAME && ROOM?.started) renderGame(); });

@@ -431,6 +431,8 @@ async function setupRoom() {
     if (ROOM.teamX.length !== ROOM.capacity || ROOM.teamO.length !== ROOM.capacity) return;
     ROOM = { ...ROOM, started: true };
     GAME = freshGame();
+    GAME.playerOrder = buildPlayerOrder(ROOM);
+    GAME.turnIdx = 0;
     broadcastSync();
   });
 
@@ -439,14 +441,21 @@ async function setupRoom() {
     const senderTeam = ROOM.teamX.includes(payload.senderId) ? 'X'
       : ROOM.teamO.includes(payload.senderId) ? 'O' : null;
     if (senderTeam !== GAME.currentPlayer) return;
+    if (GAME.playerOrder[GAME.turnIdx] !== payload.senderId) return; // strict per-player rotation
     if (!isLegalMove(GAME, payload.boardIdx, payload.cellIdx)) return;
+    const prevOrder = GAME.playerOrder, prevIdx = GAME.turnIdx;
     GAME = applyMove(GAME, payload.boardIdx, payload.cellIdx);
+    GAME.playerOrder = prevOrder;
+    GAME.turnIdx = (prevIdx + 1) % prevOrder.length;
     broadcastSync();
   });
 
   room.on('rematch_request', () => {
     if (!isHost()) return;
+    const prevOrder = GAME?.playerOrder || buildPlayerOrder(ROOM);
     GAME = freshGame();
+    GAME.playerOrder = prevOrder;
+    GAME.turnIdx = 0;
     broadcastSync();
   });
 
@@ -555,9 +564,33 @@ function myTeam() {
   return null;
 }
 
+// Builds the strict individual turn rotation for 2v2 (and trivially
+// for 1v1): [teamX[0], teamO[0], teamX[1], teamO[1], ...]. Because
+// the rules engine already flips currentPlayer X/O/X/O/... on every
+// move, walking this interleaved list in lockstep with that flip
+// guarantees each slot's team always matches whose turn it actually
+// is — so a single index check is enough to enforce "Player 1(X),
+// Player 2(O), Player 3(X), Player 4(O), Player 1(X), ..." rather
+// than letting either teammate jump in whenever their team is up.
+function buildPlayerOrder(room) {
+  const order = [];
+  const n = Math.max(room.teamX.length, room.teamO.length);
+  for (let i = 0; i < n; i++) {
+    if (room.teamX[i]) order.push(room.teamX[i]);
+    if (room.teamO[i]) order.push(room.teamO[i]);
+  }
+  return order;
+}
+
+function seatLabelFor(id) {
+  if (!GAME?.playerOrder) return '';
+  const idx = GAME.playerOrder.indexOf(id);
+  return idx === -1 ? '' : `Player ${idx + 1}`;
+}
+
 function handleCellClick(boardIdx, cellIdx) {
   if (!GAME || GAME.winner) return;
-  if (myTeam() !== GAME.currentPlayer) return;
+  if ((GAME.playerOrder || [])[GAME.turnIdx] !== myId) return;
   if (!isLegalMove(GAME, boardIdx, cellIdx)) return;
   pendingCellKey = `${boardIdx}-${cellIdx}`;
   room.send('move_attempt', { boardIdx, cellIdx });
@@ -567,7 +600,7 @@ function handleCellClick(boardIdx, cellIdx) {
 function renderBoard() {
   const mine = myTeam();
   const legalBoards = new Set(legalBoardIndices(GAME));
-  const myTurn = !GAME.winner && mine === GAME.currentPlayer;
+  const myTurn = !GAME.winner && (GAME.playerOrder || [])[GAME.turnIdx] === myId;
 
   boardWrap.innerHTML = '';
   const metaGrid = document.createElement('div');
@@ -612,7 +645,8 @@ function renderBoard() {
 
   // status bar
   const youBadge = document.getElementById('you-badge');
-  youBadge.textContent = mine ? `You: Team ${mine}` : 'Spectating';
+  const mySeat = seatLabelFor(myId);
+  youBadge.textContent = mine ? `You: ${mySeat ? mySeat + ', ' : ''}Team ${mine}` : 'Spectating';
   youBadge.className = 'badge' + (mine ? ` mine-${mine}` : '');
 
   const turnEl = document.getElementById('turn-indicator');
@@ -635,7 +669,8 @@ function renderBoard() {
     rematchRow.classList.add('hidden');
     rematchWait.classList.add('hidden');
     turnEl.className = GAME.currentPlayer;
-    turnEl.textContent = myTurn ? 'Your team’s turn' : `Waiting for Team ${GAME.currentPlayer}...`;
+    const turnLabel = seatLabelFor(GAME.playerOrder[GAME.turnIdx]);
+    turnEl.textContent = myTurn ? 'Your turn' : `Waiting for ${turnLabel} (Team ${GAME.currentPlayer})...`;
   }
 }
 </script>
