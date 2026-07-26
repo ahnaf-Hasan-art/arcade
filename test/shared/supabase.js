@@ -27,6 +27,37 @@ export function makeRoomCode(length = 5) {
 }
 
 /**
+ * Returns a stable player id for this browser, persisted across page
+ * loads (and shared across every game on the site — safe, since each
+ * game's rooms are already isolated by their own channel name, so
+ * reusing one id across games can't collide).
+ *
+ * Without this, a fresh crypto.randomUUID() on every load meant
+ * closing a tab and rejoining put you in as a stranger the game had
+ * never seen — showing up as a spectator even in your own game,
+ * since nothing matched your old seat. Persisting the id means the
+ * SAME browser reconnecting to the SAME room is recognized
+ * automatically. It only covers same-device reconnects; switching
+ * devices/browsers still needs the manual "claim a seat" fallback
+ * each game provides for that case.
+ */
+export function getPersistentId() {
+  const KEY = 'arcade_player_id';
+  try {
+    let id = localStorage.getItem(KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(KEY, id);
+    }
+    return id;
+  } catch {
+    // localStorage unavailable (private browsing lockdown, etc.) — fall
+    // back to a one-off id rather than breaking the page.
+    return crypto.randomUUID();
+  }
+}
+
+/**
  * Opens a room (a Supabase Realtime channel) for a game.
  *
  * Deliberately low-level and game-agnostic: it does NOT decide

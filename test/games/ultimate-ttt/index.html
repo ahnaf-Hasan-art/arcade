@@ -210,6 +210,7 @@
       <span class="badge" id="you-badge">You: —</span>
       <span id="turn-indicator">—</span>
     </div>
+    <div id="reconnect-box" class="hidden" style="display:flex; flex-direction:column; gap:8px; align-items:center;"></div>
     <div id="board-wrap"></div>
     <div id="result-msg" class="msg"></div>
     <div class="row hidden" id="rematch-row">
@@ -219,7 +220,7 @@
   </div>
 
 <script type="module">
-import { openRoom, makeRoomCode, SUPABASE_URL } from '../../shared/supabase.js';
+import { openRoom, makeRoomCode, getPersistentId, SUPABASE_URL } from '../../shared/supabase.js';
 
 // =========================================================
 // RULES ENGINE — pure functions, no DOM, no networking.
@@ -320,24 +321,34 @@ function freshRoom(hostId) {
   return { hostId, mode: '1v1', capacity: 1, teamX: [], teamO: [], started: false };
 }
 
-function tryJoinTeam(room, playerId, team) {
+function tryJoinTeam(room, playerId, team, connectedIds) {
   if (!room || room.started) return room;
   const teamX = room.teamX.filter(id => id !== playerId);
   const teamO = room.teamO.filter(id => id !== playerId);
   const next = { ...room, teamX, teamO };
   const arr = team === 'X' ? next.teamX : next.teamO;
-  if (arr.length < room.capacity) arr.push(playerId);
+  if (arr.length < room.capacity) {
+    arr.push(playerId);
+  } else {
+    // Team's full — but if one occupant is currently disconnected
+    // (e.g. closed their tab before ever getting a new persistent
+    // id reunited with this room), let a new arrival take their
+    // spot rather than being turned away.
+    const ghostIdx = arr.findIndex(id => !connectedIds.includes(id));
+    if (ghostIdx !== -1) arr[ghostIdx] = playerId;
+  }
   return next;
 }
 
 // =========================================================
 // STATE
 // =========================================================
-const myId = crypto.randomUUID();
+const myId = getPersistentId();
 let roomCode = null;
 let ROOM = null;   // { hostId, mode, capacity, teamX:[ids], teamO:[ids], started }
 let GAME = null;   // null until started, then the game-engine state above
 let room = null;   // the openRoom() transport handle
+let connectedIds = []; // live presence list, kept updated below
 let pendingCellKey = null; // "b-c" of a move we've sent but not yet confirmed
 
 const SUPABASE_CONFIGURED = SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL';
@@ -422,7 +433,26 @@ async function setupRoom() {
 
   room.on('join_team', (payload) => {
     if (!isHost()) return;
-    ROOM = tryJoinTeam(ROOM, payload.senderId, payload.team);
+    ROOM = tryJoinTeam(ROOM, payload.senderId, payload.team, connectedIds);
+    broadcastSync();
+  });
+
+  // Mid-game reconnection: a spectator (someone whose current id isn't
+  // in either team) can claim a seat that's CURRENTLY disconnected —
+  // never an active player's seat. Covers switching devices/browsers,
+  // where the localStorage-persisted id from the original device
+  // doesn't carry over.
+  room.on('claim_seat', (payload) => {
+    if (!isHost() || !ROOM || !ROOM.started) return;
+    const oldId = payload.oldId, newId = payload.senderId;
+    const inX = ROOM.teamX.includes(oldId), inO = ROOM.teamO.includes(oldId);
+    if (!inX && !inO) return;
+    if (connectedIds.includes(oldId)) return; // still connected — can't be claimed
+    if (ROOM.teamX.includes(newId) || ROOM.teamO.includes(newId)) return; // already seated
+    if (ROOM.hostId === oldId) ROOM.hostId = newId;
+    ROOM.teamX = ROOM.teamX.map(id => (id === oldId ? newId : id));
+    ROOM.teamO = ROOM.teamO.map(id => (id === oldId ? newId : id));
+    if (GAME?.playerOrder) GAME.playerOrder = GAME.playerOrder.map(id => (id === oldId ? newId : id));
     broadcastSync();
   });
 
@@ -474,6 +504,7 @@ async function setupRoom() {
 
   // Presence is ONLY used to notice the host disconnected, and hand off.
   room.onPresence(({ ids }) => {
+    connectedIds = ids;
     if (!ROOM || ids.length === 0) return;
     if (ids.includes(ROOM.hostId)) return; // current host still connected — nothing to do
     if (ids[0] === myId) {                 // I'm now the longest-connected player — take over
@@ -597,10 +628,40 @@ function handleCellClick(boardIdx, cellIdx) {
   renderBoard(); // show pending state immediately; authoritative update arrives via 'sync'
 }
 
+function renderReconnectBox(mine) {
+  const box = document.getElementById('reconnect-box');
+  if (mine !== null) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+  const ghosts = [...ROOM.teamX, ...ROOM.teamO].filter(id => !connectedIds.includes(id));
+  if (ghosts.length === 0) {
+    box.classList.add('hidden');
+    box.innerHTML = '';
+    return;
+  }
+  box.classList.remove('hidden');
+  box.innerHTML = '';
+  const msg = document.createElement('div');
+  msg.className = 'msg';
+  msg.textContent = 'You\u2019re spectating. A seat looks disconnected \u2014 is one of these yours?';
+  box.appendChild(msg);
+  const row = document.createElement('div');
+  row.className = 'row';
+  ghosts.forEach(oldId => {
+    const label = seatLabelFor(oldId) || 'a seat';
+    const team = ROOM.teamX.includes(oldId) ? 'X' : 'O';
+    const btn = document.createElement('button');
+    btn.textContent = `Claim ${label} (Team ${team})`;
+    btn.onclick = () => room.send('claim_seat', { oldId });
+    row.appendChild(btn);
+  });
+  box.appendChild(row);
+}
+
 function renderBoard() {
   const mine = myTeam();
   const legalBoards = new Set(legalBoardIndices(GAME));
   const myTurn = !GAME.winner && (GAME.playerOrder || [])[GAME.turnIdx] === myId;
+
+  renderReconnectBox(mine);
 
   boardWrap.innerHTML = '';
   const metaGrid = document.createElement('div');
