@@ -345,6 +345,13 @@
   .cell.owned {
     box-shadow: inset 0 0 0 4px var(--owner-color, transparent);
   }
+  .cell.mortgaged-cell {
+    box-shadow: inset 0 0 0 4px var(--owner-color, transparent), inset 0 0 0 1000px rgba(0,0,0,.35);
+  }
+  .cell.mortgaged-cell .price {
+    color: #b91c1c;
+    font-weight: 900;
+  }
   .house-badge {
     position: absolute;
     bottom: 2px;
@@ -670,6 +677,14 @@
       <div class="msg" id="turn-msg" style="margin-bottom:8px;"></div>
       <div class="action-row" id="action-row"></div>
     </div>
+    <div class="hud-box" id="auction-hud-box" style="display:none;">
+      <h4>Auction</h4>
+      <div id="auction-box"></div>
+    </div>
+    <div class="hud-box" id="tax-choice-hud-box" style="display:none;">
+      <h4>Income Tax</h4>
+      <div id="tax-choice-box"></div>
+    </div>
     <div class="hud-box">
       <h4>My Properties</h4>
       <div class="props-list" id="props-box"></div>
@@ -778,7 +793,7 @@ const SPACES = [
   { idx:1,  type:'property', name:'Islamabad',       price:60,  group:'brown',     rent:[2,10,30,90,160,250] },
   { idx:2,  type:'chest',    name:'Community Chest' },
   { idx:3,  type:'property', name:'Karachi',         price:60,  group:'brown',     rent:[4,20,60,180,320,450] },
-  { idx:4,  type:'tax',      name:'Income Tax',      amount:200 },
+  { idx:4,  type:'tax',      name:'Income Tax',      amount:200, hasChoice:true },
   { idx:5,  type:'rail',     name:'Reading Railroad', price:200 },
   { idx:6,  type:'property', name:'Liverpool',       price:100, group:'lightblue', rent:[6,30,90,270,400,550] },
   { idx:7,  type:'chance',   name:'Chance' },
@@ -879,9 +894,9 @@ function freshGame(order) {
   const cash = {}, pos = {}, jail = {}, cards = {}, bankrupt = {};
   order.forEach(id => { cash[id] = 1500; pos[id] = 0; jail[id] = { in:false, turns:0 }; cards[id] = 0; bankrupt[id] = false; });
   return {
-    order, cash, pos, owner: {}, houses: {}, jail, cards, bankrupt,
+    order, cash, pos, owner: {}, houses: {}, mortgaged: {}, jail, cards, bankrupt,
     turnIdx: 0, phase: 'roll', lastRoll: [1,1], doublesStreak: 0,
-    pendingBuySpace: null,
+    pendingBuySpace: null, pendingTaxSpace: null, auction: null,
     chanceDeck: shuffled(CHANCE_CARDS), chanceIdx: 0,
     chestDeck: shuffled(CHEST_CARDS), chestIdx: 0,
     trades: [], nextTradeId: 1,
@@ -923,11 +938,43 @@ function houseGroupComplete(g, ownerId, group) {
   return idxs.every(i => g.owner[i] === ownerId);
 }
 
+// Official rule: you can't build on a color group while any property
+// in it is mortgaged (and, symmetrically, can't mortgage a property
+// that still has houses on it — enforced separately in the handler).
+function houseGroupUnmortgaged(g, group) {
+  return GROUPS[group].every(i => !g.mortgaged[i]);
+}
+
+function mortgageValueOf(spaceIdx) { return Math.floor(priceOf(spaceIdx) / 2); }
+function unmortgageCostOf(spaceIdx) {
+  const mv = mortgageValueOf(spaceIdx);
+  return mv + Math.ceil(mv * 0.1); // 10% interest, official rule
+}
+function houseSaleValueOf(group) { return Math.floor(GROUP_HOUSE_COST[group] / 2); } // sell back at half price
+
+// Net worth for the Income Tax 10% option: cash + face value of every
+// owned property/rail/util (mortgaged or not) + what was paid for
+// every house/hotel currently built.
+function computeNetWorth(g, playerId) {
+  let total = g.cash[playerId] || 0;
+  for (const idxStr of Object.keys(g.owner)) {
+    const idx = Number(idxStr);
+    if (g.owner[idx] !== playerId) continue;
+    total += priceOf(idx);
+    const space = SPACES[idx];
+    if (space.type === 'property') {
+      total += (g.houses[idx] || 0) * GROUP_HOUSE_COST[space.group];
+    }
+  }
+  return total;
+}
+
 function computeRent(g, spaceIdx, ownerId, diceSum) {
+  if (g.mortgaged[spaceIdx]) return 0; // mortgaged properties collect no rent
   const space = SPACES[spaceIdx];
   if (space.type === 'rail') {
     const count = RAIL_IDXS.filter(i => g.owner[i] === ownerId).length;
-    return RAIL_RENTS[Math.max(0, count - 1)];
+    return count === 0 ? 0 : RAIL_RENTS[Math.max(0, count - 1)];
   }
   if (space.type === 'util') {
     const count = UTIL_IDXS.filter(i => g.owner[i] === ownerId).length;
@@ -1041,17 +1088,27 @@ function landOn(g, playerId, spaceIdx, diceSum, opts = {}) {
       return;
     }
     if (owner !== playerId) {
-      let rent = computeRent(g, spaceIdx, owner, diceSum);
-      if (opts.doubleRent) rent *= 2;
-      if (opts.tenXUtil) rent = diceSum * 10;
-      payAmount(g, playerId, owner, rent);
-      pushLog(g, `${nameOf(playerId)} paid Tk${rent} rent to ${nameOf(owner)} for ${space.name}.`);
+      if (g.mortgaged[spaceIdx]) {
+        pushLog(g, `${nameOf(playerId)} landed on ${space.name} \u2014 it's mortgaged, no rent due.`);
+      } else {
+        let rent = computeRent(g, spaceIdx, owner, diceSum);
+        if (opts.doubleRent) rent *= 2;
+        if (opts.tenXUtil) rent = diceSum * 10;
+        payAmount(g, playerId, owner, rent);
+        pushLog(g, `${nameOf(playerId)} paid Tk${rent} rent to ${nameOf(owner)} for ${space.name}.`);
+      }
     }
     g.phase = 'resolve';
   } else if (space.type === 'tax') {
-    payAmount(g, playerId, 'bank', space.amount);
-    pushLog(g, `${nameOf(playerId)} paid Tk${space.amount} tax.`);
-    g.phase = 'resolve';
+    if (space.hasChoice) {
+      g.pendingTaxSpace = spaceIdx;
+      g.phase = 'tax_choice';
+      pushLog(g, `${nameOf(playerId)} landed on ${space.name} \u2014 choosing how to pay.`);
+    } else {
+      payAmount(g, playerId, 'bank', space.amount);
+      pushLog(g, `${nameOf(playerId)} paid Tk${space.amount} tax.`);
+      g.phase = 'resolve';
+    }
   } else if (space.type === 'chance') {
     applyCard(g, playerId, 'chance');
     if (g.phase !== 'buy') g.phase = 'resolve';
@@ -1063,6 +1120,38 @@ function landOn(g, playerId, spaceIdx, diceSum, opts = {}) {
   } else {
     g.phase = 'resolve'; // go, jail(visiting), parking
   }
+  checkWin(g);
+}
+
+// Official rule: a declined property goes to auction among ALL
+// non-bankrupt players (including the one who declined). Anyone can
+// raise the bid or drop out; when only one non-dropped participant
+// remains, they win at their highest bid (or, if nobody ever bid,
+// the property simply stays unowned).
+function startAuction(g, spaceIdx) {
+  g.pendingBuySpace = null;
+  g.auction = {
+    spaceIdx,
+    bid: 0,
+    highestBidderId: null,
+    remaining: livingOrder(g).slice(),
+  };
+  g.phase = 'auction';
+  pushLog(g, `${SPACES[spaceIdx].name} goes to auction.`);
+}
+
+function resolveAuctionIfDone(g) {
+  if (!g.auction || g.auction.remaining.length > 1) return;
+  const { spaceIdx, bid, highestBidderId } = g.auction;
+  if (highestBidderId) {
+    g.cash[highestBidderId] -= bid;
+    g.owner[spaceIdx] = highestBidderId;
+    pushLog(g, `${nameOf(highestBidderId)} won the auction for ${SPACES[spaceIdx].name} at Tk${bid}.`);
+  } else {
+    pushLog(g, `No bids \u2014 ${SPACES[spaceIdx].name} stays unowned.`);
+  }
+  g.auction = null;
+  g.phase = 'resolve';
   checkWin(g);
 }
 
@@ -1214,6 +1303,10 @@ function migratePlayerId(oldId, newId) {
     if (t.fromId === oldId) t.fromId = newId;
     if (t.toId === oldId) t.toId = newId;
   });
+  if (GAME.auction) {
+    GAME.auction.remaining = GAME.auction.remaining.map(id => (id === oldId ? newId : id));
+    if (GAME.auction.highestBidderId === oldId) GAME.auction.highestBidderId = newId;
+  }
   delete disconnectSince[oldId];
 }
 
@@ -1449,8 +1542,99 @@ async function setupRoom() {
     if (!isHost() || !GAME || GAME.phase !== 'buy') return;
     if (currentPlayer(GAME) !== payload.senderId) return;
     pushLog(GAME, `${nameOf(payload.senderId)} declined to buy ${SPACES[GAME.pendingBuySpace].name}.`);
-    GAME.pendingBuySpace = null;
+    startAuction(GAME, GAME.pendingBuySpace);
+    broadcastSync();
+  });
+
+  room.on('auction_bid', (payload) => {
+    if (!isHost() || !GAME || GAME.phase !== 'auction' || !GAME.auction) return;
+    const bidderId = payload.senderId;
+    if (!GAME.auction.remaining.includes(bidderId)) return;
+    const amount = Math.floor(Number(payload.amount)) || 0;
+    if (amount <= GAME.auction.bid) return;
+    if (amount > GAME.cash[bidderId]) return;
+    GAME.auction.bid = amount;
+    GAME.auction.highestBidderId = bidderId;
+    pushLog(GAME, `${nameOf(bidderId)} bids Tk${amount} for ${SPACES[GAME.auction.spaceIdx].name}.`);
+    broadcastSync();
+  });
+
+  room.on('auction_pass', (payload) => {
+    if (!isHost() || !GAME || GAME.phase !== 'auction' || !GAME.auction) return;
+    const id = payload.senderId;
+    if (!GAME.auction.remaining.includes(id)) return;
+    GAME.auction.remaining = GAME.auction.remaining.filter(p => p !== id);
+    pushLog(GAME, `${nameOf(id)} passes on ${SPACES[GAME.auction.spaceIdx].name}.`);
+    resolveAuctionIfDone(GAME);
+    broadcastSync();
+  });
+
+  room.on('pay_tax_flat', (payload) => {
+    if (!isHost() || !GAME || GAME.phase !== 'tax_choice') return;
+    if (currentPlayer(GAME) !== payload.senderId) return;
+    const space = SPACES[GAME.pendingTaxSpace];
+    payAmount(GAME, payload.senderId, 'bank', space.amount);
+    pushLog(GAME, `${nameOf(payload.senderId)} paid the flat Tk${space.amount} income tax.`);
+    GAME.pendingTaxSpace = null;
     GAME.phase = 'resolve';
+    checkWin(GAME);
+    broadcastSync();
+  });
+
+  room.on('pay_tax_percent', (payload) => {
+    if (!isHost() || !GAME || GAME.phase !== 'tax_choice') return;
+    if (currentPlayer(GAME) !== payload.senderId) return;
+    const amount = Math.ceil(computeNetWorth(GAME, payload.senderId) * 0.1);
+    payAmount(GAME, payload.senderId, 'bank', amount);
+    pushLog(GAME, `${nameOf(payload.senderId)} paid Tk${amount} income tax (10% of net worth).`);
+    GAME.pendingTaxSpace = null;
+    GAME.phase = 'resolve';
+    checkWin(GAME);
+    broadcastSync();
+  });
+
+  room.on('mortgage_property', (payload) => {
+    if (!isHost() || !GAME) return;
+    const idx = payload.spaceIdx;
+    const space = SPACES[idx];
+    if (!space || GAME.owner[idx] !== payload.senderId) return;
+    if (GAME.mortgaged[idx]) return;
+    if (space.type === 'property' && (GAME.houses[idx] || 0) > 0) return; // sell houses first
+    GAME.mortgaged[idx] = true;
+    const value = mortgageValueOf(idx);
+    GAME.cash[payload.senderId] += value;
+    pushLog(GAME, `${nameOf(payload.senderId)} mortgaged ${space.name} for Tk${value}.`);
+    broadcastSync();
+  });
+
+  room.on('unmortgage_property', (payload) => {
+    if (!isHost() || !GAME) return;
+    const idx = payload.spaceIdx;
+    const space = SPACES[idx];
+    if (!space || GAME.owner[idx] !== payload.senderId || !GAME.mortgaged[idx]) return;
+    const cost = unmortgageCostOf(idx);
+    if (GAME.cash[payload.senderId] < cost) return;
+    GAME.cash[payload.senderId] -= cost;
+    GAME.mortgaged[idx] = false;
+    pushLog(GAME, `${nameOf(payload.senderId)} paid off the mortgage on ${space.name} for Tk${cost}.`);
+    broadcastSync();
+  });
+
+  room.on('sell_house', (payload) => {
+    if (!isHost() || !GAME) return;
+    const idx = payload.spaceIdx;
+    const space = SPACES[idx];
+    if (!space || space.type !== 'property' || GAME.owner[idx] !== payload.senderId) return;
+    const current = GAME.houses[idx] || 0;
+    if (current <= 0) return;
+    // Even-selling rule: sell from whichever property in the group
+    // currently has the most houses first (mirror of even-building).
+    const groupMax = Math.max(...GROUPS[space.group].map(i => GAME.houses[i] || 0));
+    if (current < groupMax) return;
+    const refund = houseSaleValueOf(space.group);
+    GAME.houses[idx] = current - 1;
+    GAME.cash[payload.senderId] += refund;
+    pushLog(GAME, `${nameOf(payload.senderId)} sold a house on ${space.name} for Tk${refund}.`);
     broadcastSync();
   });
 
@@ -1462,6 +1646,7 @@ async function setupRoom() {
     if (!space || space.type !== 'property') return;
     if (GAME.owner[idx] !== payload.senderId) return;
     if (!houseGroupComplete(GAME, payload.senderId, space.group)) return;
+    if (!houseGroupUnmortgaged(GAME, space.group)) return;
     const current = GAME.houses[idx] || 0;
     if (current >= 5) return;
     const groupMin = Math.min(...GROUPS[space.group].map(i => GAME.houses[i] || 0));
@@ -1672,6 +1857,89 @@ function renderLobby() {
     + ` Disconnected-player auto-skip: ${timeoutLabel}.`;
 }
 
+function renderAuctionUI() {
+  const wrap = document.getElementById('auction-hud-box');
+  const box = document.getElementById('auction-box');
+  if (GAME.phase !== 'auction' || !GAME.auction) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  box.innerHTML = '';
+
+  const { spaceIdx, bid, highestBidderId, remaining } = GAME.auction;
+  const space = SPACES[spaceIdx];
+
+  const title = document.createElement('div');
+  title.className = 'msg';
+  title.style.fontWeight = '700';
+  title.textContent = `${space.name} \u2014 up for auction`;
+  box.appendChild(title);
+
+  const status = document.createElement('div');
+  status.className = 'msg';
+  status.style.fontSize = '12px';
+  status.textContent = highestBidderId
+    ? `Current bid: Tk${bid} by ${nameOf(highestBidderId)}`
+    : 'No bids yet.';
+  box.appendChild(status);
+
+  const stillIn = document.createElement('div');
+  stillIn.className = 'msg';
+  stillIn.style.fontSize = '11px';
+  stillIn.textContent = `Still bidding: ${remaining.map(id => nameOf(id)).join(', ')}`;
+  box.appendChild(stillIn);
+
+  if (!remaining.includes(myId)) return; // spectator, or already passed
+  const myMax = GAME.cash[myId];
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.style.marginTop = '6px';
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.min = String(bid + 1);
+  input.max = String(myMax);
+  input.value = String(Math.min(myMax, bid + 10));
+  input.style.width = '80px';
+  const bidBtn = document.createElement('button');
+  bidBtn.textContent = 'Bid';
+  bidBtn.onclick = () => {
+    const amount = Number(input.value);
+    if (amount > bid && amount <= myMax) room.send('auction_bid', { amount });
+  };
+  const passBtn = document.createElement('button');
+  passBtn.textContent = 'Pass';
+  passBtn.onclick = () => room.send('auction_pass', {});
+  row.appendChild(input); row.appendChild(bidBtn); row.appendChild(passBtn);
+  box.appendChild(row);
+}
+
+function renderTaxChoiceUI() {
+  const wrap = document.getElementById('tax-choice-hud-box');
+  const box = document.getElementById('tax-choice-box');
+  if (GAME.phase !== 'tax_choice' || currentPlayer(GAME) !== myId) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  box.innerHTML = '';
+
+  const space = SPACES[GAME.pendingTaxSpace];
+  const percentAmount = Math.ceil(computeNetWorth(GAME, myId) * 0.1);
+
+  const msg = document.createElement('div');
+  msg.className = 'msg';
+  msg.style.fontSize = '12px';
+  msg.textContent = 'Pay a flat amount, or 10% of your net worth \u2014 whichever you prefer.';
+  box.appendChild(msg);
+
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.style.marginTop = '6px';
+  const flatBtn = document.createElement('button');
+  flatBtn.textContent = `Pay Tk${space.amount} flat`;
+  flatBtn.onclick = () => room.send('pay_tax_flat', {});
+  const pctBtn = document.createElement('button');
+  pctBtn.textContent = `Pay Tk${percentAmount} (10%)`;
+  pctBtn.onclick = () => room.send('pay_tax_percent', {});
+  row.appendChild(flatBtn); row.appendChild(pctBtn);
+  box.appendChild(row);
+}
+
 function renderRestartUI() {
   const restartBtn = document.getElementById('btn-restart');
   const confirmBox = document.getElementById('restart-confirm-box');
@@ -1858,6 +2126,11 @@ function renderGame() {
 
   if (GAME.phase === 'gameover') {
     turnMsg.textContent = GAME.winnerId === myId ? 'You win! 🎉' : (GAME.winnerId ? 'Game over — you were eliminated.' : 'Game over.');
+  } else if (GAME.phase === 'auction') {
+    turnMsg.textContent = `Auction in progress for ${SPACES[GAME.auction.spaceIdx].name} \u2014 see below.`;
+  } else if (GAME.phase === 'tax_choice') {
+    const cp = currentPlayer(GAME);
+    turnMsg.textContent = cp === myId ? 'Choose how to pay \u2014 see below.' : `Waiting for ${nameOf(cp)} to choose how to pay tax...`;
   } else {
     const mine = isMyTurn();
     const cp = currentPlayer(GAME);
@@ -1886,17 +2159,22 @@ function renderGame() {
   propsBox.innerHTML = '';
   Object.keys(GAME.owner).map(Number).filter(idx => GAME.owner[idx] === myId).forEach(idx => {
     const space = SPACES[idx];
+    const mortgaged = !!GAME.mortgaged[idx];
     const row = document.createElement('div');
     row.className = 'prop-row';
+    row.style.flexWrap = 'wrap';
     const sw = document.createElement('div');
     sw.className = 'swatch';
     sw.style.background = space.group ? getComputedGroupColor(space.group) : '#888';
     const label = document.createElement('span');
     const houses = GAME.houses[idx] || 0;
-    label.textContent = space.name + (houses > 0 ? (houses >= 5 ? ' 🏨' : ' ' + '🏠'.repeat(houses)) : '');
+    label.textContent = space.name + (houses > 0 ? (houses >= 5 ? ' 🏨' : ' ' + '🏠'.repeat(houses)) : '') + (mortgaged ? ' (mortgaged)' : '');
+    if (mortgaged) label.style.opacity = '.6';
     row.appendChild(sw); row.appendChild(label);
-    if (space.type === 'property' && isMyTurn() && GAME.phase === 'roll' && houses < 5 &&
+
+    if (space.type === 'property' && !mortgaged && isMyTurn() && GAME.phase === 'roll' && houses < 5 &&
         houseGroupComplete(GAME, myId, space.group) &&
+        houseGroupUnmortgaged(GAME, space.group) &&
         houses <= Math.min(...GROUPS[space.group].map(i => GAME.houses[i] || 0))) {
       const cost = GROUP_HOUSE_COST[space.group];
       const btn = document.createElement('button');
@@ -1905,9 +2183,36 @@ function renderGame() {
       btn.onclick = () => room.send('build_house', { spaceIdx: idx });
       row.appendChild(btn);
     }
+
+    if (space.type === 'property' && houses > 0 &&
+        houses >= Math.max(...GROUPS[space.group].map(i => GAME.houses[i] || 0))) {
+      const refund = houseSaleValueOf(space.group);
+      const btn = document.createElement('button');
+      btn.textContent = `Sell house (+Tk${refund})`;
+      btn.onclick = () => room.send('sell_house', { spaceIdx: idx });
+      row.appendChild(btn);
+    }
+
+    if (!mortgaged && houses === 0) {
+      const value = mortgageValueOf(idx);
+      const btn = document.createElement('button');
+      btn.textContent = `Mortgage (+Tk${value})`;
+      btn.onclick = () => room.send('mortgage_property', { spaceIdx: idx });
+      row.appendChild(btn);
+    } else if (mortgaged) {
+      const cost = unmortgageCostOf(idx);
+      const btn = document.createElement('button');
+      btn.textContent = `Unmortgage (Tk${cost})`;
+      btn.disabled = GAME.cash[myId] < cost;
+      btn.onclick = () => room.send('unmortgage_property', { spaceIdx: idx });
+      row.appendChild(btn);
+    }
+
     propsBox.appendChild(row);
   });
 
+  renderAuctionUI();
+  renderTaxChoiceUI();
   renderTrades();
   document.getElementById('btn-open-trade').disabled = GAME.phase === 'gameover';
 
@@ -2053,7 +2358,9 @@ function applyPriceDisplay() {
     const cellEl = document.querySelector(`#board [data-idx="${space.idx}"]`);
     if (!cellEl) return;
     const priceEl = cellEl.querySelector('.price');
-    if (priceEl) priceEl.textContent = 'Tk' + priceOf(space.idx);
+    const mortgaged = !!GAME?.mortgaged?.[space.idx];
+    if (priceEl) priceEl.textContent = mortgaged ? 'MORTGAGED' : 'Tk' + priceOf(space.idx);
+    cellEl.classList.toggle('mortgaged-cell', mortgaged);
   });
 }
 
@@ -2155,7 +2462,12 @@ function checkDisconnectTimeout() {
 
   if (GAME.phase === 'buy') {
     pushLog(GAME, `${nameOf(p)} was disconnected too long — auto-declined the purchase.`);
-    GAME.pendingBuySpace = null;
+    startAuction(GAME, GAME.pendingBuySpace);
+  } else if (GAME.phase === 'tax_choice') {
+    const space = SPACES[GAME.pendingTaxSpace];
+    pushLog(GAME, `${nameOf(p)} was disconnected too long — auto-paid the flat tax.`);
+    payAmount(GAME, p, 'bank', space.amount);
+    GAME.pendingTaxSpace = null;
     GAME.phase = 'resolve';
   } else if (GAME.phase === 'roll') {
     pushLog(GAME, `${nameOf(p)} was disconnected too long — auto-rolling for them.`);
@@ -2164,7 +2476,7 @@ function checkDisconnectTimeout() {
     pushLog(GAME, `${nameOf(p)} was disconnected too long — auto-ending their turn.`);
     doEndTurn(GAME);
   } else {
-    return; // nothing actionable in this phase
+    return; // nothing actionable in this phase (e.g. mid-auction, with no single "current player" to act for)
   }
   checkWin(GAME);
   broadcastSync();
