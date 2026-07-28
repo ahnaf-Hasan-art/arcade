@@ -209,14 +209,17 @@
     <div id="status-bar">
       <span class="badge" id="you-badge">You: —</span>
       <span id="turn-indicator">—</span>
+      <button id="btn-restart" class="hidden" style="margin-left:auto;">Restart Game</button>
     </div>
+    <div id="restart-confirm-box" class="hidden row">
+      <span class="msg">Restart the game for everyone?</span>
+      <button id="btn-restart-confirm-yes">Yes, ask everyone</button>
+      <button id="btn-restart-confirm-no">Cancel</button>
+    </div>
+    <div id="restart-vote-box" class="hidden" style="display:flex; flex-direction:column; gap:8px; align-items:center;"></div>
     <div id="reconnect-box" class="hidden" style="display:flex; flex-direction:column; gap:8px; align-items:center;"></div>
     <div id="board-wrap"></div>
     <div id="result-msg" class="msg"></div>
-    <div class="row hidden" id="rematch-row">
-      <button id="btn-rematch">Rematch (host only)</button>
-    </div>
-    <div class="msg hidden" id="rematch-wait-msg">Waiting for host to start a rematch...</div>
   </div>
 
 <script type="module">
@@ -318,7 +321,7 @@ function applyMove(state, boardIdx, cellIdx) {
 // defined event, not something evaluated on every message.
 // =========================================================
 function freshRoom(hostId) {
-  return { hostId, mode: '1v1', capacity: 1, teamX: [], teamO: [], started: false };
+  return { hostId, mode: '1v1', capacity: 1, teamX: [], teamO: [], started: false, restartVote: null };
 }
 
 function tryJoinTeam(room, playerId, team, connectedIds) {
@@ -376,7 +379,14 @@ document.getElementById('mode-2v2').onclick = () => { if (isHost()) room.send('s
 document.getElementById('btn-join-X').onclick = () => room?.send('join_team', { team: 'X' });
 document.getElementById('btn-join-O').onclick = () => room?.send('join_team', { team: 'O' });
 document.getElementById('btn-start').onclick = () => room?.send('start_game', {});
-document.getElementById('btn-rematch').onclick = () => room?.send('rematch_request', {});
+
+let showingRestartConfirm = false;
+document.getElementById('btn-restart').onclick = () => { showingRestartConfirm = true; renderBoard(); };
+document.getElementById('btn-restart-confirm-no').onclick = () => { showingRestartConfirm = false; renderBoard(); };
+document.getElementById('btn-restart-confirm-yes').onclick = () => {
+  showingRestartConfirm = false;
+  room.send('restart_propose', {});
+};
 
 function showScreen(id) {
   for (const s of [screenHome, screenLobby, screenGame]) s.classList.add('hidden');
@@ -480,12 +490,44 @@ async function setupRoom() {
     broadcastSync();
   });
 
-  room.on('rematch_request', () => {
-    if (!isHost()) return;
-    const prevOrder = GAME?.playerOrder || buildPlayerOrder(ROOM);
-    GAME = freshGame();
-    GAME.playerOrder = prevOrder;
-    GAME.turnIdx = 0;
+  // ---- restart vote: host proposes, every seated player must agree ----
+  function allPlayers() { return [...ROOM.teamX, ...ROOM.teamO]; }
+
+  room.on('restart_propose', (payload) => {
+    if (!isHost() || !ROOM.started || ROOM.restartVote) return;
+    const votes = {};
+    allPlayers().forEach(id => { votes[id] = id === payload.senderId ? true : null; });
+    ROOM = { ...ROOM, restartVote: { initiatorId: payload.senderId, votes } };
+    broadcastSync();
+  });
+
+  room.on('restart_vote', (payload) => {
+    if (!isHost() || !ROOM.restartVote) return;
+    if (!(payload.senderId in ROOM.restartVote.votes)) return;
+    const votes = { ...ROOM.restartVote.votes, [payload.senderId]: payload.vote };
+
+    if (payload.vote === false) {
+      // Anyone declining cancels the restart for everyone.
+      ROOM = { ...ROOM, restartVote: null };
+      broadcastSync();
+      return;
+    }
+
+    ROOM = { ...ROOM, restartVote: { ...ROOM.restartVote, votes } };
+    const allYes = Object.values(votes).every(v => v === true);
+    if (allYes) {
+      const prevOrder = GAME?.playerOrder || buildPlayerOrder(ROOM);
+      GAME = freshGame();
+      GAME.playerOrder = prevOrder;
+      GAME.turnIdx = 0;
+      ROOM = { ...ROOM, restartVote: null };
+    }
+    broadcastSync();
+  });
+
+  room.on('restart_cancel', (payload) => {
+    if (!isHost() || !ROOM.restartVote || ROOM.restartVote.initiatorId !== payload.senderId) return;
+    ROOM = { ...ROOM, restartVote: null };
     broadcastSync();
   });
 
@@ -712,8 +754,6 @@ function renderBoard() {
 
   const turnEl = document.getElementById('turn-indicator');
   const resultEl = document.getElementById('result-msg');
-  const rematchRow = document.getElementById('rematch-row');
-  const rematchWait = document.getElementById('rematch-wait-msg');
 
   if (GAME.winner) {
     turnEl.textContent = '';
@@ -723,15 +763,70 @@ function renderBoard() {
     } else {
       resultEl.textContent = GAME.winner === mine ? 'Your team wins! 🎉' : `Team ${GAME.winner} wins.`;
     }
-    rematchRow.classList.toggle('hidden', !isHost());
-    rematchWait.classList.toggle('hidden', isHost());
   } else {
     resultEl.textContent = '';
-    rematchRow.classList.add('hidden');
-    rematchWait.classList.add('hidden');
     turnEl.className = GAME.currentPlayer;
     const turnLabel = seatLabelFor(GAME.playerOrder[GAME.turnIdx]);
     turnEl.textContent = myTurn ? 'Your turn' : `Waiting for ${turnLabel} (Team ${GAME.currentPlayer})...`;
+  }
+
+  renderRestartUI();
+}
+
+function renderRestartUI() {
+  const restartBtn = document.getElementById('btn-restart');
+  const confirmBox = document.getElementById('restart-confirm-box');
+  const voteBox = document.getElementById('restart-vote-box');
+
+  restartBtn.classList.toggle('hidden', !isHost() || showingRestartConfirm || !!ROOM.restartVote);
+  confirmBox.classList.toggle('hidden', !showingRestartConfirm);
+
+  if (!ROOM.restartVote) {
+    voteBox.classList.add('hidden');
+    voteBox.innerHTML = '';
+    return;
+  }
+
+  voteBox.classList.remove('hidden');
+  voteBox.innerHTML = '';
+  const { votes } = ROOM.restartVote;
+  const myVote = votes[myId];
+  const total = Object.keys(votes).length;
+  const yesCount = Object.values(votes).filter(v => v === true).length;
+
+  if (myVote === undefined) {
+    // I'm a spectator, not a seated player — just show status.
+    const msg = document.createElement('div');
+    msg.className = 'msg';
+    msg.textContent = `Restart requested \u2014 ${yesCount}/${total} players agreed.`;
+    voteBox.appendChild(msg);
+  } else if (myVote === true) {
+    const msg = document.createElement('div');
+    msg.className = 'msg';
+    msg.textContent = `Waiting for other players... (${yesCount}/${total} confirmed)`;
+    voteBox.appendChild(msg);
+  } else {
+    const msg = document.createElement('div');
+    msg.className = 'msg';
+    msg.textContent = 'Host wants to restart. Restart the game?';
+    voteBox.appendChild(msg);
+    const row = document.createElement('div');
+    row.className = 'row';
+    const yesBtn = document.createElement('button');
+    yesBtn.textContent = 'Yes';
+    yesBtn.onclick = () => room.send('restart_vote', { vote: true });
+    const noBtn = document.createElement('button');
+    noBtn.textContent = 'No';
+    noBtn.onclick = () => room.send('restart_vote', { vote: false });
+    row.appendChild(yesBtn); row.appendChild(noBtn);
+    voteBox.appendChild(row);
+  }
+
+  if (isHost() && ROOM.restartVote.initiatorId === myId) {
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel restart request';
+    cancelBtn.onclick = () => room.send('restart_cancel', {});
+    voteBox.appendChild(cancelBtn);
   }
 }
 </script>

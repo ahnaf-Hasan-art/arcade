@@ -649,6 +649,18 @@
       <div id="reconnect-box"></div>
     </div>
     <div class="hud-box">
+      <h4>Game</h4>
+      <button id="btn-restart" class="hidden" style="width:100%;">Restart Game</button>
+      <div id="restart-confirm-box" class="hidden" style="display:flex; flex-direction:column; gap:8px;">
+        <div class="msg" style="font-size:12px;">Restart the game for everyone?</div>
+        <div class="row">
+          <button id="btn-restart-confirm-yes">Yes, ask everyone</button>
+          <button id="btn-restart-confirm-no">Cancel</button>
+        </div>
+      </div>
+      <div id="restart-vote-box"></div>
+    </div>
+    <div class="hud-box">
       <h4>Players</h4>
       <div id="players-box"></div>
     </div>
@@ -1174,7 +1186,7 @@ function isHost() { return !!ROOM && ROOM.hostId === myId; }
 function isMyTurn() { return GAME && currentPlayer(GAME) === myId; }
 
 function freshRoom(hostId) {
-  return { hostId, capacity: 4, seats: [], started: false, customPrices: {}, chat: [], disconnectTimeoutMs: 120000 };
+  return { hostId, capacity: 4, seats: [], started: false, customPrices: {}, chat: [], disconnectTimeoutMs: 120000, restartVote: null };
 }
 
 function priceOf(spaceIdx) {
@@ -1227,6 +1239,14 @@ const seatSelectEl = document.getElementById('seat-count-select');
   b.dataset.n = n;
   seatSelectEl.appendChild(b);
 });
+
+let showingRestartConfirm = false;
+document.getElementById('btn-restart').onclick = () => { showingRestartConfirm = true; renderRestartUI(); };
+document.getElementById('btn-restart-confirm-no').onclick = () => { showingRestartConfirm = false; renderRestartUI(); };
+document.getElementById('btn-restart-confirm-yes').onclick = () => {
+  showingRestartConfirm = false;
+  room.send('restart_propose', {});
+};
 
 document.getElementById('btn-open-trade').onclick = () => {
   document.getElementById('trade-modal-overlay').classList.remove('hidden');
@@ -1529,9 +1549,38 @@ async function setupRoom() {
     broadcastSync();
   });
 
-  room.on('rematch_request', () => {
-    if (!isHost() || !ROOM) return;
-    GAME = freshGame(ROOM.seats);
+  // ---- restart vote: host proposes, every seated player must agree ----
+  room.on('restart_propose', (payload) => {
+    if (!isHost() || !ROOM || !ROOM.started || ROOM.restartVote) return;
+    const votes = {};
+    ROOM.seats.forEach(id => { votes[id] = id === payload.senderId ? true : null; });
+    ROOM = { ...ROOM, restartVote: { initiatorId: payload.senderId, votes } };
+    broadcastSync();
+  });
+
+  room.on('restart_vote', (payload) => {
+    if (!isHost() || !ROOM || !ROOM.restartVote) return;
+    if (!(payload.senderId in ROOM.restartVote.votes)) return;
+    const votes = { ...ROOM.restartVote.votes, [payload.senderId]: payload.vote };
+
+    if (payload.vote === false) {
+      ROOM = { ...ROOM, restartVote: null };
+      broadcastSync();
+      return;
+    }
+
+    ROOM = { ...ROOM, restartVote: { ...ROOM.restartVote, votes } };
+    const allYes = Object.values(votes).every(v => v === true);
+    if (allYes) {
+      GAME = freshGame(ROOM.seats);
+      ROOM = { ...ROOM, restartVote: null };
+    }
+    broadcastSync();
+  });
+
+  room.on('restart_cancel', (payload) => {
+    if (!isHost() || !ROOM?.restartVote || ROOM.restartVote.initiatorId !== payload.senderId) return;
+    ROOM = { ...ROOM, restartVote: null };
     broadcastSync();
   });
 
@@ -1623,6 +1672,60 @@ function renderLobby() {
     + ` Disconnected-player auto-skip: ${timeoutLabel}.`;
 }
 
+function renderRestartUI() {
+  const restartBtn = document.getElementById('btn-restart');
+  const confirmBox = document.getElementById('restart-confirm-box');
+  const voteBox = document.getElementById('restart-vote-box');
+
+  restartBtn.classList.toggle('hidden', !isHost() || showingRestartConfirm || !!ROOM.restartVote);
+  confirmBox.classList.toggle('hidden', !showingRestartConfirm);
+
+  if (!ROOM.restartVote) {
+    voteBox.innerHTML = '';
+    return;
+  }
+
+  voteBox.innerHTML = '';
+  const { votes } = ROOM.restartVote;
+  const myVote = votes[myId];
+  const total = Object.keys(votes).length;
+  const yesCount = Object.values(votes).filter(v => v === true).length;
+
+  const msg = document.createElement('div');
+  msg.className = 'msg';
+  msg.style.fontSize = '12px';
+  if (myVote === undefined) {
+    msg.textContent = `Restart requested \u2014 ${yesCount}/${total} players agreed.`;
+    voteBox.appendChild(msg);
+  } else if (myVote === true) {
+    msg.textContent = `Waiting for other players... (${yesCount}/${total} confirmed)`;
+    voteBox.appendChild(msg);
+  } else {
+    msg.textContent = 'Host wants to restart. Restart the game?';
+    voteBox.appendChild(msg);
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.style.marginTop = '6px';
+    const yesBtn = document.createElement('button');
+    yesBtn.textContent = 'Yes';
+    yesBtn.onclick = () => room.send('restart_vote', { vote: true });
+    const noBtn = document.createElement('button');
+    noBtn.textContent = 'No';
+    noBtn.onclick = () => room.send('restart_vote', { vote: false });
+    row.appendChild(yesBtn); row.appendChild(noBtn);
+    voteBox.appendChild(row);
+  }
+
+  if (isHost() && ROOM.restartVote.initiatorId === myId) {
+    const cancelBtn = document.createElement('button');
+    cancelBtn.style.marginTop = '6px';
+    cancelBtn.style.width = '100%';
+    cancelBtn.textContent = 'Cancel restart request';
+    cancelBtn.onclick = () => room.send('restart_cancel', {});
+    voteBox.appendChild(cancelBtn);
+  }
+}
+
 function renderReconnectBox() {
   const wrap = document.getElementById('reconnect-hud-box');
   const box = document.getElementById('reconnect-box');
@@ -1654,6 +1757,7 @@ function renderGame() {
   if (!GAME) return;
   applyPriceDisplay();
   renderReconnectBox();
+  renderRestartUI();
 
   // tokens — group players by the space they're currently on, then
   // place them as a small cluster centered on that cell (a single
@@ -1754,7 +1858,6 @@ function renderGame() {
 
   if (GAME.phase === 'gameover') {
     turnMsg.textContent = GAME.winnerId === myId ? 'You win! 🎉' : (GAME.winnerId ? 'Game over — you were eliminated.' : 'Game over.');
-    if (isHost()) addBtn(actionRow, 'Rematch', () => room.send('rematch_request', {}));
   } else {
     const mine = isMyTurn();
     const cp = currentPlayer(GAME);
