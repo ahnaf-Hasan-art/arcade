@@ -27,6 +27,40 @@ export function makeRoomCode(length = 5) {
 }
 
 /**
+ * Returns a stable player id for THIS TAB, persisted across reloads
+ * within that tab (sessionStorage), but NOT shared with other tabs —
+ * that distinction matters: a normal browser refresh, the phone
+ * locking/backgrounding, or a brief wifi drop never actually close
+ * the tab, so sessionStorage silently carries your identity through
+ * all of those (the vast majority of real disconnects) with zero
+ * action needed.
+ *
+ * A genuine tab close (or clearing site data, or a different
+ * device/browser) does lose it — sessionStorage doesn't survive
+ * that, and deliberately isn't backed by localStorage either,
+ * because localStorage is shared across every tab of the same
+ * browser: two tabs open at once (e.g. testing two players from one
+ * browser) would otherwise collide on the identical id. That
+ * remaining case is exactly what each game's manual "claim a seat"
+ * option is for.
+ */
+export function getPersistentId() {
+  const KEY = 'arcade_player_id';
+  try {
+    let id = sessionStorage.getItem(KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      sessionStorage.setItem(KEY, id);
+    }
+    return id;
+  } catch {
+    // sessionStorage unavailable (private browsing lockdown, etc.) —
+    // fall back to a one-off id rather than breaking the page.
+    return crypto.randomUUID();
+  }
+}
+
+/**
  * Opens a room (a Supabase Realtime channel) for a game.
  *
  * Deliberately low-level and game-agnostic: it does NOT decide
