@@ -566,6 +566,21 @@ function broadcastSync() {
   room.send('sync', { room: ROOM, game: GAME });
 }
 
+// =========================================================
+// HEARTBEAT — every 15s, whichever client currently holds host
+// status quietly re-broadcasts the true state, regardless of
+// whether anything actually changed. This does NOT act on anyone's
+// behalf and never skips a turn — it purely guards against a single
+// lost or out-of-order sync message leaving a client stuck showing
+// stale state (e.g. both screens reading "waiting for the other
+// player" because each independently drifted). Runs in the lobby
+// too, not just mid-game, since team-selection state can drift the
+// same way.
+// =========================================================
+setInterval(() => {
+  if (isHost() && ROOM) broadcastSync();
+}, 15000);
+
 function copyShareLink() {
   const input = document.getElementById('share-link');
   input.select();
