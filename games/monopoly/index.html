@@ -1124,24 +1124,55 @@ function landOn(g, playerId, spaceIdx, diceSum, opts = {}) {
 }
 
 // Official rule: a declined property goes to auction among ALL
-// non-bankrupt players (including the one who declined). Anyone can
-// raise the bid or drop out; when only one non-dropped participant
-// remains, they win at their highest bid (or, if nobody ever bid,
-// the property simply stays unowned).
+// non-bankrupt players (including the one who declined). Bidding
+// goes turn-by-turn around the table (starting with whoever's turn
+// it currently is, i.e. the decliner); each player gets exactly one
+// action on their turn — raise by a fixed step, or pass — within a
+// time limit, no free-for-all typing of arbitrary amounts. Passing
+// is permanent for that auction. When only one non-passed
+// participant remains, they win at their standing bid (or, if
+// nobody ever bid, the property simply stays unowned).
+const AUCTION_TURN_MS = 5000;
+
+// Fixed raise step, scaled to the property's price so cheap and
+// expensive properties both take a sane number of turns to settle —
+// never a free-form amount, always this one discrete number.
+function auctionIncrement(spaceIdx) {
+  const price = priceOf(spaceIdx);
+  return Math.max(10, Math.ceil((price * 0.1) / 10) * 10);
+}
+
 function startAuction(g, spaceIdx) {
   g.pendingBuySpace = null;
+  const order = livingOrder(g).slice();
+  const startIdx = Math.max(0, order.indexOf(currentPlayer(g)));
   g.auction = {
     spaceIdx,
     bid: 0,
     highestBidderId: null,
-    remaining: livingOrder(g).slice(),
+    order,
+    passed: {},
+    turnIdx: startIdx,
+    deadline: Date.now() + AUCTION_TURN_MS,
   };
   g.phase = 'auction';
-  pushLog(g, `${SPACES[spaceIdx].name} goes to auction.`);
+  pushLog(g, `${SPACES[spaceIdx].name} goes to auction \u2014 Tk${auctionIncrement(spaceIdx)} per raise, ${AUCTION_TURN_MS / 1000}s per turn.`);
+}
+
+function auctionActivePlayers(g) {
+  return g.auction.order.filter(id => !g.auction.passed[id]);
+}
+
+function advanceAuctionTurn(g) {
+  const { order } = g.auction;
+  for (let i = 1; i <= order.length; i++) {
+    const next = (g.auction.turnIdx + i) % order.length;
+    if (!g.auction.passed[order[next]]) { g.auction.turnIdx = next; return; }
+  }
 }
 
 function resolveAuctionIfDone(g) {
-  if (!g.auction || g.auction.remaining.length > 1) return;
+  if (!g.auction || auctionActivePlayers(g).length > 1) return;
   const { spaceIdx, bid, highestBidderId } = g.auction;
   if (highestBidderId) {
     g.cash[highestBidderId] -= bid;
@@ -1304,7 +1335,8 @@ function migratePlayerId(oldId, newId) {
     if (t.toId === oldId) t.toId = newId;
   });
   if (GAME.auction) {
-    GAME.auction.remaining = GAME.auction.remaining.map(id => (id === oldId ? newId : id));
+    GAME.auction.order = GAME.auction.order.map(id => (id === oldId ? newId : id));
+    if (oldId in GAME.auction.passed) { GAME.auction.passed[newId] = GAME.auction.passed[oldId]; delete GAME.auction.passed[oldId]; }
     if (GAME.auction.highestBidderId === oldId) GAME.auction.highestBidderId = newId;
   }
   delete disconnectSince[oldId];
@@ -1546,26 +1578,34 @@ async function setupRoom() {
     broadcastSync();
   });
 
-  room.on('auction_bid', (payload) => {
+  room.on('auction_raise', (payload) => {
     if (!isHost() || !GAME || GAME.phase !== 'auction' || !GAME.auction) return;
     const bidderId = payload.senderId;
-    if (!GAME.auction.remaining.includes(bidderId)) return;
-    const amount = Math.floor(Number(payload.amount)) || 0;
-    if (amount <= GAME.auction.bid) return;
-    if (amount > GAME.cash[bidderId]) return;
-    GAME.auction.bid = amount;
+    if (GAME.auction.order[GAME.auction.turnIdx] !== bidderId) return; // not their turn
+    if (GAME.auction.passed[bidderId]) return;
+    const newBid = GAME.auction.bid + auctionIncrement(GAME.auction.spaceIdx);
+    if (newBid > GAME.cash[bidderId]) return; // can't afford this raise
+    GAME.auction.bid = newBid;
     GAME.auction.highestBidderId = bidderId;
-    pushLog(GAME, `${nameOf(bidderId)} bids Tk${amount} for ${SPACES[GAME.auction.spaceIdx].name}.`);
+    pushLog(GAME, `${nameOf(bidderId)} raises to Tk${newBid} for ${SPACES[GAME.auction.spaceIdx].name}.`);
+    advanceAuctionTurn(GAME);
+    GAME.auction.deadline = Date.now() + AUCTION_TURN_MS;
     broadcastSync();
   });
 
   room.on('auction_pass', (payload) => {
     if (!isHost() || !GAME || GAME.phase !== 'auction' || !GAME.auction) return;
     const id = payload.senderId;
-    if (!GAME.auction.remaining.includes(id)) return;
-    GAME.auction.remaining = GAME.auction.remaining.filter(p => p !== id);
+    if (GAME.auction.order[GAME.auction.turnIdx] !== id) return; // not their turn
+    if (GAME.auction.passed[id]) return;
+    GAME.auction.passed[id] = true;
     pushLog(GAME, `${nameOf(id)} passes on ${SPACES[GAME.auction.spaceIdx].name}.`);
-    resolveAuctionIfDone(GAME);
+    if (auctionActivePlayers(GAME).length > 1) {
+      advanceAuctionTurn(GAME);
+      GAME.auction.deadline = Date.now() + AUCTION_TURN_MS;
+    } else {
+      resolveAuctionIfDone(GAME);
+    }
     broadcastSync();
   });
 
@@ -1864,8 +1904,11 @@ function renderAuctionUI() {
   wrap.style.display = '';
   box.innerHTML = '';
 
-  const { spaceIdx, bid, highestBidderId, remaining } = GAME.auction;
+  const { spaceIdx, bid, highestBidderId, order, passed, turnIdx, deadline } = GAME.auction;
   const space = SPACES[spaceIdx];
+  const increment = auctionIncrement(spaceIdx);
+  const turnPlayerId = order[turnIdx];
+  const secondsLeft = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
 
   const title = document.createElement('div');
   title.className = 'msg';
@@ -1881,34 +1924,52 @@ function renderAuctionUI() {
     : 'No bids yet.';
   box.appendChild(status);
 
-  const stillIn = document.createElement('div');
-  stillIn.className = 'msg';
-  stillIn.style.fontSize = '11px';
-  stillIn.textContent = `Still bidding: ${remaining.map(id => nameOf(id)).join(', ')}`;
-  box.appendChild(stillIn);
+  // Turn order, with the active player highlighted and passed
+  // players struck through — makes the rotation visible at a glance.
+  const orderLine = document.createElement('div');
+  orderLine.className = 'msg';
+  orderLine.style.fontSize = '11px';
+  orderLine.innerHTML = 'Order: ' + order.map(id => {
+    const label = nameOf(id) + (id === myId ? ' (you)' : '');
+    if (passed[id]) return `<span style="text-decoration:line-through; opacity:.5;">${label}</span>`;
+    if (id === turnPlayerId) return `<strong>${label}</strong>`;
+    return label;
+  }).join(' \u2192 ');
+  box.appendChild(orderLine);
 
-  if (!remaining.includes(myId)) return; // spectator, or already passed
-  const myMax = GAME.cash[myId];
+  const turnMsgEl = document.createElement('div');
+  turnMsgEl.className = 'msg';
+  turnMsgEl.style.fontSize = '13px';
+  turnMsgEl.style.marginTop = '6px';
+  turnMsgEl.style.fontWeight = '700';
+  turnMsgEl.textContent = turnPlayerId === myId
+    ? `Your turn \u2014 ${secondsLeft}s left`
+    : `Waiting for ${nameOf(turnPlayerId)}... ${secondsLeft}s left`;
+  box.appendChild(turnMsgEl);
+
+  if (turnPlayerId !== myId) return; // not my turn — nothing to act on
+
+  const nextBid = bid + increment;
+  const canAfford = nextBid <= GAME.cash[myId];
   const row = document.createElement('div');
   row.className = 'row';
   row.style.marginTop = '6px';
-  const input = document.createElement('input');
-  input.type = 'number';
-  input.min = String(bid + 1);
-  input.max = String(myMax);
-  input.value = String(Math.min(myMax, bid + 10));
-  input.style.width = '80px';
-  const bidBtn = document.createElement('button');
-  bidBtn.textContent = 'Bid';
-  bidBtn.onclick = () => {
-    const amount = Number(input.value);
-    if (amount > bid && amount <= myMax) room.send('auction_bid', { amount });
-  };
+  const raiseBtn = document.createElement('button');
+  raiseBtn.textContent = `Raise to Tk${nextBid}`;
+  raiseBtn.disabled = !canAfford;
+  raiseBtn.onclick = () => room.send('auction_raise', {});
   const passBtn = document.createElement('button');
   passBtn.textContent = 'Pass';
   passBtn.onclick = () => room.send('auction_pass', {});
-  row.appendChild(input); row.appendChild(bidBtn); row.appendChild(passBtn);
+  row.appendChild(raiseBtn); row.appendChild(passBtn);
   box.appendChild(row);
+  if (!canAfford) {
+    const note = document.createElement('div');
+    note.className = 'msg';
+    note.style.fontSize = '11px';
+    note.textContent = `Raising to Tk${nextBid} would exceed your Tk${GAME.cash[myId]} cash.`;
+    box.appendChild(note);
+  }
 }
 
 function renderTaxChoiceUI() {
@@ -2482,6 +2543,30 @@ function checkDisconnectTimeout() {
   broadcastSync();
 }
 setInterval(checkDisconnectTimeout, 5000);
+
+// Enforces the 5-second-per-turn auction clock: if the player whose
+// turn it is hasn't acted by the deadline, they're auto-passed (the
+// same safe default a person could choose themselves) and the turn
+// moves on. Checked every second for a reasonably tight deadline.
+function checkAuctionTimeout() {
+  if (!isHost() || !GAME || GAME.phase !== 'auction' || !GAME.auction) return;
+  if (Date.now() < GAME.auction.deadline) return;
+  const id = GAME.auction.order[GAME.auction.turnIdx];
+  GAME.auction.passed[id] = true;
+  pushLog(GAME, `${nameOf(id)} ran out of time and auto-passed on ${SPACES[GAME.auction.spaceIdx].name}.`);
+  if (auctionActivePlayers(GAME).length > 1) {
+    advanceAuctionTurn(GAME);
+    GAME.auction.deadline = Date.now() + AUCTION_TURN_MS;
+  } else {
+    resolveAuctionIfDone(GAME);
+  }
+  broadcastSync();
+}
+setInterval(checkAuctionTimeout, 1000);
+
+// Purely cosmetic: keeps the auction countdown ticking smoothly on
+// every client (not just whoever's host), without sending anything.
+setInterval(() => { if (GAME?.phase === 'auction') renderAuctionUI(); }, 1000);
 
 // Re-render tokens on resize since positions are computed from live cell rects.
 window.addEventListener('resize', () => { if (GAME && ROOM?.started) renderGame(); });
