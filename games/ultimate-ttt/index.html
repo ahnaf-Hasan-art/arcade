@@ -698,7 +698,7 @@ function renderReconnectBox(mine) {
   box.innerHTML = '';
   const msg = document.createElement('div');
   msg.className = 'msg';
-  msg.textContent = 'You\u2019re spectating. A seat looks disconnected \u2014 is one of these yours?';
+  msg.textContent = 'You’re spectating. A seat looks disconnected — is one of these yours?';
   box.appendChild(msg);
   const row = document.createElement('div');
   row.className = 'row';
@@ -813,7 +813,7 @@ function renderRestartUI() {
     // I'm a spectator, not a seated player — just show status.
     const msg = document.createElement('div');
     msg.className = 'msg';
-    msg.textContent = `Restart requested \u2014 ${yesCount}/${total} players agreed.`;
+    msg.textContent = `Restart requested — ${yesCount}/${total} players agreed.`;
     voteBox.appendChild(msg);
   } else if (myVote === true) {
     const msg = document.createElement('div');

@@ -398,7 +398,8 @@
   .action-row { display:flex; flex-wrap:wrap; gap:6px; }
   .action-row button { flex:1 1 auto; font-size:12px; padding:8px 10px; }
 
-  #log-box { max-height: 160px; overflow-y: auto; font-size: 11px; color:#5a5744; display:flex; flex-direction:column-reverse; gap:4px; font-style: italic; }
+  #log-box { max-height: 160px; overflow-y: auto; font-size: 13px; color:#3a3a2a; display:flex; flex-direction:column; gap:5px; }
+  #log-box .log-newest { font-weight: 700; background: rgba(201,162,39,.18); padding: 3px 6px; border-radius: 4px; }
 
   .props-list { max-height: 160px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; }
   .prop-row { display:flex; align-items:center; gap:6px; font-size:11px; }
@@ -486,6 +487,33 @@
   .settings-row .sname { flex: 1; }
   .settings-row input { width: 90px; font-size: 13px; padding: 6px 8px; }
   .settings-row input:disabled { opacity: .6; }
+
+  /* ---- announcement toast (card draws, jail) ---- */
+  #announcement-toast {
+    position: fixed;
+    top: 20px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 95;
+    max-width: min(520px, 90vw);
+    background: var(--panel-bg);
+    border: 3px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 14px 20px;
+    box-shadow: 0 15px 40px rgba(0,0,0,.5);
+    font-family: 'Times New Roman', Times, serif;
+    text-align: center;
+    animation: toast-in .25s ease-out;
+  }
+  #announcement-toast.toast-card { border-color: #e8580f; }
+  #announcement-toast.toast-jail { border-color: #e0740a; background: radial-gradient(circle at 50% 20%, #fff2df 0%, var(--board-cream) 75%); }
+  #announcement-toast .toast-kind {
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--gold-dark); font-weight: 900; margin-bottom: 4px;
+  }
+  #announcement-toast .toast-text { font-size: 15px; color: var(--ink); line-height: 1.4; }
+  #announcement-toast.fading { animation: toast-out .5s ease-in forwards; }
+  @keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(-16px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+  @keyframes toast-out { from { opacity: 1; } to { opacity: 0; transform: translateX(-50%) translateY(-10px); } }
 
   /* ---- chat panel ---- */
   #chat-panel {
@@ -754,7 +782,7 @@
       <button id="btn-close-settings" class="modal-x" aria-label="Close">✕</button>
     </div>
     <div class="msg" id="settings-hint" style="margin-bottom:12px; font-size:12px;">
-      Purchase prices only \u2014 rent still follows the classic table for each space. Locked once the game launches.
+      Purchase prices only — rent still follows the classic table for each space. Locked once the game launches.
     </div>
     <div id="settings-list" class="settings-list"></div>
     <div class="modal-actions">
@@ -764,13 +792,16 @@
   </div>
 </div>
 
+<!-- ANNOUNCEMENT TOAST — card draws and jail sends, visible to everyone -->
+<div id="announcement-toast" class="hidden"></div>
+
 <!-- CHAT PANEL -->
 <div id="chat-panel" class="hidden">
   <button id="chat-toggle">💬 Chat</button>
   <div id="chat-body" class="hidden">
     <div id="chat-messages"></div>
     <div class="chat-input-row">
-      <input id="chat-input" type="text" maxlength="240" placeholder="Say something\u2026">
+      <input id="chat-input" type="text" maxlength="240" placeholder="Say something…">
       <button id="chat-send">Send</button>
     </div>
   </div>
@@ -901,6 +932,7 @@ function freshGame(order) {
     chestDeck: shuffled(CHEST_CARDS), chestIdx: 0,
     trades: [], nextTradeId: 1,
     log: ['Game started.'], winnerId: null,
+    announcement: null, // { kind:'card'|'jail', text, ts } — drives the toast popup
   };
 }
 
@@ -1033,13 +1065,18 @@ function applyCard(g, playerId, deckName) {
   const card = (deckName === 'chance' ? CHANCE_CARDS : CHEST_CARDS)[deck[g[idxKey]]];
   g[idxKey] = (g[idxKey] + 1) % deck.length;
   pushLog(g, `${nameOf(playerId)} drew: ${card.text}`);
+  g.announcement = {
+    kind: 'card',
+    text: `${nameOf(playerId)} drew ${deckName === 'chance' ? 'Chance' : 'Community Chest'}: ${card.text}`,
+    ts: Date.now(),
+  };
   const e = card.effect;
   if (e.type === 'collect') g.cash[playerId] += e.amount;
   else if (e.type === 'pay') payAmount(g, playerId, 'bank', e.amount);
   else if (e.type === 'collectEach') collectFromEach(g, playerId, e.amount);
   else if (e.type === 'payEach') payToEach(g, playerId, e.amount);
   else if (e.type === 'getoutfree') g.cards[playerId]++;
-  else if (e.type === 'gotojail') sendToJail(g, playerId);
+  else if (e.type === 'gotojail') sendToJail(g, playerId, { announce: false }); // card text already says it
   else if (e.type === 'moveRelative') {
     let np = (g.pos[playerId] + e.delta + 40) % 40;
     movePlayerTo(g, playerId, np, { awardGo:false });
@@ -1068,11 +1105,14 @@ function applyCard(g, playerId, deckName) {
   }
 }
 
-function sendToJail(g, playerId) {
+function sendToJail(g, playerId, opts = {}) {
   g.pos[playerId] = 10;
   g.jail[playerId] = { in:true, turns:0 };
   g.phase = 'resolve';
   pushLog(g, `${nameOf(playerId)} was sent to Jail.`);
+  if (opts.announce !== false) {
+    g.announcement = { kind: 'jail', text: `${nameOf(playerId)} was sent to Jail!`, ts: Date.now() };
+  }
 }
 
 // Resolves whatever space a player just landed on. May set phase to
@@ -1089,7 +1129,7 @@ function landOn(g, playerId, spaceIdx, diceSum, opts = {}) {
     }
     if (owner !== playerId) {
       if (g.mortgaged[spaceIdx]) {
-        pushLog(g, `${nameOf(playerId)} landed on ${space.name} \u2014 it's mortgaged, no rent due.`);
+        pushLog(g, `${nameOf(playerId)} landed on ${space.name} — it's mortgaged, no rent due.`);
       } else {
         let rent = computeRent(g, spaceIdx, owner, diceSum);
         if (opts.doubleRent) rent *= 2;
@@ -1103,7 +1143,7 @@ function landOn(g, playerId, spaceIdx, diceSum, opts = {}) {
     if (space.hasChoice) {
       g.pendingTaxSpace = spaceIdx;
       g.phase = 'tax_choice';
-      pushLog(g, `${nameOf(playerId)} landed on ${space.name} \u2014 choosing how to pay.`);
+      pushLog(g, `${nameOf(playerId)} landed on ${space.name} — choosing how to pay.`);
     } else {
       payAmount(g, playerId, 'bank', space.amount);
       pushLog(g, `${nameOf(playerId)} paid Tk${space.amount} tax.`);
@@ -1156,7 +1196,7 @@ function startAuction(g, spaceIdx) {
     deadline: Date.now() + AUCTION_TURN_MS,
   };
   g.phase = 'auction';
-  pushLog(g, `${SPACES[spaceIdx].name} goes to auction \u2014 Tk${auctionIncrement(spaceIdx)} per raise, ${AUCTION_TURN_MS / 1000}s per turn.`);
+  pushLog(g, `${SPACES[spaceIdx].name} goes to auction — Tk${auctionIncrement(spaceIdx)} per raise, ${AUCTION_TURN_MS / 1000}s per turn.`);
 }
 
 function auctionActivePlayers(g) {
@@ -1179,7 +1219,7 @@ function resolveAuctionIfDone(g) {
     g.owner[spaceIdx] = highestBidderId;
     pushLog(g, `${nameOf(highestBidderId)} won the auction for ${SPACES[spaceIdx].name} at Tk${bid}.`);
   } else {
-    pushLog(g, `No bids \u2014 ${SPACES[spaceIdx].name} stays unowned.`);
+    pushLog(g, `No bids — ${SPACES[spaceIdx].name} stays unowned.`);
   }
   g.auction = null;
   g.phase = 'resolve';
@@ -1853,6 +1893,7 @@ function renderFromState() {
   if (!ROOM) return;
   document.getElementById('chat-panel').classList.remove('hidden');
   renderChat();
+  checkAnnouncement();
   if (!document.getElementById('settings-modal-overlay').classList.contains('hidden')) renderSettingsList();
   if (!ROOM.started) { showHomeOrLobby('screen-lobby'); renderLobby(); }
   else { gameShell.classList.add('active'); screenHome.classList.add('hidden'); screenLobby.classList.add('hidden'); renderGame(); }
@@ -1913,7 +1954,7 @@ function renderAuctionUI() {
   const title = document.createElement('div');
   title.className = 'msg';
   title.style.fontWeight = '700';
-  title.textContent = `${space.name} \u2014 up for auction`;
+  title.textContent = `${space.name} — up for auction`;
   box.appendChild(title);
 
   const status = document.createElement('div');
@@ -1934,7 +1975,7 @@ function renderAuctionUI() {
     if (passed[id]) return `<span style="text-decoration:line-through; opacity:.5;">${label}</span>`;
     if (id === turnPlayerId) return `<strong>${label}</strong>`;
     return label;
-  }).join(' \u2192 ');
+  }).join(' → ');
   box.appendChild(orderLine);
 
   const turnMsgEl = document.createElement('div');
@@ -1943,7 +1984,7 @@ function renderAuctionUI() {
   turnMsgEl.style.marginTop = '6px';
   turnMsgEl.style.fontWeight = '700';
   turnMsgEl.textContent = turnPlayerId === myId
-    ? `Your turn \u2014 ${secondsLeft}s left`
+    ? `Your turn — ${secondsLeft}s left`
     : `Waiting for ${nameOf(turnPlayerId)}... ${secondsLeft}s left`;
   box.appendChild(turnMsgEl);
 
@@ -1985,7 +2026,7 @@ function renderTaxChoiceUI() {
   const msg = document.createElement('div');
   msg.className = 'msg';
   msg.style.fontSize = '12px';
-  msg.textContent = 'Pay a flat amount, or 10% of your net worth \u2014 whichever you prefer.';
+  msg.textContent = 'Pay a flat amount, or 10% of your net worth — whichever you prefer.';
   box.appendChild(msg);
 
   const row = document.createElement('div');
@@ -2024,7 +2065,7 @@ function renderRestartUI() {
   msg.className = 'msg';
   msg.style.fontSize = '12px';
   if (myVote === undefined) {
-    msg.textContent = `Restart requested \u2014 ${yesCount}/${total} players agreed.`;
+    msg.textContent = `Restart requested — ${yesCount}/${total} players agreed.`;
     voteBox.appendChild(msg);
   } else if (myVote === true) {
     msg.textContent = `Waiting for other players... (${yesCount}/${total} confirmed)`;
@@ -2067,7 +2108,7 @@ function renderReconnectBox() {
   const msg = document.createElement('div');
   msg.className = 'msg';
   msg.style.fontSize = '12px';
-  msg.textContent = 'You\u2019re spectating. A seat looks disconnected \u2014 is one of these yours?';
+  msg.textContent = 'You’re spectating. A seat looks disconnected — is one of these yours?';
   box.appendChild(msg);
   const row = document.createElement('div');
   row.className = 'row';
@@ -2188,10 +2229,10 @@ function renderGame() {
   if (GAME.phase === 'gameover') {
     turnMsg.textContent = GAME.winnerId === myId ? 'You win! 🎉' : (GAME.winnerId ? 'Game over — you were eliminated.' : 'Game over.');
   } else if (GAME.phase === 'auction') {
-    turnMsg.textContent = `Auction in progress for ${SPACES[GAME.auction.spaceIdx].name} \u2014 see below.`;
+    turnMsg.textContent = `Auction in progress for ${SPACES[GAME.auction.spaceIdx].name} — see below.`;
   } else if (GAME.phase === 'tax_choice') {
     const cp = currentPlayer(GAME);
-    turnMsg.textContent = cp === myId ? 'Choose how to pay \u2014 see below.' : `Waiting for ${nameOf(cp)} to choose how to pay tax...`;
+    turnMsg.textContent = cp === myId ? 'Choose how to pay — see below.' : `Waiting for ${nameOf(cp)} to choose how to pay tax...`;
   } else {
     const mine = isMyTurn();
     const cp = currentPlayer(GAME);
@@ -2277,14 +2318,22 @@ function renderGame() {
   renderTrades();
   document.getElementById('btn-open-trade').disabled = GAME.phase === 'gameover';
 
-  // log
+  // log — natural chronological order (oldest to newest), auto-scrolled
+  // to the bottom so the newest entry is always visible without having
+  // to manually scroll, with that newest line visually highlighted.
   const logBox = document.getElementById('log-box');
+  const logWasNearBottom = logBox.scrollHeight - logBox.scrollTop - logBox.clientHeight < 30;
   logBox.innerHTML = '';
-  GAME.log.slice().reverse().forEach(line => {
+  GAME.log.forEach((line, i) => {
     const d = document.createElement('div');
     d.textContent = line;
+    if (i === GAME.log.length - 1) d.className = 'log-newest';
     logBox.appendChild(d);
   });
+  if (logWasNearBottom || logBox.dataset.everScrolled !== 'true') {
+    logBox.scrollTop = logBox.scrollHeight;
+    logBox.dataset.everScrolled = 'true';
+  }
 }
 
 function addBtn(container, label, onClick) {
@@ -2501,6 +2550,35 @@ function renderChat() {
     box.appendChild(div);
   });
   if (wasNearBottom) box.scrollTop = box.scrollHeight;
+}
+
+// =========================================================
+// ANNOUNCEMENT TOAST — card draws and jail sends, shown to
+// everyone (matching how these are always visible/audible to
+// the whole table in a real game), not just the affected player.
+// =========================================================
+let lastSeenAnnouncementTs = null;
+let toastHideTimer = null;
+
+function checkAnnouncement() {
+  const ann = GAME?.announcement;
+  if (!ann || ann.ts === lastSeenAnnouncementTs) return;
+  lastSeenAnnouncementTs = ann.ts;
+  showAnnouncementToast(ann);
+}
+
+function showAnnouncementToast(ann) {
+  const el = document.getElementById('announcement-toast');
+  clearTimeout(toastHideTimer);
+  el.className = 'toast-' + ann.kind; // resets 'hidden'/'fading' too
+  el.innerHTML = `
+    <div class="toast-kind">${ann.kind === 'jail' ? 'Jail' : 'Card Drawn'}</div>
+    <div class="toast-text">${ann.text}</div>
+  `;
+  toastHideTimer = setTimeout(() => {
+    el.classList.add('fading');
+    setTimeout(() => { el.className = 'hidden'; }, 500);
+  }, 4500);
 }
 
 // =========================================================
