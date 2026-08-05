@@ -747,15 +747,18 @@ function applyBomb(g,r,c){
   const player = currentPlayer(g);
   const deltas = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
   let destroyedAny = false;
+  const blastCells = [[r,c]]; // origin + every in-bounds neighbor, for the flash effect
   for(const [dr,dc] of deltas){
     const nr=r+dr, nc=c+dc;
     if(!inBounds(g,nr,nc)) continue;
+    blastCells.push([nr,nc]);
     const target = g.cells[nr][nc];
     if(target.occupant === null) continue;
     if(isProtected(g,target)) continue;
     destroyCell(g,nr,nc);
     destroyedAny = true;
   }
+  g.lastBomb = { ts: Date.now(), cells: blastCells };
   pushLog(g, `\ud83d\udca3 ${player.symbol} detonated a Bomb at (${r+1},${c+1})${destroyedAny ? '' : ' \u2014 no unshielded targets hit'}.`);
 }
 
@@ -893,6 +896,7 @@ function freshGame(seats, settings){
     cells, round: 1, turnIndex: 0, winner: null, draw: false,
     log: [`Game started \u2014 ${seats.length} players on a ${settings.size}\u00d7${settings.size} grid, ${settings.winLen} in a row to win.`],
     restartVote: null,
+    lastBomb: null, // { ts, cells:[[r,c],...] } — drives the flash effect on every client
   };
 }
 
@@ -1024,6 +1028,7 @@ let connectedIds = [];
 let setupCount = 3;
 let myPendingPower = null; // purely local UI state — see note above resolveAction
 let showingRestartConfirm = false;
+let lastSeenBombTs = undefined; // undefined = not yet initialized (see checkBombFlash)
 
 const SUPABASE_CONFIGURED = SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL';
 
@@ -1465,6 +1470,22 @@ function showToast(msg) {
 // GAME RENDER (board/action-panel/players/log ported from the
 // original renderGame, adapted to read GAME/ROOM/myPendingPower)
 // =========================================================
+// Flashes the affected cells when a NEW bomb event arrives. On the very
+// first render after connecting, GAME.lastBomb might already be set from
+// an explosion that happened before this client joined — that shouldn't
+// replay as a flash, so the first sighting just records the timestamp
+// without animating anything.
+function checkBombFlash() {
+  if (!GAME.lastBomb) return;
+  if (lastSeenBombTs === undefined) { lastSeenBombTs = GAME.lastBomb.ts; return; }
+  if (GAME.lastBomb.ts === lastSeenBombTs) return;
+  lastSeenBombTs = GAME.lastBomb.ts;
+  GAME.lastBomb.cells.forEach(([r, c]) => {
+    const el = document.querySelector(`#board [data-r="${r}"][data-c="${c}"]`);
+    if (el) el.classList.add('blast');
+  });
+}
+
 function renderGame() {
   if (!GAME) return;
   document.getElementById('round-num').textContent = String(GAME.round).padStart(3, '0');
@@ -1485,6 +1506,8 @@ function renderGame() {
       const div = document.createElement('div');
       div.className = 'cell';
       div.tabIndex = 0;
+      div.dataset.r = r;
+      div.dataset.c = c;
       div.style.gridRow = String(r + 1);
       div.style.gridColumn = String(c + 1);
       if (cell.occupant) div.classList.add('filled');
@@ -1535,6 +1558,7 @@ function renderGame() {
       board.appendChild(div);
     }
   }
+  checkBombFlash();
 
   const actionCurrent = document.getElementById('action-current');
   const mySeatIdx = ROOM.seats.indexOf(player.id);
