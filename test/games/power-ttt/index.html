@@ -1618,7 +1618,8 @@ function renderGame() {
   }
 
   let overlay = document.getElementById('win-overlay-el');
-  if (GAME.winner || GAME.draw) {
+  const restartInProgress = !!GAME.restartVote || showingRestartConfirm;
+  if ((GAME.winner || GAME.draw) && !restartInProgress) {
     if (!overlay) {
       overlay = document.createElement('div');
       overlay.id = 'win-overlay-el';
@@ -1647,7 +1648,11 @@ function renderGame() {
       `;
     }
     const rBtn = document.getElementById('win-restart-btn');
-    if (rBtn) rBtn.onclick = () => { showingRestartConfirm = true; overlay.remove(); renderRestartUI(); document.getElementById('restart-box').scrollIntoView({behavior:'smooth'}); };
+    if (rBtn) rBtn.onclick = () => {
+      showingRestartConfirm = true;
+      renderGame();
+      document.getElementById('restart-box').scrollIntoView({ behavior: 'smooth' });
+    };
   } else if (overlay) {
     overlay.remove();
   }
@@ -1671,7 +1676,7 @@ function renderRestartUI() {
       </div>
     `;
     document.getElementById('rc-yes').onclick = () => { showingRestartConfirm = false; room.send('restart_propose', {}); };
-    document.getElementById('rc-no').onclick = () => { showingRestartConfirm = false; renderRestartUI(); };
+    document.getElementById('rc-no').onclick = () => { showingRestartConfirm = false; renderGame(); };
     return;
   }
 
