@@ -1007,7 +1007,7 @@ function handSizeForPlayers(n) { return Math.floor(52 / n); }
 // seated player.
 function dealNewHand(g) {
   const size = handSizeForPlayers(g.order.length);
-  const deck = shuffled(new Array(52));
+  const deck = shuffled(Array.from({ length: 52 })); // NOT `new Array(52)` — that's all holes, and .map() skips holes, so it would silently deal every hand full of `undefined` cards
   g.hands = {};
   g.order.forEach((id, i) => { g.hands[id] = deck.slice(i * size, (i + 1) * size); });
   pushLog(g, `New hand dealt — ${size} cards each.`);
