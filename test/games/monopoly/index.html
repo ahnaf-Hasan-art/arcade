@@ -277,8 +277,14 @@
     text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
     letter-spacing:2px;
   }
-  .msg { font-size:14px; color:#dfe9e2; max-width:480px; }
-  .err { color:#ff8a8a; font-size:13px; min-height:16px; }
+  /* Color intentionally NOT set here — this class is reused on both the
+     dark home/lobby screens (which set color:var(--board-cream) on
+     .screen) and the light HUD/modal panels (which set color:var(--ink)
+     on #hud, or inherit ink from body). Hardcoding a light color here
+     used to make this text invisible everywhere it appeared inside the
+     light-colored HUD/modal panels — letting it inherit fixes that. */
+  .msg { font-size:14px; max-width:480px; }
+  .err { color: #ff8a8a; font-size:13px; min-height:16px; }
   .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center; }
   a.link { color: var(--gold); }
 
@@ -393,7 +399,7 @@
   .pit-card { background:#fff; border:1px solid #999; border-radius:6px; width:52px; padding:4px 2px; text-align:center; box-shadow:1px 1px 3px rgba(0,0,0,.3); }
   .pit-card.winner { border:2px solid #d4af37; box-shadow:0 0 6px #d4af37; }
   .pit-card-label { font-size:18px; font-weight:bold; }
-  .pit-card-name { font-size:9px; color:#333; margin-top:2px; }
+  .pit-card-name { font-size:10.5px; color:#333; margin-top:2px; }
   .die {
     width:40px; height:40px; display:flex; align-items:center; justify-content:center;
     background:#fff; color:#000; border-radius:6px; border:2px solid #000; font-weight:900;
@@ -406,7 +412,7 @@
   #log-box .log-newest { font-weight: 700; background: rgba(201,162,39,.18); padding: 3px 6px; border-radius: 4px; }
 
   .props-list { max-height: 160px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; }
-  .prop-row { display:flex; align-items:center; gap:6px; font-size:11px; }
+  .prop-row { display:flex; align-items:center; gap:6px; font-size:12.5px; }
   .prop-row .swatch { width:10px; height:10px; flex-shrink:0; border:1px solid #000; }
   .prop-row button { font-size:10px; padding:3px 6px; margin-left:auto; }
 
@@ -462,7 +468,7 @@
   .prop-picker .prop-option.checked { border-color: var(--gold); background: rgba(201,162,39,.15); font-weight: 700; }
   .prop-picker .prop-option .swatch { width: 12px; height: 12px; flex-shrink:0; border: 1px solid #000; border-radius: 2px; }
   .prop-picker .prop-option input { width: 15px; height: 15px; flex-shrink: 0; }
-  .prop-picker .empty-msg { font-size: 12px; color: #7a7458; font-style: italic; padding: 8px; text-align: center; }
+  .prop-picker .empty-msg { font-size: 12px; color: #5c5642; font-style: italic; padding: 8px; text-align: center; }
 
   .cash-row { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; }
   .cash-row input { flex: 1; font-size: 15px; padding: 8px; }
@@ -540,7 +546,7 @@
     max-height: 260px; overflow-y: auto; padding: 10px;
     display: flex; flex-direction: column; gap: 6px;
   }
-  .chat-msg { font-size: 12px; line-height: 1.35; }
+  .chat-msg { font-size: 13px; line-height: 1.4; }
   .chat-msg .who { font-weight: 900; color: var(--gold-dark); }
   .chat-msg.mine .who { color: var(--accent-red); }
   .chat-input-row { display: flex; border-top: 1px solid #d8cfb0; }
@@ -1200,7 +1206,16 @@ function checkWin(g) {
     pushLog(g, alive.length === 1 ? `${nameOf(alive[0])} wins the game!` : 'Game over.');
   }
 }
-function nameOf(id) { return id ? 'Player ' + (id.slice(0,4)) : 'nobody'; }
+// Every other on-screen label (players box, seat list, chat) numbers
+// people by seat index — "Player 1", "Player 2", etc. This used to
+// instead slice the raw persistent id ('Player ib1a...'), which looked
+// like a bug and didn't match those other labels. Numbering by seat
+// keeps every mention of a player consistent across the whole UI.
+function nameOf(id) {
+  if (!id) return 'nobody';
+  const idx = GAME ? GAME.order.indexOf(id) : -1;
+  return idx >= 0 ? `Player ${idx + 1}` : 'a player';
+}
 
 function ownerCountInGroup(g, ownerId, groupIdxs) {
   return groupIdxs.filter(i => g.owner[i] === ownerId).length;
