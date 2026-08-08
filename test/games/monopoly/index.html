@@ -603,6 +603,12 @@
     <button id="btn-copy-link">Copy</button>
   </div>
 
+  <div class="eyebrow" style="margin-top:8px;">Your Name <span style="text-transform:none; letter-spacing:0; font-size:11px;">(optional — defaults to "Player 1", "Player 2", etc.)</span></div>
+  <div class="row">
+    <input id="name-input" maxlength="20" placeholder="e.g. Alex" style="width:200px;">
+    <button id="btn-save-name">Save</button>
+  </div>
+
   <div class="eyebrow" style="margin-top:8px;">Player count <span id="host-tag" class="hidden">(you're host — pick below)</span></div>
   <div class="seat-select" id="seat-count-select"></div>
 
@@ -636,7 +642,7 @@
       <div class="cell side-top chance" data-idx="22"><div class="icon">❓</div><div class="name">Chance</div></div>
       <div class="cell side-top" data-idx="23"><div class="color-bar red"></div><div class="name">Sylhet</div><div class="price">Tk220</div></div>
       <div class="cell side-top" data-idx="24"><div class="color-bar red"></div><div class="name">Khulna</div><div class="price">Tk240</div></div>
-      <div class="cell side-top rail" data-idx="25"><div class="icon">🚂</div><div class="name">B. &amp; O. Railroad</div><div class="price">Tk200</div></div>
+      <div class="cell side-top rail" data-idx="25"><div class="icon">🚂</div><div class="name">Station C</div><div class="price">Tk200</div></div>
       <div class="cell side-top" data-idx="26"><div class="color-bar yellow"></div><div class="name">Madrid</div><div class="price">Tk260</div></div>
       <div class="cell side-top" data-idx="27"><div class="color-bar yellow"></div><div class="name">Barcelona</div><div class="price">Tk260</div></div>
       <div class="cell side-top util" data-idx="28"><div class="icon">🚿</div><div class="name">Water Works</div><div class="price">Tk150</div></div>
@@ -650,7 +656,7 @@
       <div class="cell side-left" style="grid-column:1/2;grid-row:3/4;" data-idx="18"><div class="color-bar orange"></div><div class="name">San Francisco</div><div class="price">Tk180</div></div>
       <div class="cell side-left chest" style="grid-column:1/2;grid-row:4/5;" data-idx="17"><div class="icon">🎁</div><div class="name">Community Chest</div></div>
       <div class="cell side-left" style="grid-column:1/2;grid-row:5/6;" data-idx="16"><div class="color-bar orange"></div><div class="name">Chicago</div><div class="price">Tk180</div></div>
-      <div class="cell side-left rail" style="grid-column:1/2;grid-row:6/7;" data-idx="15"><div class="icon">🚂</div><div class="name">Pennsylvania Railroad</div><div class="price">Tk200</div></div>
+      <div class="cell side-left rail" style="grid-column:1/2;grid-row:6/7;" data-idx="15"><div class="icon">🚂</div><div class="name">Station B</div><div class="price">Tk200</div></div>
       <div class="cell side-left" style="grid-column:1/2;grid-row:7/8;" data-idx="14"><div class="color-bar pink"></div><div class="name">Kuala Lumpur</div><div class="price">Tk160</div></div>
       <div class="cell side-left" style="grid-column:1/2;grid-row:8/9;" data-idx="13"><div class="color-bar pink"></div><div class="name">Langkawi</div><div class="price">Tk140</div></div>
       <div class="cell side-left util" style="grid-column:1/2;grid-row:9/10;" data-idx="12"><div class="icon">💡</div><div class="name">Electric Company</div><div class="price">Tk150</div></div>
@@ -666,7 +672,7 @@
       <div class="cell side-right" style="grid-column:11/12;grid-row:3/4;" data-idx="32"><div class="color-bar green"></div><div class="name">Bangalore</div><div class="price">Tk300</div></div>
       <div class="cell side-right chest" style="grid-column:11/12;grid-row:4/5;" data-idx="33"><div class="icon">🎁</div><div class="name">Community Chest</div></div>
       <div class="cell side-right" style="grid-column:11/12;grid-row:5/6;" data-idx="34"><div class="color-bar green"></div><div class="name">Mumbai</div><div class="price">Tk320</div></div>
-      <div class="cell side-right rail" style="grid-column:11/12;grid-row:6/7;" data-idx="35"><div class="icon">🚂</div><div class="name">Short Line</div><div class="price">Tk200</div></div>
+      <div class="cell side-right rail" style="grid-column:11/12;grid-row:6/7;" data-idx="35"><div class="icon">🚂</div><div class="name">Station D</div><div class="price">Tk200</div></div>
       <div class="cell side-right chance" style="grid-column:11/12;grid-row:7/8;" data-idx="36"><div class="icon">❓</div><div class="name">Chance</div></div>
       <div class="cell side-right" style="grid-column:11/12;grid-row:8/9;" data-idx="37"><div class="color-bar blue"></div><div class="name">Toronto</div><div class="price">Tk350</div></div>
       <div class="cell side-right tax" style="grid-column:11/12;grid-row:9/10;" data-idx="38"><div class="icon">💎</div><div class="name">Luxury Tax</div><div class="price">Pay Tk100</div></div>
@@ -682,7 +688,7 @@
       <div class="cell side-bottom" data-idx="8"><div class="name">London</div><div class="price">Tk100</div><div class="color-bar lightblue"></div></div>
       <div class="cell side-bottom chance" data-idx="7"><div class="name">Chance</div><div class="icon">❓</div></div>
       <div class="cell side-bottom" data-idx="6"><div class="name">Liverpool</div><div class="price">Tk100</div><div class="color-bar lightblue"></div></div>
-      <div class="cell side-bottom rail" data-idx="5"><div class="name">Reading Railroad</div><div class="icon">🚂</div><div class="price">Tk200</div></div>
+      <div class="cell side-bottom rail" data-idx="5"><div class="name">Station A</div><div class="icon">🚂</div><div class="price">Tk200</div></div>
       <div class="cell side-bottom tax" data-idx="4"><div class="name">Income Tax</div><div class="icon">◆</div><div class="price">Pay Tk200</div></div>
       <div class="cell side-bottom" data-idx="3"><div class="name">Karachi</div><div class="price">Tk60</div><div class="color-bar brown"></div></div>
       <div class="cell side-bottom chest" data-idx="2"><div class="name">Community Chest</div><div class="icon">🎁</div></div>
@@ -851,7 +857,7 @@ const SPACES = [
   { idx:2,  type:'chest',    name:'Community Chest' },
   { idx:3,  type:'property', name:'Karachi',         price:60,  group:'brown',     rent:[4,20,60,180,320,450] },
   { idx:4,  type:'tax',      name:'Income Tax',      amount:200, hasChoice:true },
-  { idx:5,  type:'rail',     name:'Reading Railroad', price:200 },
+  { idx:5,  type:'rail',     name:'Station A', price:200 },
   { idx:6,  type:'property', name:'Liverpool',       price:100, group:'lightblue', rent:[6,30,90,270,400,550] },
   { idx:7,  type:'chance',   name:'Chance' },
   { idx:8,  type:'property', name:'London',          price:100, group:'lightblue', rent:[6,30,90,270,400,550] },
@@ -861,7 +867,7 @@ const SPACES = [
   { idx:12, type:'util',     name:'Electric Company', price:150 },
   { idx:13, type:'property', name:'Langkawi',        price:140, group:'pink',      rent:[10,50,150,450,625,750] },
   { idx:14, type:'property', name:'Kuala Lumpur',    price:160, group:'pink',      rent:[12,60,180,500,700,900] },
-  { idx:15, type:'rail',     name:'Pennsylvania Railroad', price:200 },
+  { idx:15, type:'rail',     name:'Station B', price:200 },
   { idx:16, type:'property', name:'Chicago',         price:180, group:'orange',    rent:[14,70,200,550,750,950] },
   { idx:17, type:'chest',    name:'Community Chest' },
   { idx:18, type:'property', name:'San Francisco',   price:180, group:'orange',    rent:[14,70,200,550,750,950] },
@@ -871,7 +877,7 @@ const SPACES = [
   { idx:22, type:'chance',   name:'Chance' },
   { idx:23, type:'property', name:'Sylhet',          price:220, group:'red',       rent:[18,90,250,700,875,1050] },
   { idx:24, type:'property', name:'Khulna',          price:240, group:'red',       rent:[20,100,300,750,925,1100] },
-  { idx:25, type:'rail',     name:'B. & O. Railroad', price:200 },
+  { idx:25, type:'rail',     name:'Station C', price:200 },
   { idx:26, type:'property', name:'Madrid',          price:260, group:'yellow',    rent:[22,110,330,800,975,1150] },
   { idx:27, type:'property', name:'Barcelona',       price:260, group:'yellow',    rent:[22,110,330,800,975,1150] },
   { idx:28, type:'util',     name:'Water Works',     price:150 },
@@ -881,7 +887,7 @@ const SPACES = [
   { idx:32, type:'property', name:'Bangalore',       price:300, group:'green',     rent:[26,130,390,900,1100,1275] },
   { idx:33, type:'chest',    name:'Community Chest' },
   { idx:34, type:'property', name:'Mumbai',          price:320, group:'green',     rent:[28,150,450,1000,1200,1400] },
-  { idx:35, type:'rail',     name:'Short Line',      price:200 },
+  { idx:35, type:'rail',     name:'Station D',      price:200 },
   { idx:36, type:'chance',   name:'Chance' },
   { idx:37, type:'property', name:'Toronto',         price:350, group:'blue',      rent:[35,175,500,1100,1300,1500] },
   { idx:38, type:'tax',      name:'Luxury Tax',      amount:100 },
@@ -905,7 +911,7 @@ const CHANCE_CARDS = [
   { text: 'Go directly to Jail', effect: { type:'gotojail' } },
   { text: 'Make general repairs: pay Tk25/house, Tk100/hotel', effect: { type:'repairs', perHouse:25, perHotel:100 } },
   { text: 'Pay poor tax of Tk15', effect: { type:'pay', amount:15 } },
-  { text: 'Take a trip to Reading Railroad', effect: { type:'moveTo', idx:5 } },
+  { text: 'Take a trip to Station A', effect: { type:'moveTo', idx:5 } },
   { text: 'Advance to Toronto', effect: { type:'moveTo', idx:37 } },
   { text: 'You have been elected chairman — pay each player Tk50', effect: { type:'payEach', amount:50 } },
   { text: 'Your building loan matures — collect Tk150', effect: { type:'collect', amount:150 } },
@@ -966,9 +972,11 @@ function shuffleArray(arr) {
 }
 
 // =========================================================
-// CARDS MODE — proper trick-taking, up to 4 players. Each
-// hand deals floor(52/N) cards to every seated player (a
-// 4-player game deals exactly 13 each, using the whole deck).
+// CARDS MODE — proper trick-taking, up to 4 players. Every
+// hand deals exactly 13 cards to every seated player, no
+// matter how many are seated (a 4-player game uses the whole
+// 52-card deck; with fewer players, the leftover cards simply
+// sit out unused until the next hand is dealt).
 // Each trick, every player (jailed players included — they
 // still play, they just never move) plays one card in turn
 // order starting from the previous trick's winner (the very
@@ -1007,10 +1015,11 @@ function cardBeats(a, b) {
   if (av !== bv) return av > bv;
   return cardSuit(a) < cardSuit(b);
 }
-function handSizeForPlayers(n) { return Math.floor(52 / n); }
+function handSizeForPlayers(n) { return 13; } // fixed regardless of player count — Cards mode caps at 4 players, so 13 each always fits within one 52-card deck
 
-// Shuffles a fresh 52-card deck and deals floor(52/N) cards to every
-// seated player.
+// Shuffles a fresh 52-card deck and deals 13 cards to every seated
+// player (any cards left over when fewer than 4 are seated just sit
+// out, unused, until the next hand).
 function dealNewHand(g) {
   const size = handSizeForPlayers(g.order.length);
   const deck = shuffled(Array.from({ length: 52 })); // NOT `new Array(52)` — that's all holes, and .map() skips holes, so it would silently deal every hand full of `undefined` cards
@@ -1207,14 +1216,36 @@ function checkWin(g) {
   }
 }
 // Every other on-screen label (players box, seat list, chat) numbers
-// people by seat index — "Player 1", "Player 2", etc. This used to
-// instead slice the raw persistent id ('Player ib1a...'), which looked
-// like a bug and didn't match those other labels. Numbering by seat
-// keeps every mention of a player consistent across the whole UI.
+// people by seat index — "Player 1", "Player 2", etc. — unless that
+// player has chosen their own display name in the lobby, in which case
+// that name is used instead. This is the shared text baked into the
+// game log/toasts/trade summaries (identical for every viewer), so
+// unlike labelFor() below it never says "You".
 function nameOf(id) {
   if (!id) return 'nobody';
+  const custom = ROOM?.names?.[id];
+  if (custom) return custom;
   const idx = GAME ? GAME.order.indexOf(id) : -1;
   return idx >= 0 ? `Player ${idx + 1}` : 'a player';
+}
+
+// Per-viewer version of nameOf() for on-screen UI (as opposed to
+// shared log text): shows "You" for the viewer's own seat, otherwise
+// the player's chosen name or "Player N". Works both before and after
+// the game starts, since seat order is known from ROOM.seats even
+// pre-game when GAME is still null.
+function seatIndexOf(id) {
+  if (GAME && GAME.order && GAME.order.includes(id)) return GAME.order.indexOf(id);
+  if (ROOM && ROOM.seats) return ROOM.seats.indexOf(id);
+  return -1;
+}
+function labelFor(id) {
+  if (!id) return 'nobody';
+  if (id === myId) return 'You';
+  const custom = ROOM?.names?.[id];
+  if (custom) return custom;
+  const idx = seatIndexOf(id);
+  return idx >= 0 ? `Player ${idx + 1}` : 'Player';
 }
 
 function ownerCountInGroup(g, ownerId, groupIdxs) {
@@ -1780,7 +1811,7 @@ function isHost() { return !!ROOM && ROOM.hostId === myId; }
 function isMyTurn() { return GAME && currentPlayer(GAME) === myId; }
 
 function freshRoom(hostId) {
-  return { hostId, capacity: 4, seats: [], started: false, customPrices: {}, chat: [], disconnectTimeoutMs: 120000, restartVote: null, movementMode: 'dice' };
+  return { hostId, capacity: 4, seats: [], started: false, customPrices: {}, chat: [], disconnectTimeoutMs: 120000, restartVote: null, movementMode: 'dice', names: {} };
 }
 
 function priceOf(spaceIdx) {
@@ -1821,6 +1852,7 @@ function migratePlayerId(oldId, newId) {
     if (oldId in GAME.auction.passed) { GAME.auction.passed[newId] = GAME.auction.passed[oldId]; delete GAME.auction.passed[oldId]; }
     if (GAME.auction.highestBidderId === oldId) GAME.auction.highestBidderId = newId;
   }
+  if (ROOM.names && oldId in ROOM.names) { ROOM.names[newId] = ROOM.names[oldId]; delete ROOM.names[oldId]; }
   delete disconnectSince[oldId];
 }
 
@@ -1836,6 +1868,13 @@ document.getElementById('btn-join').onclick = () => joinRoom(document.getElement
 document.getElementById('btn-copy-link').onclick = copyShareLink;
 document.getElementById('btn-join-seat').onclick = () => room?.send('join_seat', {});
 document.getElementById('btn-start').onclick = () => room?.send('start_game', {});
+document.getElementById('btn-save-name').onclick = saveMyName;
+document.getElementById('name-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveMyName(); });
+function saveMyName() {
+  const input = document.getElementById('name-input');
+  const name = input.value.trim().slice(0, 20);
+  room?.send('set_name', { name });
+}
 
 const seatSelectEl = document.getElementById('seat-count-select');
 [2,3,4,5,6].forEach(n => {
@@ -1990,6 +2029,16 @@ async function setupRoom() {
   room.on('reset_prices', () => {
     if (!isHost() || ROOM.started) return;
     ROOM = { ...ROOM, customPrices: {} };
+    broadcastSync();
+  });
+
+  room.on('set_name', (payload) => {
+    if (!isHost() || !ROOM) return;
+    const name = String(payload.name || '').trim().slice(0, 20);
+    const names = { ...(ROOM.names || {}) };
+    if (name) names[payload.senderId] = name;
+    else delete names[payload.senderId];
+    ROOM = { ...ROOM, names };
     broadcastSync();
   });
 
@@ -2424,6 +2473,10 @@ function renderFromState() {
 
 function renderLobby() {
   document.getElementById('host-tag').classList.toggle('hidden', !isHost());
+  const nameInput = document.getElementById('name-input');
+  if (document.activeElement !== nameInput) {
+    nameInput.value = ROOM.names?.[myId] || '';
+  }
   const mode = ROOM.movementMode || 'dice';
   seatSelectEl.querySelectorAll('.seat-btn').forEach(b => {
     const n = Number(b.dataset.n);
@@ -2437,7 +2490,7 @@ function renderLobby() {
   document.getElementById('mode-btn-dice').disabled = !isHost() || ROOM.started;
   document.getElementById('mode-btn-cards').disabled = !isHost() || ROOM.started;
   document.getElementById('movement-mode-desc').textContent = mode === 'cards'
-    ? 'Cards mode (2-4 players): each hand deals everyone floor(52/players) cards. Every trick, all players (jailed ones too) play a card in turn, following the led suit if able. Spades trump everything; otherwise the highest card of the led suit wins the trick. The winner moves by their own card\'s number (A=14, K=13, Q=12, J=11, 10..2) and freely assigns the other cards\' numbers to the other players. A jailed winner still assigns numbers but never moves themselves. First bankruptcy ends the game — everyone else is ranked by cash + property value.'
+    ? 'Cards mode (2-4 players): each hand deals everyone 13 cards (any leftover cards just sit out until the next hand). Every trick, all players (jailed ones too) play a card in turn, following the led suit if able. Spades trump everything; otherwise the highest card of the led suit wins the trick. The winner moves by their own card\'s number (A=14, K=13, Q=12, J=11, 10..2) and assigns the other cards\' numbers to the other players by clicking a number for each — only legal numbers are offered. A jailed winner still assigns numbers but never moves themselves. First bankruptcy ends the game — everyone else is ranked by cash + property value.'
     : 'Dice mode: classic two-die rolls, doubles go again (three in a row sends you to Jail).';
 
   const listEl = document.getElementById('seat-list');
@@ -2451,7 +2504,7 @@ function renderLobby() {
     dot.style.background = id ? TOKEN_COLORS[i] : '#333';
     const who = document.createElement('div');
     who.className = 'who';
-    who.textContent = id ? (id === myId ? 'You' : `Player ${i + 1}`) : 'open seat';
+    who.textContent = id ? labelFor(id) : 'open seat';
     row.appendChild(dot); row.appendChild(who);
     listEl.appendChild(row);
   }
@@ -2648,9 +2701,8 @@ function renderReconnectBox() {
   row.className = 'row';
   row.style.marginTop = '8px';
   ghosts.forEach(oldId => {
-    const seatIdx = ROOM.seats.indexOf(oldId);
     const btn = document.createElement('button');
-    btn.textContent = `Claim Player ${seatIdx + 1}'s seat`;
+    btn.textContent = `Claim ${labelFor(oldId)}'s seat`;
     btn.onclick = () => room.send('claim_seat', { oldId });
     row.appendChild(btn);
   });
@@ -2742,7 +2794,7 @@ function renderGame() {
     dot.className = 'token-dot'; dot.style.background = TOKEN_COLORS[i]; dot.style.width='12px'; dot.style.height='12px';
     const label = document.createElement('span');
     const offline = !connectedIds.includes(id) && !GAME.bankrupt[id];
-    label.textContent = (id === myId ? 'You' : `Player ${i + 1}`) + (GAME.jail[id].in ? ' 🔒' : '') + (offline ? ' [offline]' : '');
+    label.textContent = labelFor(id) + (GAME.jail[id].in ? ' 🔒' : '') + (offline ? ' [offline]' : '');
     if (offline) label.style.opacity = '.6';
     const cash = document.createElement('span');
     cash.className = 'cash';
@@ -2759,7 +2811,7 @@ function renderGame() {
   } else if (GAME.trick) {
     diceRow.innerHTML = GAME.trick.order.map(id => {
       const cardIdx = GAME.trick.plays[id];
-      const name = id === myId ? 'You' : 'Player ' + (GAME.order.indexOf(id) + 1);
+      const name = labelFor(id);
       if (cardIdx === undefined) {
         return `<div class="pit-card" style="opacity:.4;"><div class="pit-card-label">?</div><div class="pit-card-name">${name}</div></div>`;
       }
@@ -2773,7 +2825,7 @@ function renderGame() {
       const isWinner = id === GAME.pit.winnerId;
       const suit = cardSuit(cardIdx);
       const red = suit === 1 || suit === 2;
-      const name = id === myId ? 'You' : 'Player ' + (GAME.order.indexOf(id) + 1);
+      const name = labelFor(id);
       return `<div class="pit-card${isWinner ? ' winner' : ''}" style="color:${red ? '#c0392b' : '#1a1a1a'}"><div class="pit-card-label">${cardLabel(cardIdx)}</div><div class="pit-card-name">${name}</div></div>`;
     }).join('');
   } else {
@@ -2834,7 +2886,7 @@ function renderGame() {
   if (GAME.phase === 'gameover') {
     if (cardsMode && GAME.finalRanking) {
       turnMsg.innerHTML = 'Game over! Final ranking (cash + property value):<br>' +
-        GAME.finalRanking.map((id, i) => `${i + 1}. ${id === myId ? 'You' : 'Player ' + (GAME.order.indexOf(id) + 1)}${GAME.bankrupt[id] ? ' (bankrupt)' : ' — Tk' + computeNetWorth(GAME, id)}`).join('<br>');
+        GAME.finalRanking.map((id, i) => `${i + 1}. ${labelFor(id)}${GAME.bankrupt[id] ? ' (bankrupt)' : ' — Tk' + computeNetWorth(GAME, id)}`).join('<br>');
     } else {
       turnMsg.textContent = GAME.winnerId === myId ? 'You win! 🎉' : (GAME.winnerId ? 'Game over — you were eliminated.' : 'Game over.');
     }
@@ -2869,7 +2921,7 @@ function renderGame() {
   } else {
     const mine = isMyTurn();
     const cp = currentPlayer(GAME);
-    turnMsg.textContent = mine ? 'Your turn' : `Waiting for ${cp === myId ? 'you' : 'Player ' + (GAME.order.indexOf(cp) + 1)}...`;
+    turnMsg.textContent = mine ? 'Your turn' : `Waiting for ${labelFor(cp)}...`;
 
     if (mine && GAME.phase === 'roll') {
       if (GAME.jail[myId].in) {
@@ -2978,54 +3030,87 @@ function renderGame() {
   }
 }
 
-// Lets the pit's winner freely assign the other cards' numbers to the
-// other participants (plain number inputs + client-side validation that
-// it's an exact permutation of the values on offer, before sending).
+// Client-local (not synced) scratch state for the pit assignment UI —
+// which number the winner has tentatively clicked for each other
+// player, kept across re-renders (e.g. a chat message triggering a
+// resync) by keying it to this specific pit round. Reset automatically
+// whenever a new pit round starts, since the key won't match.
+let pitAssignState = null; // { key, chosen: { playerId: number|null } }
+function pitAssignKey(pit) {
+  return pit.winnerId + '|' + pit.remainingValues.join(',') + '|' + pit.otherIds.join(',');
+}
+
+// Lets the pit's winner assign the other cards' numbers to the other
+// participants by clicking a number for each — only numbers still
+// available in the pool are ever offered as buttons, so an illegal or
+// duplicate assignment isn't something the UI can even produce.
 function renderPitAssignUI(container) {
   const pit = GAME.pit;
+  const key = pitAssignKey(pit);
+  if (!pitAssignState || pitAssignState.key !== key) {
+    pitAssignState = { key, chosen: {} };
+    pit.otherIds.forEach(id => { pitAssignState.chosen[id] = null; });
+  }
+  const chosen = pitAssignState.chosen;
+
+  // How many of each value are still unclaimed (values can repeat,
+  // e.g. two players both playing a rank-5 card, so this is a
+  // multiset count, not just a yes/no per value).
+  const availCount = {};
+  pit.remainingValues.forEach(v => { availCount[v] = (availCount[v] || 0) + 1; });
+  Object.values(chosen).forEach(v => { if (v != null) availCount[v] -= 1; });
+  const distinctValues = [...new Set(pit.remainingValues)].sort((a, b) => a - b);
+
   const wrap = document.createElement('div');
   wrap.style.width = '100%';
   const poolMsg = document.createElement('div');
   poolMsg.className = 'msg';
-  poolMsg.style.marginBottom = '6px';
-  poolMsg.textContent = `Numbers to give out: ${pit.remainingValues.join(', ')} (each used exactly once)`;
+  poolMsg.style.marginBottom = '8px';
+  poolMsg.textContent = `Click a number for each player to give out: ${pit.remainingValues.join(', ')}`;
   wrap.appendChild(poolMsg);
-  const inputs = {};
+
   pit.otherIds.forEach(id => {
     const row = document.createElement('div');
-    row.className = 'row';
-    row.style.marginBottom = '4px';
-    const label = document.createElement('span');
-    label.textContent = (id === myId ? 'You' : 'Player ' + (GAME.order.indexOf(id) + 1)) + ':';
-    label.style.width = '90px';
-    label.style.display = 'inline-block';
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.style.width = '70px';
-    inputs[id] = input;
-    row.appendChild(label); row.appendChild(input);
+    row.style.marginBottom = '8px';
+    const label = document.createElement('div');
+    label.style.fontWeight = '700';
+    label.style.fontSize = '13px';
+    label.style.marginBottom = '4px';
+    label.textContent = labelFor(id) + ':';
+    row.appendChild(label);
+
+    if (chosen[id] != null) {
+      const badge = document.createElement('button');
+      badge.textContent = `${chosen[id]} ✕`;
+      badge.title = 'Click to change';
+      badge.style.background = 'linear-gradient(160deg,#e8d98a,var(--gold))';
+      badge.style.borderColor = 'var(--gold-dark)';
+      badge.onclick = () => { chosen[id] = null; renderGame(); };
+      row.appendChild(badge);
+    } else {
+      const btnRow = document.createElement('div');
+      btnRow.className = 'row';
+      btnRow.style.justifyContent = 'flex-start';
+      distinctValues.forEach(v => {
+        if ((availCount[v] || 0) <= 0) return;
+        const btn = document.createElement('button');
+        btn.textContent = (availCount[v] > 1) ? `${v} (×${availCount[v]})` : String(v);
+        btn.style.minWidth = '40px';
+        btn.onclick = () => { chosen[id] = v; renderGame(); };
+        btnRow.appendChild(btn);
+      });
+      row.appendChild(btnRow);
+    }
     wrap.appendChild(row);
   });
-  const statusMsg = document.createElement('div');
-  statusMsg.className = 'msg';
-  statusMsg.style.color = '#c0392b';
-  wrap.appendChild(statusMsg);
+
+  const allAssigned = pit.otherIds.every(id => chosen[id] != null);
   const confirmBtn = document.createElement('button');
   confirmBtn.textContent = 'Confirm Assignment';
+  confirmBtn.disabled = !allAssigned;
+  confirmBtn.style.marginTop = '4px';
   confirmBtn.onclick = () => {
-    const assignments = {};
-    for (const id of pit.otherIds) {
-      const v = Number(inputs[id].value);
-      if (!inputs[id].value || !Number.isFinite(v)) { statusMsg.textContent = 'Fill in a number for every player.'; return; }
-      assignments[id] = v;
-    }
-    const need = pit.remainingValues.slice().sort((a, b) => a - b);
-    const got = pit.otherIds.map(id => assignments[id]).sort((a, b) => a - b);
-    if (need.length !== got.length || !need.every((v, i) => v === got[i])) {
-      statusMsg.textContent = `Those numbers must exactly match ${pit.remainingValues.join(', ')}, each used once.`;
-      return;
-    }
-    room.send('card_pit_assign', { assignments });
+    room.send('card_pit_assign', { assignments: { ...chosen } });
   };
   wrap.appendChild(confirmBtn);
   container.appendChild(wrap);
@@ -3051,11 +3136,11 @@ function populateTradeTargets() {
   const sel = document.getElementById('trade-target');
   const prev = sel.value;
   sel.innerHTML = '';
-  GAME.order.forEach((id, i) => {
+  GAME.order.forEach((id) => {
     if (id === myId || GAME.bankrupt[id]) return;
     const opt = document.createElement('option');
     opt.value = id;
-    opt.textContent = `Player ${i + 1}`;
+    opt.textContent = labelFor(id);
     sel.appendChild(opt);
   });
   if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
@@ -3239,8 +3324,7 @@ function renderChat() {
   (ROOM.chat || []).forEach(m => {
     const div = document.createElement('div');
     div.className = 'chat-msg' + (m.senderId === myId ? ' mine' : '');
-    const seatIdx = ROOM.seats.indexOf(m.senderId);
-    const who = m.senderId === myId ? 'You' : (seatIdx >= 0 ? `Player ${seatIdx + 1}` : 'Player');
+    const who = labelFor(m.senderId);
     div.innerHTML = `<span class="who">${who}:</span> `;
     div.appendChild(document.createTextNode(m.text));
     box.appendChild(div);
