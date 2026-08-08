@@ -716,6 +716,14 @@
       <div class="msg" id="turn-msg" style="margin-bottom:8px;"></div>
       <div class="action-row" id="action-row"></div>
     </div>
+    <div class="hud-box" id="jail-hud-box" style="display:none;">
+      <h4>Jail</h4>
+      <div id="jail-box"></div>
+    </div>
+    <div class="hud-box" id="hand-hud-box" style="display:none;">
+      <h4>Your Hand</h4>
+      <div class="dice-row" id="hand-row" style="justify-content:flex-start;"></div>
+    </div>
     <div class="hud-box" id="auction-hud-box" style="display:none;">
       <h4>Auction</h4>
       <div id="auction-box"></div>
@@ -952,162 +960,177 @@ function shuffleArray(arr) {
 }
 
 // =========================================================
-// CARD MOVEMENT MODE — an alternative to dice. A standard
-// 52-card deck (indices 0-51: suit = floor(i/13) in the order
-// Spades,Hearts,Diamonds,Clubs; rank = i%13 in the order
-// 2,3,4,5,6,7,8,9,10,J,Q,K,A). Each "pit" deals one card to
-// every player who is free (not jailed, not bankrupt). Spades
-// are trump — any Spade beats any non-Spade regardless of
-// rank; otherwise highest rank wins; a same-rank tie between
-// two non-Spade suits breaks toward the higher suit rank
-// (Hearts > Diamonds > Clubs). The pit's winner moves by the
-// number of their own winning card (A=14 down to 2), then
-// freely assigns the remaining cards' numbers to the other
-// pit participants however they like — not tied to whose card
-// was whose.
+// CARDS MODE — proper trick-taking, up to 4 players. Each
+// hand deals floor(52/N) cards to every seated player (a
+// 4-player game deals exactly 13 each, using the whole deck).
+// Each trick, every player (jailed players included — they
+// still play, they just never move) plays one card in turn
+// order starting from the previous trick's winner (the very
+// first trick starts from seat 1). You must follow the suit
+// that was led if you're holding one. Spades are trump — any
+// Spade beats any non-Spade regardless of rank; otherwise
+// highest rank of the led suit wins (off-suit, non-trump
+// sluffs can never win the trick).
+//
+// The trick's winner moves by the number on their OWN played
+// card (A=14 down to 2), then freely assigns the OTHER played
+// cards' numbers to the other participants however they like
+// — not tied to whose card was whose. A jailed winner still
+// gets to assign numbers to everyone else; their own token
+// just doesn't move. Once every hand is exhausted, the deck
+// reshuffles and a fresh hand is dealt, continuing seamlessly
+// from the same trick rotation.
+//
+// The game ends the instant any player goes bankrupt; everyone
+// else is ranked by cash + property value (see checkWin).
 // =========================================================
 const CARD_RANK_LABELS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
 const CARD_SUIT_SYMBOLS = ['♠','♥','♦','♣'];
-const CARD_SUIT_NAMES = ['Spades','Hearts','Diamonds','Clubs'];
 function cardSuit(cardIdx) { return Math.floor(cardIdx / 13); } // 0=Spades,1=Hearts,2=Diamonds,3=Clubs
 function cardRankIdx(cardIdx) { return cardIdx % 13; }
 function cardValue(cardIdx) { return cardRankIdx(cardIdx) + 2; } // 2..14 (Ace=14)
 function cardLabel(cardIdx) { return CARD_RANK_LABELS[cardRankIdx(cardIdx)] + CARD_SUIT_SYMBOLS[cardSuit(cardIdx)]; }
-// Does card `a` beat card `b` in a pit? Spades trump everything else;
-// otherwise higher value wins; a same-value tie (only possible between
-// two non-Spade suits, since suits are otherwise unique per rank in one
-// pit draw) breaks toward whichever suit sorts first below.
+// Does eligible card `a` beat eligible card `b`? (Both already known to
+// be either the led suit or trump — see determineTrickWinner.) Spades
+// beat any non-Spade; otherwise higher rank wins; a same-rank tie
+// between two non-Spade suits breaks toward whichever suit sorts first.
 function cardBeats(a, b) {
   const aSpade = cardSuit(a) === 0, bSpade = cardSuit(b) === 0;
   if (aSpade !== bSpade) return aSpade;
   const av = cardValue(a), bv = cardValue(b);
   if (av !== bv) return av > bv;
-  return cardSuit(a) < cardSuit(b); // lower suit index = higher house-rule priority
+  return cardSuit(a) < cardSuit(b);
+}
+function handSizeForPlayers(n) { return Math.floor(52 / n); }
+
+// Shuffles a fresh 52-card deck and deals floor(52/N) cards to every
+// seated player.
+function dealNewHand(g) {
+  const size = handSizeForPlayers(g.order.length);
+  const deck = shuffled(new Array(52));
+  g.hands = {};
+  g.order.forEach((id, i) => { g.hands[id] = deck.slice(i * size, (i + 1) * size); });
+  pushLog(g, `New hand dealt — ${size} cards each.`);
 }
 
-// Draws `n` cards off the top of the deck, reshuffling the discard pile
-// back into a fresh draw pile first if it can't cover the draw.
-function drawPitCards(g, n) {
-  if (g.deck.length < n) {
-    g.deck = g.deck.concat(shuffleArray(g.discardPile));
-    g.discardPile = [];
-    pushLog(g, 'The card deck was reshuffled.');
-  }
-  return g.deck.splice(0, n);
+// Starts a fresh trick led by `leaderId`, in seat order from there.
+// Every seated player takes part (jailed players play too).
+function startNewTrick(g, leaderId) {
+  const li = g.order.indexOf(leaderId);
+  const order = g.order.slice(li).concat(g.order.slice(0, li));
+  g.trick = { order, turnIdx: 0, ledSuit: null, plays: {} };
+  g.phase = 'card_trick_play';
 }
 
-// Starts a pit: deals one card to every non-bankrupt, non-jailed player.
-// With 2+ participants, this determines a winner and pauses in
-// 'card_pit_assign' for the winner to distribute the other numbers. With
-// only one participant (everyone else is in Jail), there's nothing to
-// contest or distribute — they simply move by their own card.
-function doDealPit(g, dealerId) {
-  const participants = livingOrder(g).filter(id => !g.jail[id].in);
-  g.pitDealerId = dealerId;
-  if (participants.length <= 1) {
-    const solo = participants[0] ?? dealerId;
-    const [cardIdx] = drawPitCards(g, 1);
-    g.discardPile.push(cardIdx);
-    const val = cardValue(cardIdx);
-    pushLog(g, `${nameOf(solo)} drew ${cardLabel(cardIdx)} alone (everyone else is in Jail) and moves ${val} spaces.`);
-    g.pitQueue = [{ playerId: solo, spaces: val }];
-    g.phase = 'resolve';
-    continuePit(g);
-    finishPitIfDone(g);
-    return;
+// Attempts to play `cardIdx` from playerId's hand into the current
+// trick. Enforces turn order and the must-follow-suit rule. Returns
+// false (no state change) on any illegal attempt.
+function playTrickCard(g, playerId, cardIdx) {
+  if (!g.trick || g.trick.order[g.trick.turnIdx] !== playerId) return false;
+  const hand = g.hands[playerId] || [];
+  const pos = hand.indexOf(cardIdx);
+  if (pos === -1) return false;
+  const suit = cardSuit(cardIdx);
+  if (g.trick.ledSuit !== null && suit !== g.trick.ledSuit) {
+    const hasLedSuit = hand.some(c => cardSuit(c) === g.trick.ledSuit);
+    if (hasLedSuit) return false; // must follow suit when able
   }
-  const dealt = {};
-  drawPitCards(g, participants.length).forEach((cardIdx, i) => { dealt[participants[i]] = cardIdx; });
-  let winnerId = participants[0];
-  for (const id of participants) if (cardBeats(dealt[id], dealt[winnerId])) winnerId = id;
-  const winnerVal = cardValue(dealt[winnerId]);
-  const otherIds = participants.filter(id => id !== winnerId);
-  const remainingValues = otherIds.map(id => cardValue(dealt[id]));
-  pushLog(g, `Pit: ${participants.map(id => `${nameOf(id)} ${cardLabel(dealt[id])}`).join(', ')} — ${nameOf(winnerId)} wins with ${cardLabel(dealt[winnerId])} and must assign ${remainingValues.join(', ')} to the others.`);
-  g.pit = { dealerId, participants, cards: dealt, winnerId, winnerVal, otherIds, remainingValues, assigned: {} };
+  hand.splice(pos, 1);
+  g.trick.plays[playerId] = cardIdx;
+  if (g.trick.ledSuit === null) g.trick.ledSuit = suit;
+  g.trick.turnIdx++;
+  if (g.trick.turnIdx >= g.trick.order.length) resolveTrick(g);
+  return true;
+}
+
+// Only cards of the led suit or Spades (trump) are eligible to win a
+// trick — an off-suit, non-trump sluff can never take it, no matter
+// its rank.
+function determineTrickWinner(g) {
+  const led = g.trick.ledSuit;
+  let winnerId = null, winnerCard = null;
+  for (const id of g.trick.order) {
+    const c = g.trick.plays[id];
+    if (cardSuit(c) !== 0 && cardSuit(c) !== led) continue; // ineligible sluff
+    if (winnerCard === null || cardBeats(c, winnerCard)) { winnerId = id; winnerCard = c; }
+  }
+  return winnerId;
+}
+
+// All four cards are in — determine the winner and hand off to the
+// 'card_pit_assign' phase for them to distribute the other numbers.
+function resolveTrick(g) {
+  const { order, plays } = g.trick;
+  const winnerId = determineTrickWinner(g);
+  const winnerVal = cardValue(plays[winnerId]);
+  const otherIds = order.filter(id => id !== winnerId);
+  const remainingValues = otherIds.map(id => cardValue(plays[id]));
+  pushLog(g, `Trick: ${order.map(id => `${nameOf(id)} ${cardLabel(plays[id])}`).join(', ')} — ${nameOf(winnerId)} wins with ${cardLabel(plays[winnerId])}${g.jail[winnerId].in ? ' (in Jail — assigns movement but doesn\u2019t move)' : ''} and must assign ${remainingValues.join(', ')} to the others.`);
+  g.pit = { winnerId, winnerVal, otherIds, remainingValues, plays, assigned: {} };
+  g.lastTrickWinner = winnerId; // leads the next trick, even across a reshuffle
+  g.trick = null;
   g.phase = 'card_pit_assign';
 }
 
 // The winner submits a full assignment of the remaining card numbers to
-// the other pit participants (any bijection they like). Validates it's
-// an exact permutation of the values actually in play before committing.
+// the other trick participants (any bijection they like). Validates
+// it's an exact permutation of the values actually in play. Jailed
+// participants (winner included) still receive/give numbers but never
+// actually move.
 function tryResolvePitAssignment(g, winnerId, assignments) {
   if (!g.pit || g.pit.winnerId !== winnerId) return false;
-  const { otherIds, remainingValues, winnerVal, dealerId } = g.pit;
+  const { otherIds, remainingValues, winnerVal } = g.pit;
   const chosen = otherIds.map(id => assignments[id]);
   if (chosen.some(v => typeof v !== 'number' || !Number.isFinite(v))) return false;
   const need = remainingValues.slice().sort((a, b) => a - b);
   const got = chosen.slice().sort((a, b) => a - b);
   if (need.length !== got.length || !need.every((v, i) => v === got[i])) return false;
-  const queue = [{ playerId: winnerId, spaces: winnerVal }];
-  otherIds.forEach(id => queue.push({ playerId: id, spaces: assignments[id] }));
+
+  const queue = [];
+  if (!g.jail[winnerId].in) queue.push({ playerId: winnerId, spaces: winnerVal });
+  else pushLog(g, `${nameOf(winnerId)} is in Jail and stays put despite winning the trick.`);
+  otherIds.forEach(id => {
+    if (!g.jail[id].in) queue.push({ playerId: id, spaces: assignments[id] });
+    else pushLog(g, `${nameOf(id)} is in Jail and stays put.`);
+  });
   g.pit = null;
   g.pitQueue = queue;
   g.phase = 'resolve';
-  g.pitDealerId = dealerId; // (already set, kept explicit for clarity)
   continuePit(g);
-  finishPitIfDone(g);
+  finishTrickCycle(g);
   return true;
 }
 
-// Drains the pit's movement queue while the game is fully settled
+// Drains the trick's movement queue while the game is fully settled
 // ('resolve'). Each queued mover is briefly made the "current player"
 // (via turnIdx) so all the existing buy/tax/debt/auction machinery —
-// which is normally written assuming only the current player ever
-// lands — works unchanged for whoever's moving. If a landing opens a
-// pending decision (buy/tax_choice/debt/auction), this pauses here;
-// whichever handler resolves that decision back to 'resolve' calls
-// continuePit again to keep draining the queue.
+// normally written assuming only the current player ever lands —
+// works unchanged for whoever's moving. If a landing opens a pending
+// decision (buy/tax_choice/debt/auction), this pauses here; whichever
+// handler resolves that decision back to 'resolve' calls continuePit
+// again to keep draining. A no-op in dice mode (pitQueue stays null).
 function continuePit(g) {
   if (g.phase !== 'resolve' || !g.pitQueue || !g.pitQueue.length) return;
   const next = g.pitQueue.shift();
   if (g.bankrupt[next.playerId]) { continuePit(g); return; }
   g.turnIdx = g.order.indexOf(next.playerId);
-  g.lastRoll = [next.spaces, 0]; // stand-in "dice sum" for any Chance/Chest util-rent or reference during this move
+  g.lastRoll = [next.spaces, 0]; // stand-in "dice sum" for any Chance/Chest util-rent reference
   const np = (g.pos[next.playerId] + next.spaces) % 40;
   movePlayerTo(g, next.playerId, np);
   landOn(g, next.playerId, np, next.spaces);
   continuePit(g);
 }
 
-// Once the whole pit's queue has fully drained with nothing left
-// pending, hands the turn back starting from the original dealer
-// (not whoever happened to move last) and advances to the next player.
-function finishPitIfDone(g) {
-  if (g.pitDealerId == null) return;
-  if (g.phase !== 'resolve' || g.pit || (g.pitQueue && g.pitQueue.length)) return;
-  const dealerId = g.pitDealerId;
-  g.pitDealerId = null;
+// Once a trick's whole movement queue has drained with nothing left
+// pending, moves on: reshuffles and deals a new hand if everyone's
+// hand is now empty, then starts the next trick led by whoever won
+// the last one. A no-op outside Cards mode.
+function finishTrickCycle(g) {
+  if (!ROOM || ROOM.movementMode !== 'cards') return;
+  if (g.phase !== 'resolve' || (g.pitQueue && g.pitQueue.length) || g.pit || g.trick) return;
   g.pitQueue = null;
-  if (g.bankrupt[dealerId]) {
-    // dealer themselves went bankrupt mid-pit; just settle from wherever turnIdx is
-    if (g.phase === 'resolve') doEndTurn(g);
-    return;
-  }
-  g.turnIdx = g.order.indexOf(dealerId);
-  doEndTurn(g);
-}
-
-// Cards-mode equivalent of failing to roll doubles out of Jail: the
-// jailed player, on their turn, chooses to just wait instead of paying
-// or using a card. After 3 waits they're forced to pay the Tk50 fine
-// (or go bankrupt trying) — same as dice mode — but they never get to
-// join a pit's movement on the turn they're released this way.
-function doCardsJailWait(g, playerId) {
-  if (!g.jail[playerId].in) return;
-  g.jail[playerId].turns++;
-  if (g.jail[playerId].turns >= 3) {
-    const ok = payAmount(g, playerId, 'bank', 50, 'jailFine');
-    if (!ok) return; // paused — resumes via resumeAfterDebt (context 'jailFine')
-    g.jail[playerId] = { in:false, turns:0 };
-    pushLog(g, `${nameOf(playerId)} paid Tk50 to leave Jail after 3 tries.`);
-    g.phase = 'resolve';
-    doEndTurn(g);
-  } else {
-    pushLog(g, `${nameOf(playerId)} stayed in Jail (try ${g.jail[playerId].turns}/3).`);
-    g.phase = 'resolve';
-    doEndTurn(g);
-  }
+  if ((g.hands[g.order[0]] || []).length === 0) dealNewHand(g);
+  startNewTrick(g, g.lastTrickWinner ?? g.order[0]);
 }
 
 // =========================================================
@@ -1131,14 +1154,15 @@ function freshGame(order) {
     chancePile: shuffled(CHANCE_CARDS), chanceDiscard: [],
     chestPile: shuffled(CHEST_CARDS), chestDiscard: [],
     trades: [], nextTradeId: 1,
-    log: ['Game started.'], winnerId: null,
+    log: ['Game started.'], winnerId: null, finalRanking: null,
     announcement: null, // { kind:'card'|'jail', text, ts } — drives the toast popup
-    // Cards movement mode (see CARD MOVEMENT MODE section below) — harmless
-    // and unused when ROOM.movementMode is 'dice'.
-    deck: shuffled(new Array(52)), discardPile: [],
-    pit: null,          // { dealerId, participants, cards, winnerId, winnerVal, otherIds, remainingValues, assigned } — set while the winner is choosing how to distribute movement
-    pitQueue: null,     // [{playerId, spaces}, ...] — players still waiting to move+land once a pit's assignment is confirmed
-    pitDealerId: null,  // whoever started the current pit — turn returns to after them once the whole pit settles
+    // Cards movement mode (see CARDS MODE section above) — unused/inert
+    // when ROOM.movementMode is 'dice'.
+    hands: {},            // { playerId: [cardIdx,...] } — current trick-taking hand
+    trick: null,           // { order, turnIdx, ledSuit, plays } — trick currently being played out
+    pit: null,              // { winnerId, winnerVal, otherIds, remainingValues, plays, assigned } — set while the winner distributes movement
+    pitQueue: null,          // [{playerId, spaces}, ...] — movers still waiting to move+land once assignment is confirmed
+    lastTrickWinner: null,    // leads the next trick
   };
 }
 
@@ -1158,6 +1182,17 @@ function advanceTurn(g) {
 }
 
 function checkWin(g) {
+  if (ROOM && ROOM.movementMode === 'cards') {
+    const bankruptIds = g.order.filter(id => g.bankrupt[id]);
+    if (bankruptIds.length > 0 && g.phase !== 'gameover') {
+      const remaining = livingOrder(g).sort((a, b) => computeNetWorth(g, b) - computeNetWorth(g, a));
+      g.finalRanking = [...remaining, ...bankruptIds];
+      g.phase = 'gameover';
+      g.winnerId = remaining[0] || null;
+      pushLog(g, `${nameOf(bankruptIds[0])} went bankrupt — game over! Ranking: ${g.finalRanking.map((id, i) => `${i + 1}. ${nameOf(id)}`).join(', ')}`);
+    }
+    return;
+  }
   const alive = livingOrder(g);
   if (alive.length <= 1) {
     g.phase = 'gameover';
@@ -1371,17 +1406,11 @@ function payToEach(g, fromId, amount) {
 // whatever was interrupted.
 function resumeAfterDebt(g, context, playerId, bankrupted) {
   if (context === 'jailFine' && !bankrupted) {
+    // Only reachable in dice mode (three failed doubles rolls force a
+    // paid release) — cards mode lets a jailed player pay/use a card
+    // any time, with no forced-after-3-tries mechanic.
     g.jail[playerId] = { in:false, turns:0 };
     pushLog(g, `${nameOf(playerId)} paid Tk50 to leave Jail after 3 tries.`);
-    if (ROOM && ROOM.movementMode === 'cards') {
-      // Cards mode: forced-paying out of Jail this way doesn't earn a
-      // move this round — same as the dice-mode "stayed in Jail" case,
-      // just released now for next time.
-      g.phase = 'resolve';
-      checkWin(g);
-      if (g.phase === 'resolve') doEndTurn(g);
-      return;
-    }
     const [d1, d2] = g.lastRoll;
     const np = (g.pos[playerId] + d1 + d2) % 40;
     movePlayerTo(g, playerId, np);
@@ -1394,9 +1423,9 @@ function resumeAfterDebt(g, context, playerId, bankrupted) {
     if (g.phase === 'debt') return; // another player in the same batch now owes money
   }
   if (g.phase !== 'auction' && g.phase !== 'buy' && g.phase !== 'debt') g.phase = 'resolve';
-  if (g.pitDealerId != null) {
+  if (ROOM && ROOM.movementMode === 'cards') {
     continuePit(g);
-    finishPitIfDone(g);
+    finishTrickCycle(g);
   } else if (g.phase === 'resolve' && g.bankrupt[currentPlayer(g)]) {
     doEndTurn(g);
   }
@@ -1607,9 +1636,9 @@ function resolveAuctionIfDone(g) {
     return;
   }
   g.phase = 'resolve';
-  if (g.pitDealerId != null) {
+  if (ROOM && ROOM.movementMode === 'cards') {
     continuePit(g);
-    finishPitIfDone(g);
+    finishTrickCycle(g);
   } else if (g.bankrupt[currentPlayer(g)]) {
     doEndTurn(g);
   }
@@ -1915,7 +1944,8 @@ async function setupRoom() {
 
   room.on('set_capacity', (payload) => {
     if (!isHost() || ROOM.started) return;
-    const cap = Math.max(2, Math.min(6, payload.capacity | 0));
+    const maxCap = ROOM.movementMode === 'cards' ? 4 : 6;
+    const cap = Math.max(2, Math.min(maxCap, payload.capacity | 0));
     ROOM = { ...ROOM, capacity: cap, seats: ROOM.seats.slice(0, cap) };
     broadcastSync();
   });
@@ -1923,7 +1953,8 @@ async function setupRoom() {
   room.on('set_movement_mode', (payload) => {
     if (!isHost() || ROOM.started) return;
     const mode = payload.mode === 'cards' ? 'cards' : 'dice';
-    ROOM = { ...ROOM, movementMode: mode };
+    const cap = mode === 'cards' ? Math.min(4, ROOM.capacity) : ROOM.capacity;
+    ROOM = { ...ROOM, movementMode: mode, capacity: cap, seats: ROOM.seats.slice(0, cap) };
     broadcastSync();
   });
 
@@ -1991,8 +2022,13 @@ async function setupRoom() {
   room.on('start_game', () => {
     if (!isHost() || ROOM.started) return;
     if (ROOM.seats.length < 2) return;
+    if (ROOM.movementMode === 'cards' && ROOM.seats.length > 4) return; // Cards mode: 2-4 players only
     ROOM = { ...ROOM, started: true };
     GAME = freshGame(ROOM.seats);
+    if (ROOM.movementMode === 'cards') {
+      dealNewHand(GAME);
+      startNewTrick(GAME, GAME.order[0]);
+    }
     broadcastSync();
   });
 
@@ -2003,18 +2039,10 @@ async function setupRoom() {
     broadcastSync();
   });
 
-  room.on('deal_pit', (payload) => {
-    if (!isHost() || !GAME || GAME.phase !== 'roll' || ROOM.movementMode !== 'cards') return;
-    if (currentPlayer(GAME) !== payload.senderId) return;
-    if (GAME.jail[payload.senderId].in) return; // must pay/use-card/wait instead
-    doDealPit(GAME, payload.senderId);
-    broadcastSync();
-  });
-
-  room.on('jail_wait_cards', (payload) => {
-    if (!isHost() || !GAME || GAME.phase !== 'roll' || ROOM.movementMode !== 'cards') return;
-    if (currentPlayer(GAME) !== payload.senderId) return;
-    doCardsJailWait(GAME, payload.senderId);
+  room.on('play_trick_card', (payload) => {
+    if (!isHost() || !GAME || GAME.phase !== 'card_trick_play' || ROOM.movementMode !== 'cards') return;
+    const ok = playTrickCard(GAME, payload.senderId, payload.cardIdx);
+    if (!ok) return;
     broadcastSync();
   });
 
@@ -2037,7 +2065,7 @@ async function setupRoom() {
     }
     GAME.pendingBuySpace = null;
     GAME.phase = 'resolve';
-    if (GAME.pitDealerId != null) { continuePit(GAME); finishPitIfDone(GAME); }
+    if (ROOM.movementMode === 'cards') { continuePit(GAME); finishTrickCycle(GAME); }
     broadcastSync();
   });
 
@@ -2090,7 +2118,7 @@ async function setupRoom() {
       pushLog(GAME, `${nameOf(payload.senderId)} paid the flat Tk${space.amount} income tax.`);
       GAME.phase = 'resolve';
       checkWin(GAME);
-      if (GAME.pitDealerId != null) { continuePit(GAME); finishPitIfDone(GAME); }
+      if (ROOM.movementMode === 'cards') { continuePit(GAME); finishTrickCycle(GAME); }
     } // else: paused in 'debt' phase — raise cash or declare bankruptcy
     broadcastSync();
   });
@@ -2105,7 +2133,7 @@ async function setupRoom() {
       pushLog(GAME, `${nameOf(payload.senderId)} paid Tk${amount} income tax (10% of net worth).`);
       GAME.phase = 'resolve';
       checkWin(GAME);
-      if (GAME.pitDealerId != null) { continuePit(GAME); finishPitIfDone(GAME); }
+      if (ROOM.movementMode === 'cards') { continuePit(GAME); finishTrickCycle(GAME); }
     } // else: paused in 'debt' phase — raise cash or declare bankruptcy
     broadcastSync();
   });
@@ -2210,8 +2238,12 @@ async function setupRoom() {
   });
 
   room.on('pay_jail_fine', (payload) => {
-    if (!isHost() || !GAME || GAME.phase !== 'roll') return;
-    if (currentPlayer(GAME) !== payload.senderId) return;
+    if (!isHost() || !GAME) return;
+    if (ROOM.movementMode === 'cards') {
+      if (GAME.phase === 'gameover') return; // otherwise payable any time — no personal "turn" in trick mode
+    } else {
+      if (GAME.phase !== 'roll' || currentPlayer(GAME) !== payload.senderId) return;
+    }
     if (!GAME.jail[payload.senderId].in) return;
     if (GAME.cash[payload.senderId] < 50) return;
     GAME.cash[payload.senderId] -= 50;
@@ -2221,8 +2253,12 @@ async function setupRoom() {
   });
 
   room.on('use_jail_card', (payload) => {
-    if (!isHost() || !GAME || GAME.phase !== 'roll') return;
-    if (currentPlayer(GAME) !== payload.senderId) return;
+    if (!isHost() || !GAME) return;
+    if (ROOM.movementMode === 'cards') {
+      if (GAME.phase === 'gameover') return; // otherwise usable any time — no personal "turn" in trick mode
+    } else {
+      if (GAME.phase !== 'roll' || currentPlayer(GAME) !== payload.senderId) return;
+    }
     const held = GAME.jailCardsHeld[payload.senderId];
     if (!GAME.jail[payload.senderId].in || !held || held.length === 0) return;
     const deckName = held.shift(); // return the card to the bottom of whichever deck it came from
@@ -2373,18 +2409,20 @@ function renderFromState() {
 
 function renderLobby() {
   document.getElementById('host-tag').classList.toggle('hidden', !isHost());
+  const mode = ROOM.movementMode || 'dice';
   seatSelectEl.querySelectorAll('.seat-btn').forEach(b => {
-    b.classList.toggle('active', Number(b.dataset.n) === ROOM.capacity);
-    b.disabled = !isHost() || ROOM.started;
+    const n = Number(b.dataset.n);
+    b.classList.toggle('active', n === ROOM.capacity);
+    b.disabled = !isHost() || ROOM.started || (mode === 'cards' && n > 4);
+    b.style.display = (mode === 'cards' && n > 4) ? 'none' : '';
   });
 
-  const mode = ROOM.movementMode || 'dice';
   document.getElementById('mode-btn-dice').classList.toggle('active', mode === 'dice');
   document.getElementById('mode-btn-cards').classList.toggle('active', mode === 'cards');
   document.getElementById('mode-btn-dice').disabled = !isHost() || ROOM.started;
   document.getElementById('mode-btn-cards').disabled = !isHost() || ROOM.started;
   document.getElementById('movement-mode-desc').textContent = mode === 'cards'
-    ? 'Cards mode: each round everyone still free (not jailed) is dealt one card from a 52-card deck. Spades beat every other suit; otherwise highest rank wins. The winner moves by their own card\'s number (A=14, K=13, Q=12, J=11, 10..2) and freely assigns the other cards\' numbers to the other players as they wish.'
+    ? 'Cards mode (2-4 players): each hand deals everyone floor(52/players) cards. Every trick, all players (jailed ones too) play a card in turn, following the led suit if able. Spades trump everything; otherwise the highest card of the led suit wins the trick. The winner moves by their own card\'s number (A=14, K=13, Q=12, J=11, 10..2) and freely assigns the other cards\' numbers to the other players. A jailed winner still assigns numbers but never moves themselves. First bankruptcy ends the game — everyone else is ranked by cash + property value.'
     : 'Dice mode: classic two-die rolls, doubles go again (three in a row sends you to Jail).';
 
   const listEl = document.getElementById('seat-list');
@@ -2698,24 +2736,79 @@ function renderGame() {
     playersBox.appendChild(row);
   });
 
-  // dice / pit display
+  // dice / trick display
   const cardsMode = ROOM.movementMode === 'cards';
   const diceRow = document.getElementById('dice-row');
   if (!cardsMode) {
     diceRow.innerHTML = `<div class="die">${GAME.lastRoll[0]}</div><div class="die">${GAME.lastRoll[1]}</div>`;
+  } else if (GAME.trick) {
+    diceRow.innerHTML = GAME.trick.order.map(id => {
+      const cardIdx = GAME.trick.plays[id];
+      const name = id === myId ? 'You' : 'Player ' + (GAME.order.indexOf(id) + 1);
+      if (cardIdx === undefined) {
+        return `<div class="pit-card" style="opacity:.4;"><div class="pit-card-label">?</div><div class="pit-card-name">${name}</div></div>`;
+      }
+      const suit = cardSuit(cardIdx);
+      const red = suit === 1 || suit === 2;
+      return `<div class="pit-card" style="color:${red ? '#c0392b' : '#1a1a1a'}"><div class="pit-card-label">${cardLabel(cardIdx)}</div><div class="pit-card-name">${name}</div></div>`;
+    }).join('');
   } else if (GAME.pit) {
-    diceRow.innerHTML = GAME.pit.participants.map(id => {
-      const cardIdx = GAME.pit.cards[id];
+    diceRow.innerHTML = Object.keys(GAME.pit.plays).map(id => {
+      const cardIdx = GAME.pit.plays[id];
       const isWinner = id === GAME.pit.winnerId;
       const suit = cardSuit(cardIdx);
       const red = suit === 1 || suit === 2;
-      return `<div class="pit-card${isWinner ? ' winner' : ''}" style="color:${red ? '#c0392b' : '#1a1a1a'}">
-        <div class="pit-card-label">${cardLabel(cardIdx)}</div>
-        <div class="pit-card-name">${id === myId ? 'You' : 'Player ' + (GAME.order.indexOf(id) + 1)}</div>
-      </div>`;
+      const name = id === myId ? 'You' : 'Player ' + (GAME.order.indexOf(id) + 1);
+      return `<div class="pit-card${isWinner ? ' winner' : ''}" style="color:${red ? '#c0392b' : '#1a1a1a'}"><div class="pit-card-label">${cardLabel(cardIdx)}</div><div class="pit-card-name">${name}</div></div>`;
     }).join('');
   } else {
-    diceRow.innerHTML = `<div class="die" style="font-size:16px;">🃏 no pit dealt yet</div>`;
+    diceRow.innerHTML = `<div class="die" style="font-size:16px;">🃏</div>`;
+  }
+
+  // jail box — in cards mode, pay/use-card is available any time (no
+  // personal "turn"), so it gets its own persistent box instead of
+  // living in the roll-phase action row.
+  const jailWrap = document.getElementById('jail-hud-box');
+  if (cardsMode && GAME.jail[myId] && GAME.jail[myId].in && GAME.phase !== 'gameover') {
+    jailWrap.style.display = '';
+    const jailBox = document.getElementById('jail-box');
+    jailBox.innerHTML = '';
+    const msg = document.createElement('div');
+    msg.className = 'msg';
+    msg.textContent = "You're in Jail — you still play cards in every trick, but your token won't move until you pay or use a card.";
+    jailBox.appendChild(msg);
+    if (GAME.cash[myId] >= 50) addBtn(jailBox, 'Pay Tk50 bail', () => room.send('pay_jail_fine', {}));
+    if ((GAME.jailCardsHeld[myId] || []).length > 0) addBtn(jailBox, 'Use Jail card', () => room.send('use_jail_card', {}));
+  } else {
+    jailWrap.style.display = 'none';
+  }
+
+  // hand box — cards mode only, always shows your current hand; cards
+  // become clickable exactly when it's your turn within the trick.
+  const handWrap = document.getElementById('hand-hud-box');
+  if (cardsMode && GAME.hands && GAME.hands[myId] && GAME.phase !== 'gameover') {
+    handWrap.style.display = '';
+    const handRow = document.getElementById('hand-row');
+    handRow.innerHTML = '';
+    const myTrickTurn = GAME.trick && GAME.trick.order[GAME.trick.turnIdx] === myId;
+    const led = GAME.trick ? GAME.trick.ledSuit : null;
+    const hand = GAME.hands[myId].slice().sort((a, b) => cardSuit(a) - cardSuit(b) || cardValue(a) - cardValue(b));
+    const hasLedSuit = led !== null && hand.some(c => cardSuit(c) === led);
+    hand.forEach(cardIdx => {
+      const suit = cardSuit(cardIdx);
+      const red = suit === 1 || suit === 2;
+      const legal = myTrickTurn && (led === null || suit === led || !hasLedSuit);
+      const card = document.createElement('div');
+      card.className = 'pit-card';
+      card.style.color = red ? '#c0392b' : '#1a1a1a';
+      card.style.cursor = legal ? 'pointer' : 'default';
+      card.style.opacity = myTrickTurn && !legal ? '.4' : '1';
+      card.innerHTML = `<div class="pit-card-label">${cardLabel(cardIdx)}</div>`;
+      if (legal) card.onclick = () => room.send('play_trick_card', { cardIdx });
+      handRow.appendChild(card);
+    });
+  } else {
+    handWrap.style.display = 'none';
   }
 
   // turn message + actions
@@ -2724,7 +2817,12 @@ function renderGame() {
   actionRow.innerHTML = '';
 
   if (GAME.phase === 'gameover') {
-    turnMsg.textContent = GAME.winnerId === myId ? 'You win! 🎉' : (GAME.winnerId ? 'Game over — you were eliminated.' : 'Game over.');
+    if (cardsMode && GAME.finalRanking) {
+      turnMsg.innerHTML = 'Game over! Final ranking (cash + property value):<br>' +
+        GAME.finalRanking.map((id, i) => `${i + 1}. ${id === myId ? 'You' : 'Player ' + (GAME.order.indexOf(id) + 1)}${GAME.bankrupt[id] ? ' (bankrupt)' : ' — Tk' + computeNetWorth(GAME, id)}`).join('<br>');
+    } else {
+      turnMsg.textContent = GAME.winnerId === myId ? 'You win! 🎉' : (GAME.winnerId ? 'Game over — you were eliminated.' : 'Game over.');
+    }
   } else if (GAME.phase === 'auction') {
     turnMsg.textContent = `Auction in progress for ${SPACES[GAME.auction.spaceIdx].name} — see below.`;
   } else if (GAME.phase === 'tax_choice') {
@@ -2745,11 +2843,14 @@ function renderGame() {
   } else if (GAME.phase === 'card_pit_assign' && GAME.pit) {
     const winnerId = GAME.pit.winnerId;
     if (winnerId === myId) {
-      turnMsg.textContent = `You won the pit with ${cardLabel(GAME.pit.cards[winnerId])} (move ${GAME.pit.winnerVal}). Assign ${GAME.pit.remainingValues.join(', ')} to the others.`;
+      turnMsg.textContent = `You won the trick with ${cardLabel(GAME.pit.plays[winnerId])} (move ${GAME.pit.winnerVal}${GAME.jail[myId].in ? ' — but you\'re in Jail, so you stay put' : ''}). Assign ${GAME.pit.remainingValues.join(', ')} to the others.`;
       renderPitAssignUI(actionRow);
     } else {
-      turnMsg.textContent = `${nameOf(winnerId)} won the pit and is assigning movement numbers...`;
+      turnMsg.textContent = `${nameOf(winnerId)} won the trick and is assigning movement numbers...`;
     }
+  } else if (GAME.phase === 'card_trick_play' && GAME.trick) {
+    const acting = GAME.trick.order[GAME.trick.turnIdx];
+    turnMsg.textContent = acting === myId ? 'Your turn to play a card — pick one from your hand below.' : `Waiting for ${nameOf(acting)} to play a card...`;
   } else {
     const mine = isMyTurn();
     const cp = currentPlayer(GAME);
@@ -2757,15 +2858,9 @@ function renderGame() {
 
     if (mine && GAME.phase === 'roll') {
       if (GAME.jail[myId].in) {
-        if (cardsMode) {
-          addBtn(actionRow, `Wait in Jail (${GAME.jail[myId].turns}/3 tries)`, () => room.send('jail_wait_cards', {}));
-        } else {
-          addBtn(actionRow, 'Roll (try to escape)', () => room.send('roll', {}));
-        }
+        addBtn(actionRow, 'Roll (try to escape)', () => room.send('roll', {}));
         if (GAME.cash[myId] >= 50) addBtn(actionRow, 'Pay Tk50 bail', () => room.send('pay_jail_fine', {}));
         if ((GAME.jailCardsHeld[myId] || []).length > 0) addBtn(actionRow, 'Use Jail card', () => room.send('use_jail_card', {}));
-      } else if (cardsMode) {
-        addBtn(actionRow, 'Deal Pit', () => room.send('deal_pit', {}));
       } else {
         addBtn(actionRow, 'Roll Dice', () => room.send('roll', {}));
       }
@@ -3181,9 +3276,9 @@ function showAnnouncementToast(ann) {
 function checkDisconnectTimeout() {
   if (!isHost() || !GAME || !ROOM || ROOM.disconnectTimeoutMs <= 0 || GAME.phase === 'gameover') return;
 
-  // The pit's winner (not necessarily currentPlayer — the dealer keeps
-  // that slot until the queue starts draining) has to act here, so this
-  // is checked independently of the currentPlayer-based branches below.
+  // These two phases have an acting player who isn't necessarily
+  // currentPlayer(GAME) (that pointer is only meaningful while a
+  // movement queue is draining), so they're checked independently.
   if (GAME.phase === 'card_pit_assign' && GAME.pit) {
     const w = GAME.pit.winnerId;
     const wSince = disconnectSince[w];
@@ -3192,6 +3287,21 @@ function checkDisconnectTimeout() {
       const auto = {};
       GAME.pit.otherIds.forEach((id, i) => { auto[id] = GAME.pit.remainingValues[i]; });
       tryResolvePitAssignment(GAME, w, auto);
+      checkWin(GAME);
+      broadcastSync();
+    }
+    return;
+  }
+  if (GAME.phase === 'card_trick_play' && GAME.trick) {
+    const acting = GAME.trick.order[GAME.trick.turnIdx];
+    const since = disconnectSince[acting];
+    if (since && Date.now() - since >= ROOM.disconnectTimeoutMs) {
+      const hand = GAME.hands[acting] || [];
+      const led = GAME.trick.ledSuit;
+      const legal = led === null ? hand : (hand.some(c => cardSuit(c) === led) ? hand.filter(c => cardSuit(c) === led) : hand);
+      const cardIdx = legal[0];
+      pushLog(GAME, `${nameOf(acting)} was disconnected too long — auto-played ${cardLabel(cardIdx)}.`);
+      playTrickCard(GAME, acting, cardIdx);
       checkWin(GAME);
       broadcastSync();
     }
@@ -3213,25 +3323,20 @@ function checkDisconnectTimeout() {
     const ok = payAmount(GAME, p, 'bank', space.amount, 'tax');
     if (ok) {
       GAME.phase = 'resolve';
-      if (GAME.pitDealerId != null) { continuePit(GAME); finishPitIfDone(GAME); }
+      if (ROOM.movementMode === 'cards') { continuePit(GAME); finishTrickCycle(GAME); }
     }
     // if not ok, they now owe a 'debt' — handled by the debt-timeout branch below on future ticks
   } else if (GAME.phase === 'roll') {
-    if (ROOM.movementMode === 'cards') {
-      if (GAME.jail[p].in) {
-        pushLog(GAME, `${nameOf(p)} was disconnected too long — auto-waited in Jail.`);
-        doCardsJailWait(GAME, p);
-      } else {
-        pushLog(GAME, `${nameOf(p)} was disconnected too long — auto-dealt the pit for them.`);
-        doDealPit(GAME, p);
-      }
-    } else {
-      pushLog(GAME, `${nameOf(p)} was disconnected too long — auto-rolling for them.`);
-      doRoll(GAME, p);
-    }
+    pushLog(GAME, `${nameOf(p)} was disconnected too long — auto-rolling for them.`);
+    doRoll(GAME, p);
   } else if (GAME.phase === 'resolve') {
-    pushLog(GAME, `${nameOf(p)} was disconnected too long — auto-ending their turn.`);
-    doEndTurn(GAME);
+    if (ROOM.movementMode === 'cards') {
+      continuePit(GAME);
+      finishTrickCycle(GAME);
+    } else {
+      pushLog(GAME, `${nameOf(p)} was disconnected too long — auto-ending their turn.`);
+      doEndTurn(GAME);
+    }
   } else {
     return; // nothing actionable in this phase (e.g. mid-auction, with no single "current player" to act for)
   }
