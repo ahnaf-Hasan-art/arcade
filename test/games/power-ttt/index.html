@@ -3,494 +3,198 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Power Tic-Tac-Toe — Multiplayer</title>
+<title>Card Tic-Tac-Toe — Multiplayer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
-  /* =========================================================
-     BASE THEME — preserved from the original single-player file.
-     ========================================================= */
   :root{
-    --bg: #0d1117;
-    --bg-grid: #10151d;
-    --panel: #161c26;
-    --panel-alt: #1b2230;
-    --line: #2a3241;
-    --line-soft: #212836;
-    --text: #e7ecf3;
-    --muted: #7d8aa0;
-    --accent: #ffb454;
-    --accent-dim: #6b5636;
-    --danger: #ff5470;
-    --safe: #3ddc97;
-    --poison: #7CFF6B;
-    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
-    --font-body: 'Inter', system-ui, sans-serif;
-
-    --p0: #ff5470; /* X */
-    --p1: #3ddc97; /* O */
-    --p2: #5eb1ff; /* △ */
-    --p3: #ffd166; /* □ */
-    --p4: #c792ea; /* ★ */
-    --p5: #ff8c42; /* ● */
+    --felt-1:#0e2a20;
+    --felt-2:#123527;
+    --parchment:#f0e6cd;
+    --parchment-dim:#dcd0af;
+    --ink:#1c1712;
+    --gold:#d4af37;
+    --gold-soft:#e8cf7c;
+    --power:#c0392b;
+    --power-soft:#e0685a;
+    --valid:#ff3fa4;
+    --valid-soft:#ff7ac0;
+    --line:#a6906a;
+    --muted:#6b5f4a;
+    --font-display:'Cinzel', serif;
+    --font-body:'Crimson Text', serif;
+    --font-mono:'JetBrains Mono', monospace;
   }
-
   * { box-sizing: border-box; }
-
+  html, body { margin:0; padding:0; min-height:100%; }
   body{
-    margin:0;
-    min-height:100vh;
-    background:
-      radial-gradient(1200px 600px at 15% -10%, #1a2230 0%, transparent 60%),
-      radial-gradient(1000px 500px at 110% 10%, #1a1420 0%, transparent 55%),
-      var(--bg);
-    color: var(--text);
+    background: radial-gradient(circle at 30% 10%, var(--felt-2), var(--felt-1) 70%);
+    color: var(--parchment);
     font-family: var(--font-body);
-    display:flex;
-    flex-direction: column;
-    align-items:center;
-    padding: 28px 16px 60px;
   }
+  h1,h2,h3,.display { font-family: var(--font-display); letter-spacing:.03em; }
+  .mono { font-family: var(--font-mono); letter-spacing:.05em; }
+  #app { max-width: 1180px; margin:0 auto; padding: 20px 16px 60px; }
+  .hidden { display:none !important; }
+  .back-link { display:inline-block; margin-bottom:14px; font-size:12px; color:var(--gold-soft); text-decoration:none; }
+  .back-link:hover { text-decoration:underline; }
+  .header { text-align:center; margin-bottom:22px; }
+  .header .crest { font-size:34px; margin-bottom:2px; }
+  .header h1 { font-size:26px; margin:0; color: var(--parchment); }
+  .header .subtitle { font-style:italic; color:var(--gold-soft); font-size:14px; margin-top:4px; }
 
-  button{ font-family: inherit; }
-  button:focus-visible, input:focus-visible, select:focus-visible, .cell:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
-
-  #app{ width: 100%; max-width: 1080px; }
-  .hidden{ display:none !important; }
-
-  .back-link { display: inline-block; margin-bottom: 16px; font-size: 12px; color: var(--accent); text-decoration: none; }
-  .back-link:hover { text-decoration: underline; }
-
-  .eyebrow{
-    font-family: var(--font-mono);
-    letter-spacing: .18em;
-    font-size: 11px;
-    color: var(--muted);
-    text-transform: uppercase;
-  }
-
-  h1.title{
-    font-family: var(--font-mono);
-    font-size: clamp(24px, 4vw, 34px);
-    letter-spacing: .02em;
-    margin: 4px 0 2px;
-    font-weight: 700;
-  }
-  h1.title span{ color: var(--accent); }
-
-  .subtitle{ color: var(--muted); font-size: 14px; margin-bottom: 26px; }
-  .msg { color: var(--muted); font-size: 13px; }
-  .err { color: var(--danger); font-size: 13px; min-height: 16px; }
-
-  .screen { display:flex; flex-direction:column; align-items:center; text-align:center; gap:14px; width:100%; }
-
-  input, select {
-    background: var(--panel-alt);
-    border: 1px solid var(--line);
-    color: var(--text);
-    border-radius: 8px;
-    padding: 9px 12px;
-    font-family: var(--font-mono);
-    font-size: 14px;
-  }
-
-  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center; }
-
-  .ghost-btn{
-    background: transparent;
-    border: 1px solid var(--line);
-    color: var(--muted);
-    border-radius: 8px;
-    padding: 8px 14px;
-    font-size: 12px;
-    font-family: var(--font-mono);
-    cursor: pointer;
-    transition: border-color .15s, color .15s;
-  }
-  .ghost-btn:hover{ border-color: var(--accent); color: var(--accent); }
-
-  .start-btn, .primary-btn{
-    background: var(--accent);
-    color: #16110a;
-    border: none;
-    font-family: var(--font-mono);
-    font-weight: 700;
-    font-size: 15px;
-    letter-spacing: .04em;
-    padding: 14px 26px;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: transform .1s, filter .15s;
-  }
-  .start-btn:hover, .primary-btn:hover{ filter: brightness(1.08); }
-  .start-btn:active, .primary-btn:active{ transform: scale(.98); }
-  .start-btn:disabled, .primary-btn:disabled { opacity:.4; cursor:not-allowed; filter:none; }
-
-  .code-badge {
-    font-size: 26px; letter-spacing: 6px; color: var(--accent);
-    border: 2px dashed var(--accent-dim); padding: 6px 18px;
-    font-family: var(--font-mono); background: rgba(255,180,84,.06);
-  }
-
-  /* ---------- Setup / lobby card (reused look from original setup screen) ---------- */
-  .setup-card{
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    padding: 28px;
-    width: 100%;
-    max-width: 640px;
-    text-align: left;
-  }
-  .field-group{ margin-bottom: 24px; }
-  .field-label{
-    font-family: var(--font-mono);
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: .1em;
-    color: var(--muted);
-    margin-bottom: 10px;
-    display:block;
-  }
-  .count-row{ display:flex; gap:10px; flex-wrap:wrap; }
-  .count-btn{
-    background: var(--panel-alt);
-    border: 1px solid var(--line);
-    color: var(--text);
-    border-radius: 10px;
-    width: 56px; height: 56px;
-    font-family: var(--font-mono);
-    font-size: 18px;
-    cursor:pointer;
-    transition: border-color .15s, transform .1s, background .15s;
-  }
-  .count-btn:hover{ border-color: var(--accent); }
-  .count-btn.active{ background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
-  .count-btn:disabled { opacity:.4; cursor:not-allowed; }
-
-  .symbol-preview{ display:flex; gap:14px; margin-top:14px; flex-wrap:wrap; }
-  .symbol-chip{
-    display:flex; align-items:center; gap:8px;
-    background: var(--panel-alt); border:1px solid var(--line);
-    border-radius: 8px; padding: 6px 12px;
-    font-family: var(--font-mono); font-size: 13px;
-  }
-  .symbol-chip.filled { border-color: var(--accent); }
-  .symbol-swatch{ width:14px; height:14px; border-radius:3px; }
-
-  .num-row{ display:flex; gap:18px; flex-wrap:wrap; }
-  .num-field{ display:flex; flex-direction:column; gap:6px; }
-  .num-field input{ width: 140px; }
-  .num-field input:disabled { opacity:.5; }
-
-  .cost-grid{
-    display:grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 10px;
-    margin-top: 12px;
-  }
-  .cost-field{
-    display:flex; align-items:center; justify-content:space-between; gap:8px;
-    background: var(--panel-alt);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 8px 10px;
-  }
-  .cost-field label{
-    font-size: 12px; display:flex; align-items:center; gap:6px; color: var(--text);
-  }
-  .cost-field input{
-    background: var(--bg-grid);
+  .panel {
+    background: rgba(240,230,205,0.06);
+    border:1px solid rgba(212,175,55,0.35);
     border-radius: 6px;
-    padding: 4px 6px;
-    font-size: 13px;
-    width: 48px;
-    text-align:center;
+    padding: 18px 22px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.35);
   }
-  .hint{ color: var(--muted); font-size: 12px; margin-top: 8px; line-height:1.5; }
+  .screen { display:flex; flex-direction:column; align-items:center; text-align:center; gap:14px; width:100%; }
+  .lobby-wrap { max-width: 620px; margin: 0 auto; width:100%; }
+
+  .field-label { font-size:12px; text-transform:uppercase; letter-spacing:.1em; color:var(--gold-soft); margin-bottom:8px; display:block; font-family:var(--font-mono); }
+  input, select {
+    width:100%; padding:9px 12px; font-family:var(--font-mono); font-size:15px;
+    border:1px solid var(--line); border-radius:3px; background:#fbf6ea; color:var(--ink); margin-bottom:10px;
+  }
+  input:focus, select:focus { outline:2px solid var(--gold); outline-offset:1px; }
+  input.code-input { text-transform:uppercase; text-align:center; font-size:20px; letter-spacing:.3em; }
+
+  button {
+    font-family: var(--font-display); font-size:14px; letter-spacing:.04em;
+    padding:10px 18px; border:1px solid var(--gold); background:var(--gold); color:#241c0d;
+    border-radius:4px; cursor:pointer; transition: filter .12s, transform .08s;
+  }
+  button:hover { filter:brightness(1.08); }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  button.secondary { background:transparent; color: var(--parchment); border-color: var(--line); }
+  button.secondary:hover { background: rgba(212,175,55,.12); }
+  button.full { width:100%; }
+  button.small { padding:6px 12px; font-size:13px; }
+  button.tiny { padding:4px 8px; font-size:12px; }
+
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:center; }
+  .choice-row { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+  .choice-btn {
+    background: rgba(240,230,205,.08); border:1px solid var(--line); color:var(--parchment);
+    padding:7px 14px; border-radius:4px; font-family:var(--font-mono); font-size:13px; cursor:pointer;
+  }
+  .choice-btn.active { background:var(--gold); color:#241c0d; border-color:var(--gold); }
+  .choice-btn:disabled { opacity:.4; cursor:not-allowed; }
+  .stepper { display:flex; align-items:center; justify-content:center; gap:6px; }
+  .stepper button { padding:3px 9px; font-size:13px; }
+  .stepper .val { font-family:var(--font-mono); font-size:14px; min-width:22px; text-align:center; }
+
+  .divider { display:flex; align-items:center; gap:10px; margin:16px 0; color:var(--gold-soft); font-size:12px; font-style:italic; }
+  .divider::before, .divider::after { content:""; flex:1; height:1px; background: var(--line); opacity:.4; }
+  .err { color:#ff8f7a; font-size:13px; min-height:16px; }
+  .msg { color: var(--gold-soft); font-size:13px; }
+
+  .code-badge { font-family:var(--font-mono); font-size:26px; letter-spacing:.25em; color:var(--gold); border:2px dashed var(--gold); padding:6px 18px; border-radius:4px; background:rgba(0,0,0,.15); }
+
+  details.settings-group { margin-bottom:12px; border:1px solid rgba(212,175,55,.3); border-radius:4px; padding:6px 12px; text-align:left; }
+  details.settings-group summary { cursor:pointer; font-family:var(--font-display); font-size:14px; padding:6px 0; color: var(--gold-soft); }
+  .settings-row { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:8px 0; font-size:13px; }
+  .settings-note { font-size:11px; color:var(--gold-soft); font-style:italic; margin:10px 0 2px; opacity:.85; }
+  .cost-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin-top:8px; }
 
   .seat-list { display:flex; flex-direction:column; gap:6px; width:100%; margin-top:6px; }
-  .seat-row {
-    display:flex; align-items:center; gap:10px; padding:8px 12px;
-    border:1px solid var(--line); background: var(--panel-alt); font-size:13px; border-radius: 8px;
-  }
-  .seat-row.mine { border-color: var(--accent); }
-  .seat-row.filled { color: var(--text); }
-  .seat-row .who { flex:1; text-align:left; color: var(--muted); }
-  .seat-row.filled .who { color: var(--text); }
+  .seat-row { display:flex; align-items:center; gap:10px; padding:8px 12px; border:1px solid var(--line); background:rgba(240,230,205,.05); font-size:13px; border-radius:4px; }
+  .seat-row.mine { border-color: var(--gold); }
+  .seat-row .who { flex:1; text-align:left; color: var(--gold-soft); }
+  .seat-row.filled .who { color: var(--parchment); }
+  .dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
 
-  /* ---------- Game screen (preserved from original) ---------- */
-  .hud-bar{
-    display:flex; align-items:center; justify-content:space-between;
-    background: var(--panel);
-    border:1px solid var(--line);
-    border-radius: 12px;
-    padding: 12px 18px;
-    margin-bottom: 18px;
-    flex-wrap: wrap;
-    gap: 10px;
-    width: 100%;
-  }
-  .hud-round{
-    font-family: var(--font-mono);
-    font-size: 13px;
-    color: var(--muted);
-    letter-spacing: .08em;
-  }
-  .hud-round b{ color: var(--accent); font-size:15px; }
-  .hud-actions{ display:flex; gap:10px; }
+  /* ---- game screen ---- */
+  .hud-bar { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
+  .hud-round { font-family:var(--font-mono); font-size:12px; color:var(--gold-soft); }
+  .hud-round b { color:var(--gold); font-size:14px; }
+  .hud-actions { display:flex; gap:8px; }
 
-  .game-layout{
-    display:grid;
-    grid-template-columns: minmax(0,1fr) 300px;
-    gap: 20px;
-    align-items:start;
-    width: 100%;
-  }
-  @media (max-width: 760px){
-    .game-layout{ grid-template-columns: 1fr; }
-  }
+  .game-layout { display:grid; grid-template-columns: minmax(0,1fr) 300px; gap:16px; align-items:start; width:100%; }
+  @media (max-width: 780px){ .game-layout { grid-template-columns:1fr; } }
 
-  .board-wrap{
-    background: var(--bg-grid);
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    padding: 18px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
+  .board-panel { display:flex; flex-direction:column; align-items:center; gap:14px; }
+  #board { display:grid; gap:4px; width:min(520px,100%); aspect-ratio:1/1; }
+  .cell {
+    background: rgba(240,230,205,.08); border:1px solid var(--line); border-radius:4px;
+    display:flex; align-items:center; justify-content:center; position:relative; cursor:default;
+    aspect-ratio:1/1; transition: border-color .12s, background .12s;
   }
+  .cell.clickable { cursor:pointer; }
+  .cell.clickable:hover { border-color: var(--gold); background: rgba(212,175,55,.12); }
+  .cell.valid-target { box-shadow: inset 0 0 0 3px var(--valid); }
+  .cell.valid-target:hover { background: rgba(255,63,164,.14); }
+  .cell.selected-source { box-shadow: inset 0 0 0 3px var(--gold); }
+  .cell svg { width:70%; height:70%; }
+  .owner-ring { position:absolute; inset:2px; border-radius:3px; pointer-events:none; }
+  .cell.shielded::before { content:""; position:absolute; inset:-1px; border-radius:4px; box-shadow:0 0 0 2px #5eb1ff, 0 0 8px 1px rgba(94,177,255,.5); pointer-events:none; }
+  .cell.poisoned::after { content:""; position:absolute; inset:-1px; border-radius:4px; box-shadow:0 0 0 2px #7CFF6B, 0 0 10px 2px rgba(124,255,107,.45); pointer-events:none; animation: pulsepoison 1.4s ease-in-out infinite; }
+  @keyframes pulsepoison { 0%,100%{opacity:.55;} 50%{opacity:1;} }
+  .poison-badge { position:absolute; bottom:1px; right:2px; font-family:var(--font-mono); font-size:8px; color:#7CFF6B; background:rgba(0,0,0,.55); padding:0 2px; border-radius:2px; }
+  .cell.blast { animation: blastflash .55s ease-out; }
+  @keyframes blastflash { 0%{ background:var(--gold); box-shadow:0 0 20px 6px rgba(212,175,55,.9);} 100%{ background: rgba(240,230,205,.08); box-shadow:none;} }
+  @media (prefers-reduced-motion: reduce){ .cell.poisoned::after{ animation:none; opacity:.85;} .cell.blast{ animation:none; } }
 
-  #board{
-    display:grid;
-    gap: 5px;
-    width: min(560px, 100%);
-    aspect-ratio: 1 / 1;
+  .hand-strip { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; max-width:520px; }
+  .card {
+    width:56px; height:78px; background:var(--parchment); border:2px solid var(--ink); border-radius:6px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer;
+    position:relative; transition: transform .1s, box-shadow .12s; flex-shrink:0;
   }
-  .cell{
-    background: var(--panel-alt);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    display:flex; align-items:center; justify-content:center;
-    position: relative;
-    cursor: pointer;
-    font-family: var(--font-mono);
-    font-weight: 700;
-    transition: border-color .12s, background .12s;
-    aspect-ratio: 1/1;
-  }
-  .cell:hover:not(.filled){ border-color: var(--accent); background:#20283a; }
-  .cell.filled{ cursor: default; }
-  .cell:not(.clickable){ cursor: default; }
-  .cell .glyph{ font-size: min(4.2vw, 26px); line-height:1; }
+  .card:hover { transform: translateY(-4px); }
+  .card.selected { box-shadow:0 0 0 3px var(--gold), 0 6px 14px rgba(0,0,0,.4); transform: translateY(-6px); }
+  .card.disabled { opacity:.35; cursor:not-allowed; }
+  .card.disabled:hover { transform:none; }
+  .card svg { width:60%; height:60%; }
+  .card .shape-tag { position:absolute; bottom:3px; font-size:8px; font-family:var(--font-mono); color:var(--muted); letter-spacing:.05em; }
 
-  .cell.targetable{ box-shadow: inset 0 0 0 2px var(--accent); cursor: pointer; }
-  .cell.targetable:hover{ background: #2a2210; }
+  .sidebar { display:flex; flex-direction:column; gap:12px; }
+  .roster-row { display:flex; align-items:center; gap:8px; font-size:14px; padding:5px 0; }
+  .roster-row.current { color: var(--gold); font-weight:600; }
+  .roster-row.offline { opacity:.5; }
+  .roster-row .stat { font-family:var(--font-mono); font-size:12px; margin-left:auto; color:var(--gold-soft); }
 
-  .cell.selected-source{ box-shadow: inset 0 0 0 2px var(--p4); }
-  .cell.targetable-enemy{ box-shadow: inset 0 0 0 2px var(--danger); cursor: pointer; }
-  .cell.targetable-enemy:hover{ background: #2a1418; }
+  .power-btn {
+    width:100%; display:flex; align-items:center; gap:8px; background:rgba(240,230,205,.06);
+    border:1px solid var(--line); color:var(--parchment); border-radius:6px; padding:9px 10px; margin-bottom:6px;
+    font-size:13px; cursor:pointer; text-align:left;
+  }
+  .power-btn:hover:not(:disabled) { border-color: var(--power-soft); }
+  .power-btn:disabled { opacity:.35; cursor:not-allowed; }
+  .power-btn .cost { margin-left:auto; font-family:var(--font-mono); font-size:11px; color:var(--gold-soft); }
+  .power-btn.pending { border-color: var(--power); background: rgba(192,57,43,.12); }
 
-  .cell.shielded::before{
-    content:"";
-    position:absolute; inset: -1px;
-    border-radius: 6px;
-    box-shadow: 0 0 0 2px var(--p2), 0 0 10px 1px rgba(94,177,255,.55);
-    pointer-events:none;
-  }
-  .cell.poisoned::after{
-    content:"";
-    position:absolute; inset: -1px;
-    border-radius: 6px;
-    box-shadow: 0 0 0 2px var(--poison), 0 0 12px 2px rgba(124,255,107,.5);
-    pointer-events:none;
-    animation: pulse-poison 1.4s ease-in-out infinite;
-  }
-  @keyframes pulse-poison{
-    0%,100%{ opacity:.55; }
-    50%{ opacity:1; }
-  }
-  .poison-badge{
-    position:absolute; bottom:2px; right:3px;
-    font-family: var(--font-mono);
-    font-size: 9px;
-    color: var(--poison);
-    background: rgba(0,0,0,.55);
-    padding: 0 3px;
-    border-radius: 3px;
-    letter-spacing:.02em;
-  }
+  .cancel-hint { font-size:12px; color:var(--valid-soft); font-family:var(--font-mono); display:flex; align-items:center; justify-content:space-between; background:rgba(255,63,164,.08); border:1px dashed var(--valid); border-radius:6px; padding:8px 10px; margin-bottom:8px; }
+  .cancel-hint button { background:none; border:none; color:#ff8f7a; cursor:pointer; font-family:var(--font-mono); font-size:11px; }
 
-  .cell.blast{
-    animation: blast-flash .55s ease-out;
-  }
-  @keyframes blast-flash{
-    0%{ background: #ffb454; box-shadow: 0 0 24px 6px rgba(255,180,84,.9); }
-    100%{ background: var(--panel-alt); box-shadow:none; }
-  }
+  .log-box { max-height:170px; overflow-y:auto; display:flex; flex-direction:column; gap:5px; }
+  .log-line { font-size:12px; color: var(--gold-soft); font-family:var(--font-mono); line-height:1.4; }
+  .log-line.newest { color: var(--parchment); font-weight:600; }
 
-  @media (prefers-reduced-motion: reduce){
-    .cell.poisoned::after{ animation: none; opacity: .85; }
-    .cell.blast{ animation: none; }
-  }
+  .win-overlay { position:fixed; inset:0; background:rgba(9,12,17,.88); display:flex; align-items:center; justify-content:center; z-index:50; }
+  .win-card { background:#1a2b22; border:2px solid var(--gold); border-radius:10px; padding:36px 44px; text-align:center; max-width:400px; }
+  .win-title { font-size:22px; margin-bottom:6px; color: var(--gold); }
+  .win-sub { color: var(--gold-soft); font-size:13px; margin-bottom:20px; }
 
-  /* Sidebar */
-  .sidebar{ display:flex; flex-direction:column; gap:14px; }
-  .panel-box{
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    padding: 16px;
-  }
-  .panel-title{
-    font-family: var(--font-mono);
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: .1em;
-    color: var(--muted);
-    margin-bottom: 12px;
-  }
+  .msg-toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:#241c0d; border:1px solid var(--power); color:var(--parchment); padding:10px 16px; border-radius:6px; font-size:13px; z-index:60; opacity:0; pointer-events:none; transition:opacity .25s; }
+  .msg-toast.show { opacity:1; }
 
-  .player-row{
-    display:flex; align-items:center; gap:10px;
-    padding: 8px 10px;
-    border-radius: 8px;
-    margin-bottom: 4px;
-    border: 1px solid transparent;
-  }
-  .player-row.current{
-    background: rgba(255,180,84,.08);
-    border-color: var(--accent-dim);
-  }
-  .player-row.offline { opacity: .5; }
-  .player-glyph{
-    width: 28px; height:28px; border-radius:7px;
-    display:flex; align-items:center; justify-content:center;
-    font-family: var(--font-mono); font-weight:700; font-size:15px;
-    flex-shrink:0;
-  }
-  .player-name{ font-size: 13px; flex:1; }
-  .player-row.current .player-name::after{
-    content: "— turn"; color: var(--accent); font-size: 11px; margin-left:6px; font-family: var(--font-mono);
-  }
-  .pips{ display:flex; gap:3px; }
-  .pip{ width:8px; height:8px; border-radius:50%; background: var(--line-soft); }
-  .pip.filled{ background: var(--accent); }
+  .reconnect-box, .restart-box { background: rgba(240,230,205,.06); border:1px solid var(--gold); border-radius:6px; padding:12px; margin-bottom:12px; width:100%; text-align:left; }
+  .restart-box .row { justify-content:flex-start; margin-top:8px; }
 
-  .action-current{
-    display:flex; align-items:center; gap:10px; margin-bottom:14px;
-  }
-  .action-glyph{
-    width:40px; height:40px; border-radius:10px;
-    display:flex; align-items:center; justify-content:center;
-    font-family: var(--font-mono); font-weight:700; font-size:20px;
-  }
-  .action-sub{ font-size:12px; color: var(--muted); }
-
-  .power-btn{
-    width:100%;
-    display:flex; align-items:center; gap:10px;
-    background: var(--panel-alt);
-    border: 1px solid var(--line);
-    color: var(--text);
-    border-radius: 9px;
-    padding: 10px 12px;
-    margin-bottom: 8px;
-    font-size: 13px;
-    cursor: pointer;
-    text-align:left;
-    transition: border-color .15s, background .15s;
-  }
-  .power-btn:hover:not(:disabled){ border-color: var(--accent); }
-  .power-btn:disabled{ opacity:.35; cursor:not-allowed; }
-  .power-btn .icon{ font-size:17px; }
-  .power-btn .cost{ margin-left:auto; font-family: var(--font-mono); font-size:11px; color: var(--muted); }
-  .power-btn.pending{ border-color: var(--accent); background: rgba(255,180,84,.1); }
-
-  .cancel-hint{
-    font-size: 12px; color: var(--accent); font-family: var(--font-mono);
-    display:flex; align-items:center; justify-content:space-between;
-    background: rgba(255,180,84,.08);
-    border: 1px dashed var(--accent-dim);
-    border-radius: 8px;
-    padding: 8px 10px;
-    margin-bottom: 10px;
-  }
-  .cancel-hint button{
-    background:none; border:none; color:var(--danger); cursor:pointer; font-family: var(--font-mono); font-size:11px;
-  }
-
-  .log-box{ max-height: 180px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
-  .log-line{ font-size:12px; color: var(--muted); font-family: var(--font-mono); line-height:1.4; }
-  .log-line.newest { color: var(--text); font-weight: 700; }
-  .log-line b{ color: var(--text); }
-
-  .rules-toggle{
-    background:none; border:1px solid var(--line); color: var(--muted);
-    border-radius:8px; padding:8px 10px; font-size:12px; cursor:pointer; width:100%;
-    font-family: var(--font-mono);
-  }
-  .rules-toggle:hover{ color: var(--accent); border-color: var(--accent); }
-  .rules-body{ font-size:12px; color:var(--muted); line-height:1.6; margin-top:10px; display:none; }
-  .rules-body.open{ display:block; }
-  .rules-body b{ color: var(--text); }
-
-  /* Win overlay */
-  .win-overlay{
-    position: fixed; inset:0; background: rgba(9,12,17,.86);
-    display:flex; align-items:center; justify-content:center; z-index: 50;
-  }
-  .win-card{
-    background: var(--panel); border: 1px solid var(--line); border-radius:16px;
-    padding: 40px 48px; text-align:center; max-width: 420px;
-  }
-  .win-glyph{
-    width:72px; height:72px; border-radius:16px; margin: 0 auto 18px;
-    display:flex; align-items:center; justify-content:center;
-    font-family: var(--font-mono); font-size:34px; font-weight:700;
-  }
-  .win-title{ font-family: var(--font-mono); font-size:22px; margin-bottom:6px; }
-  .win-sub{ color: var(--muted); font-size:13px; margin-bottom:22px; }
-
-  .msg-toast{
-    position: fixed; bottom: 24px; left:50%; transform: translateX(-50%);
-    background: var(--panel-alt); border:1px solid var(--danger); color: var(--text);
-    padding: 10px 18px; border-radius: 9px; font-size: 13px; z-index: 60;
-    opacity:0; pointer-events:none; transition: opacity .25s;
-  }
-  .msg-toast.show{ opacity:1; }
-
-  /* ---------- Reconnect / restart panels (matching site conventions) ---------- */
-  .reconnect-box, .restart-box {
-    background: var(--panel); border: 1px solid var(--accent-dim); border-radius: 12px;
-    padding: 14px; margin-bottom: 14px; width: 100%; text-align: left;
-  }
-  .restart-box .row { justify-content: flex-start; margin-top: 8px; }
-
-  /* ---------- Chat panel (matching Monopoly's) ---------- */
-  #chat-panel { position: fixed; right: 16px; bottom: 16px; z-index: 90; }
-  #chat-toggle {
-    padding: 10px 16px; border-radius: 20px; font-size: 13px;
-    background: var(--panel); border: 1px solid var(--accent-dim); color: var(--text);
-    cursor: pointer; box-shadow: 0 6px 16px rgba(0,0,0,.4); font-family: var(--font-mono);
-  }
-  #chat-body {
-    position: absolute; right: 0; bottom: 52px;
-    width: 280px; max-width: 80vw;
-    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
-    box-shadow: 0 20px 50px rgba(0,0,0,.5);
-    display: flex; flex-direction: column; overflow: hidden;
-  }
-  #chat-messages { max-height: 260px; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
-  .chat-msg { font-size: 12px; line-height: 1.35; }
-  .chat-msg .who { font-weight: 900; color: var(--accent); }
-  .chat-msg.mine .who { color: var(--safe); }
-  .chat-input-row { display: flex; border-top: 1px solid var(--line); }
-  .chat-input-row input { flex: 1; border: none; border-radius: 0; font-size: 13px; padding: 10px; background: var(--panel-alt); }
-  .chat-input-row button { border: none; border-radius: 0; font-size: 12px; padding: 10px 14px; background: var(--accent-dim); color: var(--text); cursor: pointer; }
+  #chat-panel { position:fixed; right:16px; bottom:16px; z-index:90; }
+  #chat-toggle { padding:9px 15px; border-radius:18px; font-size:12px; background:#1a2b22; border:1px solid var(--gold); color:var(--parchment); cursor:pointer; box-shadow:0 6px 16px rgba(0,0,0,.4); font-family:var(--font-mono); }
+  #chat-body { position:absolute; right:0; bottom:48px; width:270px; max-width:80vw; background:#1a2b22; border:1px solid var(--line); border-radius:8px; box-shadow:0 20px 50px rgba(0,0,0,.5); display:flex; flex-direction:column; overflow:hidden; }
+  #chat-messages { max-height:250px; overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:6px; }
+  .chat-msg { font-size:12px; line-height:1.35; }
+  .chat-msg .who { font-weight:900; color:var(--gold); }
+  .chat-msg.mine .who { color:#7CFF6B; }
+  .chat-input-row { display:flex; border-top:1px solid var(--line); }
+  .chat-input-row input { flex:1; border:none; border-radius:0; font-size:13px; padding:9px; margin:0; }
+  .chat-input-row button { border:none; border-radius:0; font-size:12px; padding:9px 12px; }
 </style>
 </head>
 <body>
@@ -500,142 +204,132 @@
 
 <!-- ================= HOME ================= -->
 <div id="screen-home" class="screen">
-  <div class="eyebrow">Tactical Grid Combat · Realtime</div>
-  <h1 class="title">POWER TIC-TAC-TOE <span>// Multiplayer</span></h1>
-  <div class="subtitle">3–6 players, separate devices. Place symbols, deploy Bombs, Shields and Poison to control the grid.</div>
-  <div class="row">
-    <button class="start-btn" id="btn-create">Create Room</button>
-    <button class="ghost-btn" id="btn-join-open">Join Room</button>
+  <div class="header">
+    <div class="crest">🂡</div>
+    <h1>Card Tic-Tac-Toe <span style="color:var(--gold);">// Multiplayer</span></h1>
+    <div class="subtitle">2–4 players, separate devices. Play cards adjacent to the board, deploy powers to bend the line your way.</div>
   </div>
-  <div id="join-form" class="row hidden">
-    <input id="join-code" maxlength="5" placeholder="ROOM CODE" style="text-transform:uppercase; letter-spacing:3px; width:130px;">
-    <button class="ghost-btn" id="btn-join">Join</button>
+  <div class="lobby-wrap panel">
+    <div class="row">
+      <button id="btn-create">Create Room</button>
+      <button class="secondary" id="btn-join-open">Join Room</button>
+    </div>
+    <div id="join-form" class="row hidden" style="margin-top:10px;">
+      <input id="join-code" class="code-input" maxlength="5" placeholder="ABCDE" style="width:140px;">
+      <button class="secondary" id="btn-join">Join</button>
+    </div>
+    <div id="home-err" class="err"></div>
   </div>
-  <div id="home-err" class="err"></div>
 </div>
 
 <!-- ================= LOBBY ================= -->
 <div id="screen-lobby" class="screen hidden">
-  <div class="eyebrow">Room Code</div>
+  <div class="header"><div class="crest">🂡</div><h1>Card Tic-Tac-Toe</h1></div>
   <div class="code-badge" id="lobby-code">-----</div>
   <div class="row">
-    <input id="share-link" readonly style="width:320px;">
-    <button class="ghost-btn" id="btn-copy-link">Copy</button>
+    <input id="share-link" readonly style="width:300px;">
+    <button class="secondary" id="btn-copy-link">Copy</button>
   </div>
 
-  <div class="setup-card">
-    <div class="field-group">
-      <label class="field-label">Number of players <span id="host-tag" class="hidden" style="color:var(--accent);">(you're host — settings below)</span></label>
-      <div class="count-row" id="count-row"></div>
-      <div class="symbol-preview" id="symbol-preview"></div>
-    </div>
+  <div class="lobby-wrap panel">
+    <div class="field-label">Players <span id="host-tag" class="hidden" style="color:var(--gold);">(you're host)</span></div>
+    <div class="choice-row" id="players-choices"></div>
 
-    <div class="field-group">
-      <label class="field-label">Board &amp; win settings</label>
-      <div class="num-row">
-        <div class="num-field">
-          <label for="board-size">Board size (N × N)</label>
-          <input type="number" id="board-size" min="5" max="10" value="5">
-        </div>
-        <div class="num-field">
-          <label for="win-len">Win length (in a row)</label>
-          <input type="number" id="win-len" min="3" max="6" value="4">
-        </div>
-      </div>
-      <div class="hint">Turn order follows seating order below — first seated goes first.</div>
-    </div>
+    <details class="settings-group" id="settings-details">
+      <summary>Game Settings (host only)</summary>
+      <div class="field-label" style="margin-top:8px;">Active symbols</div>
+      <div class="choice-row" id="symbols-choices"></div>
+      <div class="field-label" style="margin-top:12px;">Card movement</div>
+      <div class="choice-row" id="cardmode-choices"></div>
+      <div class="field-label" style="margin-top:12px;">Board size</div>
+      <div class="choice-row" id="board-choices"></div>
+      <div class="field-label" style="margin-top:12px;">Win length</div>
+      <div class="choice-row" id="win-choices"></div>
+      <div class="field-label" style="margin-top:12px;">Center starting symbol</div>
+      <div class="choice-row" id="center-choices"></div>
 
-    <div class="field-group" style="margin-bottom:6px;">
-      <label class="field-label">Power economy</label>
-      <div class="num-row">
-        <div class="num-field">
-          <label for="max-tokens">Starting tokens per player</label>
-          <input type="number" id="max-tokens" min="0" max="9" value="3">
-        </div>
+      <div class="settings-note" id="handsize-note">Hand size = (active symbols × 2 card types) × this multiplier</div>
+      <div class="settings-row"><span>Hand size multiplier</span>
+        <div class="stepper"><button class="tiny secondary" id="hm-minus">−</button><span class="val" id="hm-val">2</span><button class="tiny secondary" id="hm-plus">+</button></div>
       </div>
-      <div class="hint">Token cost per power (0 = free):</div>
+
+      <div class="settings-note">Where a card can legally be played</div>
+      <div class="choice-row" id="adjacency-choices"></div>
+
+      <div class="settings-note">When every hand is empty, how the discard pile comes back</div>
+      <div class="choice-row" id="reshuffle-choices"></div>
+
+      <div class="settings-note">Powers</div>
+      <div class="choice-row" id="powers-toggle-choices"></div>
+      <div class="settings-row" style="margin-top:10px;"><span>Starting tokens</span>
+        <div class="stepper"><button class="tiny secondary" id="tok-minus">−</button><span class="val" id="tok-val">3</span><button class="tiny secondary" id="tok-plus">+</button></div>
+      </div>
+      <div class="settings-note">Token cost per power</div>
       <div class="cost-grid" id="cost-grid"></div>
-    </div>
 
-    <button class="ghost-btn" id="btn-save-settings">Save Settings</button>
+      <button class="secondary full" id="btn-save-settings" style="margin-top:12px;">Save Settings</button>
+    </details>
   </div>
 
   <div class="seat-list" id="seat-list"></div>
-  <button class="ghost-btn" id="btn-join-seat">Take a Seat</button>
-  <button class="start-btn hidden" id="btn-start">Launch →</button>
+  <button class="secondary" id="btn-join-seat">Take a Seat</button>
+  <button class="hidden" id="btn-start">Launch →</button>
   <div class="msg" id="lobby-msg">Waiting...</div>
 </div>
 
 <!-- ================= GAME ================= -->
-<div id="game-screen" class="screen hidden" style="align-items: stretch;">
-  <div class="hud-bar">
-    <div>
-      <div class="eyebrow">Power Tic-Tac-Toe</div>
-      <div class="hud-round">ROUND <b id="round-num">001</b></div>
-    </div>
+<div id="game-screen" class="screen hidden" style="align-items:stretch;">
+  <div class="hud-bar panel">
+    <div class="hud-round">ROUND <b id="round-num">01</b></div>
     <div class="hud-actions">
-      <button class="ghost-btn" id="rules-btn">Rules</button>
-      <button class="ghost-btn hidden" id="btn-restart">Restart Game</button>
+      <button class="secondary" id="rules-btn">Rules</button>
+      <button class="secondary hidden" id="btn-restart">Restart Game</button>
     </div>
   </div>
 
   <div id="reconnect-box" class="reconnect-box hidden"></div>
   <div id="restart-box" class="restart-box hidden"></div>
+  <details class="settings-group" id="rules-details" style="text-align:left; margin-bottom:12px;">
+    <summary>How to play</summary>
+    <div style="font-size:13px; color:var(--gold-soft); line-height:1.6; margin-top:8px;">
+      Play a card from your hand adjacent to an existing symbol on the board. In <b>Combined</b> movement mode, straight cards need any orthogonal neighbor (up/down/left/right) and diagonal cards need any diagonal neighbor. In <b>Directional</b> movement mode each card only works along one single axis — Horizontal, Vertical, "\" diagonal, or "/" diagonal — so you need a neighbor specifically along that axis. Get the required number of the <b>same symbol</b> in a row to win — it doesn't matter who placed each one, only who completes the line.<br><br>
+      <b>💣 Bomb</b> — pick one of your own cells; destroys unshielded symbols in the 8 adjacent cells.<br>
+      <b>🛡️ Shield</b> — protects all your current cells for 2 rounds.<br>
+      <b>☠️ Poison</b> — mark one of your cells; it detonates in stages over the following rounds, ignoring shields.<br>
+      <b>🎭 Traitor</b> — pick your own cell, then an adjacent unshielded opponent cell to convert.<br>
+      <b>🚧 Clear Row / 🧹 Clear Column</b> — destroys unshielded symbols in that row/column.<br>
+      <b>🪐 Gravity</b> — everything in a row falls down its own column.<br>
+      <b>🔄 Swap</b> — swap any two occupied cells, symbol and owner together.<br><br>
+      If none of your cards can legally be played, you must discard your whole hand and pass.
+    </div>
+  </details>
 
   <div class="game-layout">
-    <div class="board-wrap">
+    <div class="board-panel panel">
       <div id="board"></div>
+      <div id="pending-hint" style="width:100%;"></div>
+      <div class="hand-strip" id="hand-strip"></div>
+      <button class="secondary hidden" id="discard-btn">No playable cards — Discard Hand</button>
     </div>
 
     <div class="sidebar">
-      <div class="panel-box">
-        <div class="panel-title">Current turn</div>
-        <div id="action-current" class="action-current"></div>
-        <div id="pending-hint"></div>
-        <button class="power-btn" id="bomb-btn">
-          <span class="icon">💣</span> Bomb <span class="cost" id="bomb-cost">1 token</span>
-        </button>
-        <button class="power-btn" id="shield-btn">
-          <span class="icon">🛡️</span> Shield <span class="cost" id="shield-cost">1 token</span>
-        </button>
-        <button class="power-btn" id="poison-btn">
-          <span class="icon">☠️</span> Poison <span class="cost" id="poison-cost">1 token</span>
-        </button>
-        <button class="power-btn" id="traitor-btn">
-          <span class="icon">🎭</span> Traitor <span class="cost" id="traitor-cost">1 token</span>
-        </button>
-        <button class="power-btn" id="clearrow-btn">
-          <span class="icon">🚧</span> Clear Row <span class="cost" id="clearrow-cost">1 token</span>
-        </button>
-        <button class="power-btn" id="clearcol-btn">
-          <span class="icon">🧹</span> Clear Column <span class="cost" id="clearcol-cost">1 token</span>
-        </button>
-        <button class="power-btn" id="gravity-btn">
-          <span class="icon">🪐</span> Gravity <span class="cost" id="gravity-cost">1 token</span>
-        </button>
-        <button class="power-btn" id="swap-btn">
-          <span class="icon">🔄</span> Swap <span class="cost" id="swap-cost">1 token</span>
-        </button>
-        <button class="rules-toggle" id="rules-toggle">Show power details ▾</button>
-        <div class="rules-body" id="rules-body">
-          <b>💣 Bomb</b> — pick one of your symbols on the board. Destroys all unshielded symbols in its 8 adjacent cells. Your chosen symbol survives.<br><br>
-          <b>🛡️ Shield</b> — protects all of your symbols currently on the board for the next 2 full rounds. Blocks Bomb, Traitor, Clear Row and Clear Column, does not block Poison, Gravity, or Swap.<br><br>
-          <b>☠️ Poison</b> — mark one of your symbols. At end of round +2 it destroys symbols orthogonally adjacent (↑↓←→) to it — ignoring Shield. At end of round +3 it hits the next ring further out in those same 4 directions, then the effect ends. Diagonals are always safe.<br><br>
-          <b>🎭 Traitor</b> — pick one of your own symbols, then pick one adjacent opponent symbol (any of its 8 neighbors) to convert to your symbol. Blocked by Shield.<br><br>
-          <b>🚧 Clear Row</b> — pick any cell. Destroys every unshielded symbol in that entire row, yours and opponents' alike.<br><br>
-          <b>🧹 Clear Column</b> — pick any cell. Destroys every unshielded symbol in that entire column, yours and opponents' alike.<br><br>
-          <b>🪐 Gravity</b> — pick any row. Every symbol in it falls straight down through its own column until it hits the bottom or another symbol. Shield/Poison travel with their symbol. Can complete a line for any player, not just you.<br><br>
-          <b>🔄 Swap</b> — pick any two occupied cells on the board (yours or opponents') and swap their symbols. Can complete a line for whoever ends up with the winning symbols.
-        </div>
-      </div>
-
-      <div class="panel-box">
-        <div class="panel-title">Players</div>
+      <div class="panel">
+        <div class="field-label">Players</div>
         <div id="player-list"></div>
       </div>
-
-      <div class="panel-box">
-        <div class="panel-title">Event Log</div>
+      <div class="panel">
+        <div class="field-label" id="turn-label">—</div>
+        <button class="power-btn" id="bomb-btn"><span>💣 Bomb</span><span class="cost" id="bomb-cost"></span></button>
+        <button class="power-btn" id="shield-btn"><span>🛡️ Shield</span><span class="cost" id="shield-cost"></span></button>
+        <button class="power-btn" id="poison-btn"><span>☠️ Poison</span><span class="cost" id="poison-cost"></span></button>
+        <button class="power-btn" id="traitor-btn"><span>🎭 Traitor</span><span class="cost" id="traitor-cost"></span></button>
+        <button class="power-btn" id="clearrow-btn"><span>🚧 Clear Row</span><span class="cost" id="clearrow-cost"></span></button>
+        <button class="power-btn" id="clearcol-btn"><span>🧹 Clear Column</span><span class="cost" id="clearcol-cost"></span></button>
+        <button class="power-btn" id="gravity-btn"><span>🪐 Gravity</span><span class="cost" id="gravity-cost"></span></button>
+        <button class="power-btn" id="swap-btn"><span>🔄 Swap</span><span class="cost" id="swap-cost"></span></button>
+      </div>
+      <div class="panel">
+        <div class="field-label">Log</div>
         <div class="log-box" id="log-box"></div>
       </div>
     </div>
@@ -646,7 +340,6 @@
 
 <div class="msg-toast" id="toast"></div>
 
-<!-- CHAT PANEL -->
 <div id="chat-panel" class="hidden">
   <button id="chat-toggle">💬 Chat</button>
   <div id="chat-body" class="hidden">
@@ -663,390 +356,436 @@ import { openRoom, makeRoomCode, getPersistentId, SUPABASE_URL } from '../../sha
 
 // =========================================================
 // RULES ENGINE — ported from the original single-player file.
-// Operates on an explicit `g` state object (rather than a module
-// global) so the host can run it authoritatively. Logic for each
-// power (bomb, shield, poison, traitor, clear row/col, gravity,
-// swap) and the win-check is intentionally kept as close to the
-// original as possible, since that logic was already correct and
-// well-tested by the person who built it — the conversion work is
-// almost entirely in the networking/turn-authority layer around it.
+// Board cells store `owner` as a SEAT INDEX (not a player id) —
+// matching the original's own convention exactly — which means
+// reconnection never needs to touch the board at all, only the
+// seat's id. See STATE section below for how that's used.
 // =========================================================
-const PLAYER_CONFIGS = [
-  { symbol: 'X', color: 'var(--p0)' },
-  { symbol: 'O', color: 'var(--p1)' },
-  { symbol: '\u25b3', color: 'var(--p2)' },
-  { symbol: '\u25a1', color: 'var(--p3)' },
-  { symbol: '\u2605', color: 'var(--p4)' },
-  { symbol: '\u25cf', color: 'var(--p5)' },
+const SYMBOL_DEFS = [
+  { id:'O', colorDk:'#c0392b', cap:false, board:'<circle cx="50" cy="50" r="32"/>', mini:'<circle cx="12" cy="12" r="8"/>' },
+  { id:'X', colorDk:'#2c5f2d', cap:true,  board:'<line x1="24" y1="24" x2="76" y2="76"/><line x1="76" y1="24" x2="24" y2="76"/>', mini:'<line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/>' },
+  { id:'T', colorDk:'#1f4e79', cap:true,  board:'<line x1="50" y1="20" x2="50" y2="80"/><line x1="22" y1="35" x2="78" y2="35"/>', mini:'<line x1="12" y1="4" x2="12" y2="20"/><line x1="5" y1="8" x2="19" y2="8"/>' },
+  { id:'S', colorDk:'#6a3d9a', cap:true,  board:'<path d="M72 30 Q30 30 30 50 Q30 70 72 70" fill="none"/>', mini:'<path d="M18 6 Q6 6 6 12 Q6 18 18 18" fill="none"/>' },
 ];
-
-function getDefaults(n){
-  switch(n){
-    case 3: return { size:5, win:4 };
-    case 4: return { size:6, win:4 };
-    case 5: return { size:7, win:5 };
-    case 6: return { size:8, win:5 };
-    default: return { size:5, win:4 };
-  }
-}
-
-const POWERS = [
+const PLAYER_COLORS = ['#d4af37','#4fb3d9','#e07a5f','#8fbf6f'];
+const POWER_DEFS = [
   { key:'bomb', icon:'\ud83d\udca3', label:'Bomb' },
   { key:'shield', icon:'\ud83d\udee1\ufe0f', label:'Shield' },
   { key:'poison', icon:'\u2620\ufe0f', label:'Poison' },
   { key:'traitor', icon:'\ud83c\udfad', label:'Traitor' },
-  { key:'clearrow', icon:'\ud83d\udea7', label:'Clear Row' },
-  { key:'clearcol', icon:'\ud83e\uddf9', label:'Clear Column' },
+  { key:'clearRow', icon:'\ud83d\udea7', label:'Clear Row' },
+  { key:'clearCol', icon:'\ud83e\uddf9', label:'Clear Column' },
   { key:'gravity', icon:'\ud83e\ude90', label:'Gravity' },
   { key:'swap', icon:'\ud83d\udd04', label:'Swap' },
 ];
 
-function inBounds(g,r,c){ return r>=0 && c>=0 && r<g.size && c<g.size; }
-function isProtected(g,cell){ return cell.shieldUntil !== null && g.round <= cell.shieldUntil; }
+// Direction sets for every card shape. 'straight' and 'diagonal' are
+// the original "combined" shapes (either axis of that family works).
+// The four directional shapes each cover a single axis only.
+const SHAPE_DIRS = {
+  straight:  [[-1,0],[1,0],[0,-1],[0,1]],
+  diagonal:  [[-1,-1],[-1,1],[1,-1],[1,1]],
+  horizontal:[[0,-1],[0,1]],
+  vertical:  [[-1,0],[1,0]],
+  diagTLBR:  [[-1,-1],[1,1]],   // "\" diagonal
+  diagTRBL:  [[-1,1],[1,-1]],   // "/" diagonal
+};
+const SHAPE_TAGS = {
+  straight: '\u254b', diagonal: '\u2573',
+  horizontal: '\u2194', vertical: '\u2195',
+  diagTLBR: '\u2572', diagTRBL: '\u2571',
+};
+const SHAPE_LABELS = {
+  straight: 'straight', diagonal: 'diagonal',
+  horizontal: 'horizontal', vertical: 'vertical',
+  diagTLBR: 'diagonal \\', diagTRBL: 'diagonal /',
+};
 
-function destroyCell(g,r,c){
-  const cell = g.cells[r][c];
-  cell.occupant = null;
-  cell.shieldUntil = null;
-  cell.poison = null;
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
 }
 
-function pushLog(g, msg) { g.log = [...g.log.slice(-39), msg]; }
-function currentPlayer(g){ return g.players[g.turnIndex]; }
-function isGameOver(g){ return !!g.winner || !!g.draw; }
-
-function isBoardFull(g){
-  for(let r=0;r<g.size;r++) for(let c=0;c<g.size;c++) if(g.cells[r][c].occupant === null) return false;
-  return true;
+// cardMode: 'combined' -> 2 shapes per symbol (straight, diagonal).
+// 'directional' -> 4 shapes per symbol, one per single axis.
+function cardTypesFor(activeSymbolIds, cardMode){
+  const shapes = cardMode === 'directional'
+    ? ['horizontal','vertical','diagTLBR','diagTRBL']
+    : ['straight','diagonal'];
+  const out = [];
+  activeSymbolIds.forEach(id => { shapes.forEach(shape => out.push({symbol:id, shape})); });
+  return out;
 }
 
-function checkWinner(g, symbol){
-  const n = g.size, need = g.winLen;
+function buildDeck(cardTypes, total){
+  const deck = [];
+  for(let i=0;i<total;i++){ const t = cardTypes[i % cardTypes.length]; deck.push({symbol:t.symbol, shape:t.shape}); }
+  return shuffle(deck);
+}
+
+function makeEmptyBoard(N){
+  const b = [];
+  for(let r=0;r<N;r++) b.push(new Array(N).fill(null));
+  return b;
+}
+
+function totalCardsInHands(g){ return g.players.reduce((n,p) => n + p.hand.length, 0); }
+
+// Deals a brand-new full deck to every player (no reserve pile). Used
+// for the initial deal and for "random" mode reshuffles.
+function dealAllFresh(g){
+  const total = g.players.length * g.handSize;
+  const deck = buildDeck(g.cardTypes, total);
+  g.players.forEach(p => { p.hand = deck.splice(0, g.handSize); });
+  g.discard = [];
+}
+
+// Hands the discard pile straight back: most-recently-played card
+// first, in handSize-card blocks, to seat 0, 1, 2... No shuffling.
+function dealFromDiscardReversed(g){
+  const reversed = g.discard.slice().reverse();
+  let idx = 0;
+  g.players.forEach(p => { p.hand = reversed.slice(idx, idx + g.handSize); idx += g.handSize; });
+  const missing = [];
+  g.players.forEach(p => { while (p.hand.length < g.handSize) missing.push(p); });
+  if (missing.length) {
+    const extra = buildDeck(g.cardTypes, missing.length);
+    missing.forEach(p => p.hand.push(extra.pop()));
+  }
+  g.discard = [];
+}
+
+function maybeReshuffle(g){
+  if (totalCardsInHands(g) !== 0) return;
+  if (g.reshuffleMode === 'reverse') dealFromDiscardReversed(g);
+  else dealAllFresh(g);
+}
+
+function filledCells(g){
+  const out = [];
+  for(let r=0;r<g.N;r++) for(let c=0;c<g.N;c++) if (g.board[r][c]) out.push([r,c]);
+  return out;
+}
+
+// Bootstrap fallback logic ported exactly: "same"/"mine" narrow the
+// pool of anchor cells, but only if that narrower pool is non-empty —
+// otherwise a symbol/ownership that doesn't exist on the board yet
+// would lock every card of that kind out permanently.
+function validCellsForCard(g, card){
+  let filled = filledCells(g);
+  if (g.adjacencyMode === 'same' || g.adjacencyMode === 'mine') {
+    const sameSymbol = filled.filter(([r,c]) => g.board[r][c].symbol === card.symbol);
+    if (sameSymbol.length > 0) filled = sameSymbol;
+  }
+  if (g.adjacencyMode === 'mine') {
+    const mine = filled.filter(([r,c]) => g.board[r][c].owner === g.current);
+    if (mine.length > 0) filled = mine;
+  }
+  const dirs = SHAPE_DIRS[card.shape] || SHAPE_DIRS.straight;
+  const seen = {}; const valid = [];
+  filled.forEach(([fr,fc]) => {
+    dirs.forEach(([dr,dc]) => {
+      const r = fr+dr, c = fc+dc;
+      if (r<0||r>=g.N||c<0||c>=g.N) return;
+      if (g.board[r][c]) return;
+      const key = r+','+c;
+      if (!seen[key]) { seen[key]=true; valid.push([r,c]); }
+    });
+  });
+  return valid;
+}
+
+function checkWin(g,r,c,sym){
   const dirs = [[0,1],[1,0],[1,1],[1,-1]];
-  for(let r=0;r<n;r++){
-    for(let c=0;c<n;c++){
-      if(g.cells[r][c].occupant !== symbol) continue;
-      for(const [dr,dc] of dirs){
-        let count = 1, rr = r+dr, cc = c+dc;
-        while(inBounds(g,rr,cc) && g.cells[rr][cc].occupant === symbol){
-          count++;
-          if(count >= need) return true;
-          rr += dr; cc += dc;
-        }
-      }
-    }
+  for (const [dr,dc] of dirs) {
+    let count = 1;
+    let rr=r+dr, cc=c+dc;
+    while (rr>=0&&rr<g.N&&cc>=0&&cc<g.N&&g.board[rr][cc]&&g.board[rr][cc].symbol===sym) { count++; rr+=dr; cc+=dc; }
+    rr=r-dr; cc=c-dc;
+    while (rr>=0&&rr<g.N&&cc>=0&&cc<g.N&&g.board[rr][cc]&&g.board[rr][cc].symbol===sym) { count++; rr-=dr; cc-=dc; }
+    if (count >= g.winLen) return true;
   }
   return false;
 }
-function checkAnyWinner(g){
-  for(const p of g.players) if(checkWinner(g, p.symbol)) return p;
+function scanBoardForWin(g){
+  for(let r=0;r<g.N;r++) for(let c=0;c<g.N;c++){
+    const cell = g.board[r][c];
+    if (cell && checkWin(g,r,c,cell.symbol)) return { r, c, symbol: cell.symbol };
+  }
   return null;
 }
+function boardFull(g){
+  for(let r=0;r<g.N;r++) for(let c=0;c<g.N;c++) if (!g.board[r][c]) return false;
+  return true;
+}
+function currentPlayer(g){ return g.players[g.current]; }
+function handHasAnyMove(g, hand){ return hand.some(card => validCellsForCard(g, card).length > 0); }
 
-function applyBomb(g,r,c){
-  const player = currentPlayer(g);
-  const deltas = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
-  let destroyedAny = false;
-  const blastCells = [[r,c]]; // origin + every in-bounds neighbor, for the flash effect
-  for(const [dr,dc] of deltas){
-    const nr=r+dr, nc=c+dc;
-    if(!inBounds(g,nr,nc)) continue;
-    blastCells.push([nr,nc]);
-    const target = g.cells[nr][nc];
-    if(target.occupant === null) continue;
-    if(isProtected(g,target)) continue;
-    destroyCell(g,nr,nc);
-    destroyedAny = true;
+function pushLog(g, msg){ g.log = [...g.log.slice(-39), msg]; }
+function isShielded(cell){ return !!(cell && cell.shield > 0); }
+function isOwn(g, cell){ return !!(cell && cell.owner === g.current); }
+function isEnemy(g, cell){ return !!(cell && cell.owner !== null && cell.owner !== undefined && cell.owner !== g.current); }
+function isAdjacent8(r1,c1,r2,c2){ return Math.max(Math.abs(r1-r2), Math.abs(c1-c2)) === 1; }
+
+function advanceTurn(g){
+  g.current = (g.current + 1) % g.players.length;
+  if (g.current === 0) processRoundStart(g);
+}
+
+function processRoundStart(g){
+  g.round++;
+  for(let r=0;r<g.N;r++) for(let c=0;c<g.N;c++){
+    const cell = g.board[r][c];
+    if (cell && cell.shield > 0) cell.shield = Math.max(0, cell.shield - 1);
   }
+  const actions = [];
+  for(let r=0;r<g.N;r++) for(let c=0;c<g.N;c++){
+    const cell = g.board[r][c];
+    if (cell && cell.poison) {
+      const age = g.round - cell.poison.placedRound;
+      if (age === 2) actions.push({ stage:1, r, c });
+      else if (age >= 3) actions.push({ stage:2, r, c });
+    }
+  }
+  actions.forEach(a => { if (a.stage === 1) poisonStage1(g,a.r,a.c); else poisonStage2(g,a.r,a.c); });
+  for(let r=0;r<g.N;r++) for(let c=0;c<g.N;c++){
+    const cell = g.board[r][c];
+    if (cell && cell.poison && (g.round - cell.poison.placedRound) >= 3) cell.poison = null;
+  }
+}
+function poisonStage1(g,r,c){
+  [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc]) => {
+    const rr=r+dr, cc=c+dc;
+    if (rr>=0&&rr<g.N&&cc>=0&&cc<g.N&&g.board[rr][cc]) g.board[rr][cc] = null;
+  });
+}
+function poisonStage2(g,r,c){
+  [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc]) => {
+    const rr=r+dr*2, cc=c+dc*2;
+    if (rr>=0&&rr<g.N&&cc>=0&&cc<g.N&&g.board[rr][cc]) g.board[rr][cc] = null;
+  });
+}
+
+function executeBomb(g,r,c){
+  const blastCells = [[r,c]];
+  [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]].forEach(([dr,dc]) => {
+    const rr=r+dr, cc=c+dc;
+    if (rr<0||rr>=g.N||cc<0||cc>=g.N) return;
+    blastCells.push([rr,cc]);
+    const cell = g.board[rr][cc];
+    if (cell && !isShielded(cell)) g.board[rr][cc] = null;
+  });
   g.lastBomb = { ts: Date.now(), cells: blastCells };
-  pushLog(g, `\ud83d\udca3 ${player.symbol} detonated a Bomb at (${r+1},${c+1})${destroyedAny ? '' : ' \u2014 no unshielded targets hit'}.`);
 }
-
-function applyShield(g){
-  const player = currentPlayer(g);
-  let count = 0;
-  for(let r=0;r<g.size;r++) for(let c=0;c<g.size;c++){
-    const cell = g.cells[r][c];
-    if(cell.occupant === player.symbol){ cell.shieldUntil = g.round + 2; count++; }
-  }
-  pushLog(g, `\ud83d\udee1\ufe0f ${player.symbol} raised a Shield over ${count} symbol${count===1?'':'s'} (protected through round ${g.round+2}).`);
-}
-
-function applyPoisonMark(g,r,c){
-  const player = currentPlayer(g);
-  g.cells[r][c].poison = { castRound: g.round, stage: 0 };
-  pushLog(g, `\u2620\ufe0f ${player.symbol} poisoned their symbol at (${r+1},${c+1}).`);
-}
-
-function applyTraitor(g,sr,sc,tr,tc){
-  const player = currentPlayer(g);
-  const target = g.cells[tr][tc];
-  const fromSymbol = target.occupant;
-  target.occupant = player.symbol;
-  pushLog(g, `\ud83c\udfad ${player.symbol} turned ${fromSymbol}'s symbol at (${tr+1},${tc+1}) into a traitor.`);
-}
-
-function applyClearRow(g,r){
-  const player = currentPlayer(g);
-  let hit = 0;
-  for(let c=0;c<g.size;c++){
-    const target = g.cells[r][c];
-    if(target.occupant === null || isProtected(g,target)) continue;
-    destroyCell(g,r,c); hit++;
-  }
-  pushLog(g, `\ud83d\udea7 ${player.symbol} cleared row ${r+1} \u2014 ${hit} symbol${hit===1?'':'s'} destroyed.`);
-}
-
-function applyClearColumn(g,c){
-  const player = currentPlayer(g);
-  let hit = 0;
-  for(let r=0;r<g.size;r++){
-    const target = g.cells[r][c];
-    if(target.occupant === null || isProtected(g,target)) continue;
-    destroyCell(g,r,c); hit++;
-  }
-  pushLog(g, `\ud83e\uddf9 ${player.symbol} cleared column ${c+1} \u2014 ${hit} symbol${hit===1?'':'s'} destroyed.`);
-}
-
-function applyGravity(g,r){
-  const player = currentPlayer(g);
-  let moved = 0;
-  for(let c=0;c<g.size;c++){
-    const startCell = g.cells[r][c];
-    if(startCell.occupant === null) continue;
-    let target = r;
-    for(let rr=r+1; rr<g.size; rr++){
-      if(g.cells[rr][c].occupant === null) target = rr; else break;
-    }
-    if(target !== r){
-      const targetCell = g.cells[target][c];
-      targetCell.occupant = startCell.occupant;
-      targetCell.shieldUntil = startCell.shieldUntil;
-      targetCell.poison = startCell.poison;
-      startCell.occupant = null; startCell.shieldUntil = null; startCell.poison = null;
-      moved++;
-    }
-  }
-  pushLog(g, `\ud83e\ude90 ${player.symbol} triggered Gravity on row ${r+1} \u2014 ${moved} symbol${moved===1?'':'s'} fell.`);
-}
-
-function applySwap(g,r1,c1,r2,c2){
-  const player = currentPlayer(g);
-  const a = g.cells[r1][c1], b = g.cells[r2][c2];
-  const temp = { occupant:a.occupant, shieldUntil:a.shieldUntil, poison:a.poison };
-  a.occupant=b.occupant; a.shieldUntil=b.shieldUntil; a.poison=b.poison;
-  b.occupant=temp.occupant; b.shieldUntil=temp.shieldUntil; b.poison=temp.poison;
-  pushLog(g, `\ud83d\udd04 ${player.symbol} swapped the symbols at (${r1+1},${c1+1}) and (${r2+1},${c2+1}).`);
-}
-
-function processEndOfRound(g, completedRound){
-  const ring1 = [[-1,0],[1,0],[0,-1],[0,1]];
-  const ring2 = [[-2,0],[2,0],[0,-2],[0,2]];
-  for(let r=0;r<g.size;r++){
-    for(let c=0;c<g.size;c++){
-      const cell = g.cells[r][c];
-      if(!cell.poison) continue;
-      const p = cell.poison;
-      if(p.stage === 0 && completedRound === p.castRound + 2){
-        let hit = 0;
-        for(const [dr,dc] of ring1){
-          const nr=r+dr, nc=c+dc;
-          if(!inBounds(g,nr,nc)) continue;
-          if(g.cells[nr][nc].occupant !== null){ destroyCell(g,nr,nc); hit++; }
-        }
-        p.stage = 1;
-        pushLog(g, `\u2620\ufe0f Poison at (${r+1},${c+1}) detonated (ring 1) \u2014 ${hit} symbol${hit===1?'':'s'} destroyed.`);
-      } else if(p.stage === 1 && completedRound === p.castRound + 3){
-        let hit = 0;
-        for(const [dr,dc] of ring2){
-          const nr=r+dr, nc=c+dc;
-          if(!inBounds(g,nr,nc)) continue;
-          if(g.cells[nr][nc].occupant !== null){ destroyCell(g,nr,nc); hit++; }
-        }
-        pushLog(g, `\u2620\ufe0f Poison at (${r+1},${c+1}) detonated (ring 2, final) \u2014 ${hit} symbol${hit===1?'':'s'} destroyed.`);
-        cell.poison = null;
-      }
-    }
+function clearRow(g,r){ for(let c=0;c<g.N;c++){ const cell=g.board[r][c]; if (cell && !isShielded(cell)) g.board[r][c]=null; } }
+function clearCol(g,c){ for(let r=0;r<g.N;r++){ const cell=g.board[r][c]; if (cell && !isShielded(cell)) g.board[r][c]=null; } }
+function applyGravity(g,row){
+  for(let c=0;c<g.N;c++){
+    const cell = g.board[row][c];
+    if (!cell) continue;
+    let targetR = row;
+    for(let rr=row+1; rr<g.N; rr++){ if (g.board[rr][c]) break; targetR = rr; }
+    if (targetR !== row) { g.board[targetR][c] = cell; g.board[row][c] = null; }
   }
 }
+function swapCells(g,r1,c1,r2,c2){
+  const tmp = g.board[r1][c1];
+  g.board[r1][c1] = g.board[r2][c2];
+  g.board[r2][c2] = tmp;
+}
 
-function endTurn(g){
-  g.turnIndex++;
-  if(g.turnIndex >= g.players.length){
-    g.turnIndex = 0;
-    const completed = g.round;
-    processEndOfRound(g, completed);
-    g.round = completed + 1;
-  }
+// Shared post-effect resolution used by every power (and, for plain
+// placement, its own localized win-check — see 'place' in
+// resolveAction). Whoever is CURRENT when a line completes gets
+// credited, regardless of which symbol it is or who placed most of
+// it — symbols aren't owned for scoring.
+function finishTurn(g){
+  const win = scanBoardForWin(g);
+  if (win) { g.winner = { seat: g.current, symbol: win.symbol }; g.over = true; return; }
+  if (boardFull(g)) { g.draw = true; g.over = true; pushLog(g, 'Board full \u2014 it\u2019s a draw.'); return; }
+  maybeReshuffle(g);
+  advanceTurn(g);
 }
 
 function freshGame(seats, settings){
-  const players = seats.map((id, i) => ({
-    id, symbol: PLAYER_CONFIGS[i].symbol, color: PLAYER_CONFIGS[i].color, tokens: settings.maxTokens,
-  }));
-  const cells = [];
-  for(let r=0;r<settings.size;r++){
-    const row = [];
-    for(let c=0;c<settings.size;c++) row.push({ occupant:null, shieldUntil:null, poison:null });
-    cells.push(row);
-  }
-  return {
-    players, size: settings.size, winLen: settings.winLen, maxTokens: settings.maxTokens,
-    costs: { ...settings.costs },
-    cells, round: 1, turnIndex: 0, winner: null, draw: false,
-    log: [`Game started \u2014 ${seats.length} players on a ${settings.size}\u00d7${settings.size} grid, ${settings.winLen} in a row to win.`],
+  const activeSymbols = SYMBOL_DEFS.slice(0, settings.symbols).map(s => s.id);
+  const cardMode = settings.cardMode === 'directional' ? 'directional' : 'combined';
+  const cardTypes = cardTypesFor(activeSymbols, cardMode);
+  const handSize = cardTypes.length * settings.handMultiplier;
+  const players = seats.map(id => ({ id, hand: [], tokens: settings.startingTokens }));
+  const N = settings.board;
+  const g = {
+    players, N, winLen: settings.win, board: makeEmptyBoard(N), discard: [],
+    activeSymbols, cardMode, cardTypes, handSize,
+    current: 0, round: 1, over: false, winner: null, draw: false,
+    adjacencyMode: settings.adjacencyMode, reshuffleMode: settings.reshuffleMode,
+    powersEnabled: settings.powersEnabled, powerCosts: { ...settings.powerCosts },
+    lastPlaced: null, lastBomb: null,
+    log: [`Game started \u2014 ${seats.length} players, ${N}\u00d7${N} board, ${settings.win} in a row to win.`],
     restartVote: null,
-    lastBomb: null, // { ts, cells:[[r,c],...] } — drives the flash effect on every client
   };
+  const mid = Math.floor(N/2);
+  g.board[mid][mid] = { symbol: settings.center, owner: null, shield: 0, poison: null };
+  g.lastPlaced = { r: mid, c: mid };
+  dealAllFresh(g);
+  return g;
 }
 
-// Host-side action resolver: validates and applies ONE completed
-// action (a placement, or a fully-targeted power), mirroring the
-// original onCellClick's per-power branches but taking explicit
-// coordinates instead of incremental clicks (targeting stages are
-// handled client-side locally before a single network message is
-// sent — see CLIENT STATE below).
-function resolveAction(g, senderId, action) {
-  if (isGameOver(g)) return false;
+// Host-side action resolver — validates and applies ONE completed
+// action. Card-targeting stages (traitor's two clicks, swap's two
+// clicks) are resolved client-side locally before a single network
+// message is sent, same pattern as Power Tic-Tac-Toe.
+function resolveAction(g, senderId, action){
+  if (g.over) return false;
   const player = currentPlayer(g);
   if (player.id !== senderId) return false;
 
   if (action.type === 'place') {
-    const { r, c } = action;
-    if (!inBounds(g,r,c)) return false;
-    const cell = g.cells[r][c];
-    if (cell.occupant) return false;
-    cell.occupant = player.symbol;
-    pushLog(g, `${player.symbol} placed at (${r+1},${c+1}).`);
-    if (checkWinner(g, player.symbol)) { g.winner = player; return true; }
-    if (isBoardFull(g)) { g.draw = true; pushLog(g, 'Board full \u2014 it\u2019s a draw.'); return true; }
-    endTurn(g);
+    const { cardIdx, r, c } = action;
+    const hand = player.hand;
+    if (cardIdx < 0 || cardIdx >= hand.length) return false;
+    const card = hand[cardIdx];
+    const valid = validCellsForCard(g, card).some(([vr,vc]) => vr===r && vc===c);
+    if (!valid) return false;
+    g.board[r][c] = { symbol: card.symbol, owner: g.current, shield: 0, poison: null };
+    g.lastPlaced = { r, c };
+    g.discard.push(card);
+    hand.splice(cardIdx, 1);
+    pushLog(g, `${playerLabel(g, g.current)} played ${card.symbol} (${SHAPE_LABELS[card.shape] || card.shape}) at (${r+1},${c+1}).`);
+    if (checkWin(g, r, c, card.symbol)) { g.winner = { seat: g.current, symbol: card.symbol }; g.over = true; return true; }
+    if (boardFull(g)) { g.draw = true; g.over = true; pushLog(g, 'Board full \u2014 it\u2019s a draw.'); return true; }
+    maybeReshuffle(g);
+    advanceTurn(g);
     return true;
   }
+
+  if (action.type === 'discard') {
+    if (handHasAnyMove(g, player.hand)) return false; // must actually be stuck
+    g.discard = g.discard.concat(player.hand);
+    pushLog(g, `${playerLabel(g, g.current)} had no playable cards and discarded their hand.`);
+    player.hand = [];
+    maybeReshuffle(g);
+    advanceTurn(g);
+    return true;
+  }
+
+  if (!g.powersEnabled) return false;
+  const cost = g.powerCosts[action.type];
+  if (cost === undefined || player.tokens < cost) return false;
 
   if (action.type === 'shield') {
-    if (player.tokens < g.costs.shield) return false;
-    player.tokens -= g.costs.shield;
-    applyShield(g);
-    endTurn(g);
+    for(let r=0;r<g.N;r++) for(let c=0;c<g.N;c++){ const cell=g.board[r][c]; if (cell && cell.owner===g.current) cell.shield = 2; }
+    player.tokens -= cost;
+    pushLog(g, `${playerLabel(g, g.current)} raised a Shield.`);
+    finishTurn(g);
     return true;
   }
-
   if (action.type === 'bomb') {
     const { r, c } = action;
-    if (!inBounds(g,r,c) || player.tokens < g.costs.bomb) return false;
-    if (g.cells[r][c].occupant !== player.symbol) return false;
-    player.tokens -= g.costs.bomb;
-    applyBomb(g,r,c);
-    endTurn(g);
+    if (!isOwn(g, g.board[r]?.[c])) return false;
+    player.tokens -= cost;
+    executeBomb(g, r, c);
+    pushLog(g, `${playerLabel(g, g.current)} detonated a Bomb at (${r+1},${c+1}).`);
+    finishTurn(g);
     return true;
   }
-
   if (action.type === 'poison') {
     const { r, c } = action;
-    if (!inBounds(g,r,c) || player.tokens < g.costs.poison) return false;
-    const cell = g.cells[r][c];
-    if (cell.occupant !== player.symbol || cell.poison) return false;
-    player.tokens -= g.costs.poison;
-    applyPoisonMark(g,r,c);
-    endTurn(g);
+    if (!isOwn(g, g.board[r]?.[c])) return false;
+    player.tokens -= cost;
+    g.board[r][c].poison = { owner: g.current, placedRound: g.round };
+    pushLog(g, `${playerLabel(g, g.current)} poisoned (${r+1},${c+1}).`);
+    finishTurn(g);
     return true;
   }
-
-  if (action.type === 'clearrow') {
-    const { r } = action;
-    if (r < 0 || r >= g.size || player.tokens < g.costs.clearrow) return false;
-    player.tokens -= g.costs.clearrow;
-    applyClearRow(g,r);
-    endTurn(g);
-    return true;
-  }
-
-  if (action.type === 'clearcol') {
-    const { c } = action;
-    if (c < 0 || c >= g.size || player.tokens < g.costs.clearcol) return false;
-    player.tokens -= g.costs.clearcol;
-    applyClearColumn(g,c);
-    endTurn(g);
-    return true;
-  }
-
-  if (action.type === 'gravity') {
-    const { r } = action;
-    if (r < 0 || r >= g.size || player.tokens < g.costs.gravity) return false;
-    player.tokens -= g.costs.gravity;
-    applyGravity(g,r);
-    const winner = checkAnyWinner(g);
-    if (winner) { g.winner = winner; return true; }
-    endTurn(g);
-    return true;
-  }
-
-  if (action.type === 'swap') {
-    const { r1, c1, r2, c2 } = action;
-    if (!inBounds(g,r1,c1) || !inBounds(g,r2,c2)) return false;
-    if (r1 === r2 && c1 === c2) return false;
-    if (player.tokens < g.costs.swap) return false;
-    if (g.cells[r1][c1].occupant === null || g.cells[r2][c2].occupant === null) return false;
-    player.tokens -= g.costs.swap;
-    applySwap(g,r1,c1,r2,c2);
-    const winner = checkAnyWinner(g);
-    if (winner) { g.winner = winner; return true; }
-    endTurn(g);
-    return true;
-  }
-
   if (action.type === 'traitor') {
     const { sr, sc, tr, tc } = action;
-    if (!inBounds(g,sr,sc) || !inBounds(g,tr,tc) || player.tokens < g.costs.traitor) return false;
-    if (g.cells[sr][sc].occupant !== player.symbol) return false;
-    const isAdjacent = Math.abs(tr-sr) <= 1 && Math.abs(tc-sc) <= 1 && !(tr===sr && tc===sc);
-    if (!isAdjacent) return false;
-    const target = g.cells[tr][tc];
-    if (target.occupant === null || target.occupant === player.symbol) return false;
-    if (isProtected(g, target)) return false;
-    player.tokens -= g.costs.traitor;
-    applyTraitor(g,sr,sc,tr,tc);
-    if (checkWinner(g, player.symbol)) { g.winner = player; return true; }
-    endTurn(g);
+    const source = g.board[sr]?.[sc], target = g.board[tr]?.[tc];
+    if (!isOwn(g, source)) return false;
+    if (!isEnemy(g, target)) return false;
+    if (!isAdjacent8(sr, sc, tr, tc)) return false;
+    if (isShielded(target)) return false;
+    player.tokens -= cost;
+    target.symbol = source.symbol;
+    target.owner = g.current;
+    target.poison = null;
+    pushLog(g, `${playerLabel(g, g.current)} turned (${tr+1},${tc+1}) traitor.`);
+    finishTurn(g);
     return true;
   }
-
+  if (action.type === 'clearRow') {
+    const { r } = action;
+    if (r < 0 || r >= g.N) return false;
+    player.tokens -= cost;
+    clearRow(g, r);
+    pushLog(g, `${playerLabel(g, g.current)} cleared row ${r+1}.`);
+    finishTurn(g);
+    return true;
+  }
+  if (action.type === 'clearCol') {
+    const { c } = action;
+    if (c < 0 || c >= g.N) return false;
+    player.tokens -= cost;
+    clearCol(g, c);
+    pushLog(g, `${playerLabel(g, g.current)} cleared column ${c+1}.`);
+    finishTurn(g);
+    return true;
+  }
+  if (action.type === 'gravity') {
+    const { r } = action;
+    if (r < 0 || r >= g.N) return false;
+    player.tokens -= cost;
+    applyGravity(g, r);
+    pushLog(g, `${playerLabel(g, g.current)} triggered Gravity on row ${r+1}.`);
+    finishTurn(g);
+    return true;
+  }
+  if (action.type === 'swap') {
+    const { r1, c1, r2, c2 } = action;
+    if (r1===r2 && c1===c2) return false;
+    if (!g.board[r1]?.[c1] || !g.board[r2]?.[c2]) return false;
+    player.tokens -= cost;
+    swapCells(g, r1, c1, r2, c2);
+    pushLog(g, `${playerLabel(g, g.current)} swapped (${r1+1},${c1+1}) and (${r2+1},${c2+1}).`);
+    finishTurn(g);
+    return true;
+  }
   return false;
 }
+
+function playerLabel(g, seatIdx){ return `Player ${seatIdx + 1}`; }
 
 // =========================================================
 // STATE
 // =========================================================
 const myId = getPersistentId();
 let roomCode = null;
-let ROOM = null;   // { hostId, capacity, seats, started, settings, restartVote, chat }
+let ROOM = null;
 let GAME = null;
 let room = null;
 let connectedIds = [];
 
-let setupCount = 3;
-let myPendingPower = null; // purely local UI state — see note above resolveAction
+let mySelectedCardIdx = null;
+let myPendingPower = null;
 let showingRestartConfirm = false;
-let lastSeenBombTs = undefined; // undefined = not yet initialized (see checkBombFlash)
+let lastSeenBombTs = undefined;
 
 const SUPABASE_CONFIGURED = SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL';
 
-function isHost() { return !!ROOM && ROOM.hostId === myId; }
-function isMyTurn() { return GAME && !isGameOver(GAME) && currentPlayer(GAME).id === myId; }
+function isHost(){ return !!ROOM && ROOM.hostId === myId; }
+function isMyTurn(){ return GAME && !GAME.over && currentPlayer(GAME).id === myId; }
+function mySeatIdx(){ return ROOM ? ROOM.seats.indexOf(myId) : -1; }
 
-function freshRoom(hostId) {
-  return {
-    hostId, capacity: 3, seats: [], started: false,
-    settings: { size: 5, winLen: 4, maxTokens: 3, costs: { bomb:1, shield:1, poison:1, traitor:1, clearrow:1, clearcol:1, gravity:1, swap:1 } },
-    restartVote: null, chat: [],
-  };
-}
+const DEFAULT_SETTINGS = {
+  players: 3, symbols: 2, board: 5, win: 4, center: 'O', handMultiplier: 2,
+  cardMode: 'combined',
+  adjacencyMode: 'any', reshuffleMode: 'random', powersEnabled: true, startingTokens: 3,
+  powerCosts: { bomb:1, shield:1, poison:1, traitor:1, clearRow:1, clearCol:1, gravity:1, swap:1 },
+};
 
-function nameOf(id) {
-  if (!ROOM) return 'Player';
-  const idx = ROOM.seats.indexOf(id);
-  return idx === -1 ? 'Player' : `Player ${idx + 1}`;
+function freshRoom(hostId){
+  return { hostId, capacity: DEFAULT_SETTINGS.players, seats: [], started: false, settings: { ...DEFAULT_SETTINGS, powerCosts: { ...DEFAULT_SETTINGS.powerCosts } }, restartVote: null, chat: [] };
 }
 
 // =========================================================
@@ -1065,87 +804,86 @@ document.getElementById('btn-join-seat').onclick = () => room?.send('join_seat',
 document.getElementById('btn-start').onclick = () => room?.send('start_game', {});
 document.getElementById('btn-save-settings').onclick = saveSettingsFromForm;
 
-function showScreen(id) {
+function showScreen(id){
   for (const s of [screenHome, screenLobby, gameScreen]) s.classList.add('hidden');
   document.getElementById(id).classList.remove('hidden');
 }
-
 const urlRoom = new URLSearchParams(location.search).get('room');
 if (urlRoom) joinRoom(urlRoom.toUpperCase());
 
-// ---- setup form wiring (lobby) ----
-const countRow = document.getElementById('count-row');
-const symbolPreview = document.getElementById('symbol-preview');
-const boardSizeInput = document.getElementById('board-size');
-const winLenInput = document.getElementById('win-len');
-const maxTokensInput = document.getElementById('max-tokens');
-const costGrid = document.getElementById('cost-grid');
+// ---- lobby setup form ----
+let draftSettings = { ...DEFAULT_SETTINGS, powerCosts: { ...DEFAULT_SETTINGS.powerCosts } };
 
-function renderCostGridInputs(costs) {
-  costGrid.innerHTML = '';
-  POWERS.forEach(p => {
-    const field = document.createElement('div');
-    field.className = 'cost-field';
-    field.innerHTML = `<label for="cost-${p.key}">${p.icon} ${p.label}</label><input type="number" id="cost-${p.key}" min="0" max="9" value="${costs[p.key]}">`;
-    costGrid.appendChild(field);
-  });
-}
-
-function renderCountButtons() {
-  countRow.innerHTML = '';
-  [3,4,5,6].forEach(n => {
+function choiceRow(containerId, options, currentVal, onPick){
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  options.forEach(opt => {
     const btn = document.createElement('button');
-    btn.className = 'count-btn' + (n === setupCount ? ' active' : '');
-    btn.textContent = n;
+    btn.className = 'choice-btn' + (opt.value === currentVal ? ' active' : '');
+    btn.textContent = opt.label;
     btn.disabled = !isHost() || (ROOM && ROOM.started);
-    btn.onclick = () => {
+    btn.onclick = () => { if (!isHost()) return; onPick(opt.value); renderLobby(); };
+    el.appendChild(btn);
+  });
+}
+
+function renderSettingsForm(){
+  const s = draftSettings;
+  choiceRow('players-choices', [2,3,4].map(n => ({label: n+' players', value:n})), s.players, v => { s.players = v; });
+  choiceRow('symbols-choices', SYMBOL_DEFS.map((sym,i) => ({label:(i+1)+' \u2014 '+sym.id, value:i+1})), s.symbols, v => { s.symbols = v; });
+  choiceRow('cardmode-choices', [{label:'Combined (straight/diagonal)',value:'combined'},{label:'Directional (single axis)',value:'directional'}], s.cardMode, v => { s.cardMode = v; });
+  choiceRow('board-choices', [5,7].map(n => ({label:n+'\u00d7'+n, value:n})), s.board, v => { s.board = v; });
+  choiceRow('win-choices', [3,4,5].map(n => ({label:n+' in a row', value:n})), s.win, v => { s.win = v; });
+  choiceRow('center-choices', SYMBOL_DEFS.slice(0, s.symbols).map(sym => ({label:sym.id, value:sym.id})), s.center, v => { s.center = v; });
+  choiceRow('adjacency-choices', [{label:'Any filled cell',value:'any'},{label:'Same symbol',value:'same'},{label:'Your own cells',value:'mine'}], s.adjacencyMode, v => { s.adjacencyMode = v; });
+  choiceRow('reshuffle-choices', [{label:'Fresh shuffle',value:'random'},{label:'Reverse discard',value:'reverse'}], s.reshuffleMode, v => { s.reshuffleMode = v; });
+  choiceRow('powers-toggle-choices', [{label:'Powers On',value:true},{label:'Powers Off',value:false}], s.powersEnabled, v => { s.powersEnabled = v; });
+
+  const shapeCount = s.cardMode === 'directional' ? 4 : 2;
+  document.getElementById('handsize-note').textContent = `Hand size = (active symbols × ${shapeCount} card types) × this multiplier`;
+
+  document.getElementById('hm-val').textContent = s.handMultiplier;
+  document.getElementById('hm-minus').disabled = !isHost() || (ROOM&&ROOM.started);
+  document.getElementById('hm-plus').disabled = !isHost() || (ROOM&&ROOM.started);
+  document.getElementById('hm-minus').onclick = () => { if (isHost() && s.handMultiplier>1) { s.handMultiplier--; renderSettingsForm(); } };
+  document.getElementById('hm-plus').onclick = () => { if (isHost() && s.handMultiplier<8) { s.handMultiplier++; renderSettingsForm(); } };
+
+  document.getElementById('tok-val').textContent = s.startingTokens;
+  document.getElementById('tok-minus').disabled = !isHost() || (ROOM&&ROOM.started);
+  document.getElementById('tok-plus').disabled = !isHost() || (ROOM&&ROOM.started);
+  document.getElementById('tok-minus').onclick = () => { if (isHost() && s.startingTokens>0) { s.startingTokens--; renderSettingsForm(); } };
+  document.getElementById('tok-plus').onclick = () => { if (isHost() && s.startingTokens<15) { s.startingTokens++; renderSettingsForm(); } };
+
+  const costGrid = document.getElementById('cost-grid');
+  costGrid.innerHTML = '';
+  POWER_DEFS.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'settings-row';
+    row.innerHTML = `<span>${p.icon} ${p.label}</span><div class="stepper"><button class="tiny secondary" data-p="${p.key}" data-d="-1">\u2212</button><span class="val">${s.powerCosts[p.key]}</span><button class="tiny secondary" data-p="${p.key}" data-d="1">+</button></div>`;
+    costGrid.appendChild(row);
+  });
+  costGrid.querySelectorAll('button').forEach(b => {
+    b.disabled = !isHost() || (ROOM&&ROOM.started);
+    b.onclick = () => {
       if (!isHost()) return;
-      setupCount = n;
-      const d = getDefaults(n);
-      boardSizeInput.value = d.size;
-      winLenInput.value = d.win;
-      renderCountButtons();
-      renderSymbolPreviewLobby();
+      const key = b.dataset.p, delta = Number(b.dataset.d);
+      s.powerCosts[key] = Math.max(0, Math.min(9, s.powerCosts[key] + delta));
+      renderSettingsForm();
     };
-    countRow.appendChild(btn);
   });
+  document.getElementById('btn-save-settings').classList.toggle('hidden', !isHost());
+  document.getElementById('btn-save-settings').disabled = ROOM && ROOM.started;
 }
 
-function renderSymbolPreviewLobby() {
-  symbolPreview.innerHTML = '';
-  for (let i = 0; i < setupCount; i++) {
-    const cfg = PLAYER_CONFIGS[i];
-    const filled = ROOM && !!ROOM.seats[i];
-    const chip = document.createElement('div');
-    chip.className = 'symbol-chip' + (filled ? ' filled' : '');
-    chip.innerHTML = `<span class="symbol-swatch" style="background:${cfg.color}"></span> Player ${i+1} \u2014 ${cfg.symbol}${filled ? (ROOM.seats[i]===myId ? ' (you)' : '') : ' (open)'}`;
-    symbolPreview.appendChild(chip);
-  }
-}
-
-function saveSettingsFromForm() {
+function saveSettingsFromForm(){
   if (!isHost() || (ROOM && ROOM.started)) return;
-  let size = parseInt(boardSizeInput.value, 10);
-  let win = parseInt(winLenInput.value, 10);
-  if (!size || size < 4) size = getDefaults(setupCount).size;
-  if (size > 12) size = 12;
-  if (!win || win < 3) win = getDefaults(setupCount).win;
-  if (win > size) win = size;
-  let maxTokens = parseInt(maxTokensInput.value, 10);
-  if (isNaN(maxTokens) || maxTokens < 0) maxTokens = 3;
-  const costs = {};
-  POWERS.forEach(p => {
-    let v = parseInt(document.getElementById(`cost-${p.key}`).value, 10);
-    if (isNaN(v) || v < 0) v = 1;
-    costs[p.key] = v;
-  });
-  room.send('set_capacity_and_settings', { capacity: setupCount, settings: { size, winLen: win, maxTokens, costs } });
+  room.send('set_capacity_and_settings', { capacity: draftSettings.players, settings: draftSettings });
 }
 
 // =========================================================
 // NETWORKING
 // =========================================================
-async function createRoom() {
+async function createRoom(){
   homeErr.textContent = '';
   if (!SUPABASE_CONFIGURED) { homeErr.textContent = 'Multiplayer isn\u2019t connected yet.'; return; }
   roomCode = makeRoomCode();
@@ -1155,8 +893,7 @@ async function createRoom() {
   showScreen('screen-lobby');
   renderLobby();
 }
-
-async function joinRoom(code) {
+async function joinRoom(code){
   homeErr.textContent = '';
   if (!code) { homeErr.textContent = 'Enter a room code.'; return; }
   if (!SUPABASE_CONFIGURED) { homeErr.textContent = 'Multiplayer isn\u2019t connected yet.'; return; }
@@ -1167,20 +904,27 @@ async function joinRoom(code) {
   document.getElementById('lobby-msg').textContent = 'Connecting...';
   room.send('request_sync', {});
 }
-
-async function setupRoom() {
-  room = openRoom({ gamePrefix: 'power-ttt', roomCode, myId });
+async function setupRoom(){
+  room = openRoom({ gamePrefix: 'card-tactoe', roomCode, myId });
 
   room.on('set_capacity_and_settings', (payload) => {
     if (!isHost() || ROOM.started) return;
-    const cap = Math.max(3, Math.min(6, payload.capacity | 0));
+    const cap = Math.max(2, Math.min(4, payload.capacity | 0));
     const s = payload.settings || {};
-    const size = Math.max(4, Math.min(12, s.size | 0 || ROOM.settings.size));
-    const winLen = Math.max(3, Math.min(size, s.winLen | 0 || ROOM.settings.winLen));
-    const maxTokens = Math.max(0, Math.min(9, s.maxTokens | 0));
-    const costs = { ...ROOM.settings.costs };
-    POWERS.forEach(p => { if (s.costs && typeof s.costs[p.key] === 'number') costs[p.key] = Math.max(0, Math.min(9, s.costs[p.key] | 0)); });
-    ROOM = { ...ROOM, capacity: cap, seats: ROOM.seats.slice(0, cap), settings: { size, winLen, maxTokens, costs } };
+    const symbols = Math.max(2, Math.min(4, s.symbols | 0 || ROOM.settings.symbols));
+    const cardMode = ['combined','directional'].includes(s.cardMode) ? s.cardMode : ROOM.settings.cardMode;
+    const board = [5,7].includes(s.board) ? s.board : ROOM.settings.board;
+    const win = Math.max(3, Math.min(5, s.win | 0 || ROOM.settings.win));
+    const centerOk = SYMBOL_DEFS.slice(0, symbols).some(sym => sym.id === s.center);
+    const center = centerOk ? s.center : SYMBOL_DEFS[0].id;
+    const handMultiplier = Math.max(1, Math.min(8, s.handMultiplier | 0 || ROOM.settings.handMultiplier));
+    const adjacencyMode = ['any','same','mine'].includes(s.adjacencyMode) ? s.adjacencyMode : ROOM.settings.adjacencyMode;
+    const reshuffleMode = ['random','reverse'].includes(s.reshuffleMode) ? s.reshuffleMode : ROOM.settings.reshuffleMode;
+    const powersEnabled = !!s.powersEnabled;
+    const startingTokens = Math.max(0, Math.min(15, s.startingTokens | 0));
+    const powerCosts = { ...ROOM.settings.powerCosts };
+    POWER_DEFS.forEach(p => { if (s.powerCosts && typeof s.powerCosts[p.key] === 'number') powerCosts[p.key] = Math.max(0, Math.min(9, s.powerCosts[p.key] | 0)); });
+    ROOM = { ...ROOM, capacity: cap, seats: ROOM.seats.slice(0, cap), settings: { players:cap, symbols, cardMode, board, win, center, handMultiplier, adjacencyMode, reshuffleMode, powersEnabled, startingTokens, powerCosts } };
     broadcastSync();
   });
 
@@ -1213,7 +957,9 @@ async function setupRoom() {
     if (applied) broadcastSync();
   });
 
-  // Mid-game reconnection: claim a currently-disconnected seat.
+  // Mid-game reconnection: only ROOM.seats and the player's own id
+  // need updating — board cells reference seat index, not id, so
+  // there's nothing on the board itself to migrate.
   room.on('claim_seat', (payload) => {
     if (!isHost() || !ROOM || !ROOM.started) return;
     const oldId = payload.oldId, newId = payload.senderId;
@@ -1225,13 +971,11 @@ async function setupRoom() {
     const newSeats = ROOM.seats.slice();
     newSeats[idx] = newId;
     ROOM = { ...ROOM, seats: newSeats };
-    const p = GAME.players.find(pl => pl.id === oldId);
-    if (p) p.id = newId;
-    pushLog(GAME, 'A player reconnected.');
+    if (GAME && GAME.players[idx]) GAME.players[idx].id = newId;
+    if (GAME) pushLog(GAME, 'A player reconnected.');
     broadcastSync();
   });
 
-  // ---- restart vote (host proposes, every seated player must agree) ----
   room.on('restart_propose', (payload) => {
     if (!isHost() || !ROOM.started || GAME.restartVote) return;
     const votes = {};
@@ -1245,9 +989,7 @@ async function setupRoom() {
     if (payload.vote === false) { GAME.restartVote = null; broadcastSync(); return; }
     GAME.restartVote.votes[payload.senderId] = true;
     const allYes = Object.values(GAME.restartVote.votes).every(v => v === true);
-    if (allYes) {
-      GAME = freshGame(ROOM.seats, ROOM.settings);
-    }
+    if (allYes) GAME = freshGame(ROOM.seats, ROOM.settings);
     broadcastSync();
   });
   room.on('restart_cancel', (payload) => {
@@ -1276,20 +1018,17 @@ async function setupRoom() {
     connectedIds = ids;
     if (!ROOM || ids.length === 0) return;
     if (!ids.includes(ROOM.hostId) && ids[0] === myId) { ROOM = { ...ROOM, hostId: myId }; broadcastSync(); }
-    if (ROOM.started) renderGame(); // keep offline indicators live
+    if (ROOM.started) renderGame();
   });
 
   await room.connect();
   document.getElementById('share-link').value = `${location.origin}${location.pathname}?room=${roomCode}`;
   document.getElementById('lobby-code').textContent = roomCode;
-
-  // Heartbeat — same fix as Ultimate Tic Tac Toe: guards against a
-  // lost/out-of-order sync leaving a client stuck on stale state.
   setInterval(() => { if (isHost() && ROOM) broadcastSync(); }, 15000);
 }
 
-function broadcastSync() { room.send('sync', { room: ROOM, game: GAME }); }
-function copyShareLink() {
+function broadcastSync(){ room.send('sync', { room: ROOM, game: GAME }); }
+function copyShareLink(){
   const el = document.getElementById('share-link');
   el.select();
   navigator.clipboard?.writeText(el.value).catch(() => {});
@@ -1298,10 +1037,11 @@ function copyShareLink() {
 // =========================================================
 // RENDER DISPATCH
 // =========================================================
-function renderFromState() {
+function renderFromState(){
   if (!ROOM) return;
   document.getElementById('chat-panel').classList.remove('hidden');
   renderChat();
+  draftSettings = { ...ROOM.settings, powerCosts: { ...ROOM.settings.powerCosts } };
   if (!ROOM.started) { showScreen('screen-lobby'); renderLobby(); }
   else { showScreen('game-screen'); renderGame(); }
 }
@@ -1309,17 +1049,9 @@ function renderFromState() {
 // =========================================================
 // LOBBY RENDER
 // =========================================================
-function renderLobby() {
-  setupCount = ROOM.capacity;
+function renderLobby(){
   document.getElementById('host-tag').classList.toggle('hidden', !isHost());
-  renderCountButtons();
-  renderSymbolPreviewLobby();
-  boardSizeInput.value = ROOM.settings.size;
-  winLenInput.value = ROOM.settings.winLen;
-  maxTokensInput.value = ROOM.settings.maxTokens;
-  renderCostGridInputs(ROOM.settings.costs);
-  [boardSizeInput, winLenInput, maxTokensInput, ...POWERS.map(p => document.getElementById(`cost-${p.key}`))].forEach(el => { el.disabled = !isHost(); });
-  document.getElementById('btn-save-settings').classList.toggle('hidden', !isHost());
+  renderSettingsForm();
 
   const listEl = document.getElementById('seat-list');
   listEl.innerHTML = '';
@@ -1328,10 +1060,11 @@ function renderLobby() {
     const row = document.createElement('div');
     row.className = 'seat-row' + (id ? ' filled' : '') + (id === myId ? ' mine' : '');
     const dot = document.createElement('span');
-    dot.style.cssText = `width:12px;height:12px;border-radius:3px;background:${PLAYER_CONFIGS[i].color};flex-shrink:0;`;
+    dot.className = 'dot';
+    dot.style.background = PLAYER_COLORS[i];
     const who = document.createElement('span');
     who.className = 'who';
-    who.textContent = id ? (id === myId ? `You (${PLAYER_CONFIGS[i].symbol})` : `Player ${i + 1} (${PLAYER_CONFIGS[i].symbol})`) : 'open seat';
+    who.textContent = id ? (id === myId ? 'You' : `Player ${i + 1}`) : 'open seat';
     row.appendChild(dot); row.appendChild(who);
     listEl.appendChild(row);
   }
@@ -1345,120 +1078,130 @@ function renderLobby() {
   const full = ROOM.seats.filter(Boolean).length === ROOM.capacity;
   startBtn.classList.toggle('hidden', !isHost());
   startBtn.disabled = !full;
-
   document.getElementById('lobby-msg').textContent = full
     ? (isHost() ? 'Ready to launch whenever you are.' : 'Waiting for host to launch.')
     : `Need ${ROOM.capacity} players seated (${ROOM.seats.filter(Boolean).length}/${ROOM.capacity}).`;
 }
 
 // =========================================================
-// GAME ACTIONS (client-side dispatch — mirrors the original
-// onCellClick's branches, but sends ONE network 'action' message
-// per completed decision instead of mutating shared state locally)
+// SVG HELPERS
 // =========================================================
-function sendAction(action) { room.send('action', { action }); }
-
-function onCellClick(r, c) {
-  if (!GAME || isGameOver(GAME) || !isMyTurn()) return;
-  const player = currentPlayer(GAME);
-  const cell = GAME.cells[r][c];
-
-  if (myPendingPower === 'bomb') {
-    if (cell.occupant !== player.symbol) { showToast('Choose one of your own symbols to Bomb from.'); return; }
-    myPendingPower = null;
-    sendAction({ type: 'bomb', r, c });
-    return;
-  }
-  if (myPendingPower === 'poison') {
-    if (cell.occupant !== player.symbol) { showToast('Choose one of your own symbols to Poison.'); return; }
-    if (cell.poison) { showToast('That symbol is already poisoned.'); return; }
-    myPendingPower = null;
-    sendAction({ type: 'poison', r, c });
-    return;
-  }
-  if (myPendingPower && myPendingPower.type === 'traitor') {
-    if (myPendingPower.stage === 1) {
-      if (cell.occupant !== player.symbol) { showToast('Choose one of your own symbols first.'); return; }
-      myPendingPower = { type: 'traitor', stage: 2, source: { r, c } };
-      renderGame();
-      return;
-    } else {
-      const { r: sr, c: sc } = myPendingPower.source;
-      const isAdjacent = Math.abs(r-sr) <= 1 && Math.abs(c-sc) <= 1 && !(r===sr && c===sc);
-      if (!isAdjacent) { showToast('Pick a symbol adjacent to the one you selected.'); return; }
-      if (cell.occupant === null) { showToast('Pick an occupied opponent symbol.'); return; }
-      if (cell.occupant === player.symbol) { showToast('That\u2019s already your symbol.'); return; }
-      if (isProtected(GAME, cell)) { showToast('That symbol is shielded \u2014 Traitor can\u2019t convert it.'); return; }
-      myPendingPower = null;
-      sendAction({ type: 'traitor', sr, sc, tr: r, tc: c });
-      return;
-    }
-  }
-  if (myPendingPower === 'clearrow') { myPendingPower = null; sendAction({ type: 'clearrow', r }); return; }
-  if (myPendingPower === 'clearcol') { myPendingPower = null; sendAction({ type: 'clearcol', c }); return; }
-  if (myPendingPower === 'gravity') { myPendingPower = null; sendAction({ type: 'gravity', r }); return; }
-  if (myPendingPower && myPendingPower.type === 'swap') {
-    if (myPendingPower.stage === 1) {
-      if (cell.occupant === null) { showToast('Pick an occupied cell to swap.'); return; }
-      myPendingPower = { type: 'swap', stage: 2, source: { r, c } };
-      renderGame();
-      return;
-    } else {
-      const src = myPendingPower.source;
-      if (r === src.r && c === src.c) { showToast('Pick a different cell to swap with.'); return; }
-      if (cell.occupant === null) { showToast('Pick an occupied cell to swap.'); return; }
-      myPendingPower = null;
-      sendAction({ type: 'swap', r1: src.r, c1: src.c, r2: r, c2: c });
-      return;
-    }
-  }
-
-  // no pending power — plain placement
-  if (cell.occupant) { showToast('That cell is already occupied.'); return; }
-  sendAction({ type: 'place', r, c });
+function symbolSvg(symId, size, isMini){
+  const def = SYMBOL_DEFS.find(s => s.id === symId);
+  if (!def) return '';
+  const cap = def.cap ? 'round' : 'butt';
+  const path = isMini ? def.mini : def.board;
+  const vb = isMini ? '0 0 24 24' : '0 0 100 100';
+  return `<svg viewBox="${vb}" width="${size}" height="${size}" fill="none" stroke="${def.colorDk}" stroke-width="${isMini?2.4:9}" stroke-linecap="${cap}">${path}</svg>`;
 }
 
-document.getElementById('bomb-btn').onclick = () => { if (!isMyTurn()) return; myPendingPower = myPendingPower === 'bomb' ? null : 'bomb'; renderGame(); };
-document.getElementById('poison-btn').onclick = () => { if (!isMyTurn()) return; myPendingPower = myPendingPower === 'poison' ? null : 'poison'; renderGame(); };
-document.getElementById('clearrow-btn').onclick = () => { if (!isMyTurn()) return; myPendingPower = myPendingPower === 'clearrow' ? null : 'clearrow'; renderGame(); };
-document.getElementById('clearcol-btn').onclick = () => { if (!isMyTurn()) return; myPendingPower = myPendingPower === 'clearcol' ? null : 'clearcol'; renderGame(); };
-document.getElementById('gravity-btn').onclick = () => { if (!isMyTurn()) return; myPendingPower = myPendingPower === 'gravity' ? null : 'gravity'; renderGame(); };
-document.getElementById('traitor-btn').onclick = () => {
-  if (!isMyTurn()) return;
-  const isActive = myPendingPower && myPendingPower.type === 'traitor';
-  myPendingPower = isActive ? null : { type: 'traitor', stage: 1 };
+// =========================================================
+// GAME ACTIONS
+// =========================================================
+function sendAction(action){ room.send('action', { action }); }
+
+function onCardClick(idx){
+  if (!GAME || GAME.over || !isMyTurn() || myPendingPower) return;
+  const hand = currentPlayer(GAME).hand;
+  if (validCellsForCard(GAME, hand[idx]).length === 0) return;
+  mySelectedCardIdx = (mySelectedCardIdx === idx) ? null : idx;
   renderGame();
-};
-document.getElementById('swap-btn').onclick = () => {
-  if (!isMyTurn()) return;
-  const isActive = myPendingPower && myPendingPower.type === 'swap';
-  myPendingPower = isActive ? null : { type: 'swap', stage: 1 };
-  renderGame();
-};
+}
+
+function onBoardClick(r, c){
+  if (!GAME || GAME.over || !isMyTurn()) return;
+  const player = currentPlayer(GAME);
+  const cell = GAME.board[r][c];
+
+  if (myPendingPower) {
+    const type = typeof myPendingPower === 'string' ? myPendingPower : myPendingPower.type;
+    if (type === 'bomb') {
+      if (!isOwn(GAME, cell)) { showToast('Choose one of your own cells to Bomb from.'); return; }
+      myPendingPower = null; sendAction({ type:'bomb', r, c }); return;
+    }
+    if (type === 'poison') {
+      if (!isOwn(GAME, cell)) { showToast('Choose one of your own cells to Poison.'); return; }
+      myPendingPower = null; sendAction({ type:'poison', r, c }); return;
+    }
+    if (type === 'clearRow') { myPendingPower = null; sendAction({ type:'clearRow', r }); return; }
+    if (type === 'clearCol') { myPendingPower = null; sendAction({ type:'clearCol', c }); return; }
+    if (type === 'gravity') { myPendingPower = null; sendAction({ type:'gravity', r }); return; }
+    if (type === 'traitor') {
+      if (myPendingPower.stage === 1) {
+        if (!isOwn(GAME, cell)) { showToast('Choose one of your own cells first.'); return; }
+        myPendingPower = { type:'traitor', stage:2, source:{r,c} };
+        renderGame(); return;
+      } else {
+        const { r:sr, c:sc } = myPendingPower.source;
+        if (!isAdjacent8(sr,sc,r,c)) { showToast('Pick a cell adjacent to the one you selected.'); return; }
+        if (!isEnemy(GAME, cell)) { showToast('Pick an opponent\u2019s cell.'); return; }
+        if (isShielded(cell)) { showToast('That cell is shielded \u2014 Traitor can\u2019t convert it.'); return; }
+        myPendingPower = null;
+        sendAction({ type:'traitor', sr, sc, tr:r, tc:c });
+        return;
+      }
+    }
+    if (type === 'swap') {
+      if (myPendingPower.stage === 1) {
+        if (!cell) { showToast('Pick an occupied cell to swap.'); return; }
+        myPendingPower = { type:'swap', stage:2, source:{r,c} };
+        renderGame(); return;
+      } else {
+        const src = myPendingPower.source;
+        if (r===src.r && c===src.c) { showToast('Pick a different cell to swap with.'); return; }
+        if (!cell) { showToast('Pick an occupied cell to swap.'); return; }
+        myPendingPower = null;
+        sendAction({ type:'swap', r1:src.r, c1:src.c, r2:r, c2:c });
+        return;
+      }
+    }
+    return;
+  }
+
+  if (mySelectedCardIdx === null) return;
+  const card = player.hand[mySelectedCardIdx];
+  const valid = validCellsForCard(GAME, card).some(([vr,vc]) => vr===r && vc===c);
+  if (!valid) { showToast('That\u2019s not a legal cell for this card.'); return; }
+  const cardIdx = mySelectedCardIdx;
+  mySelectedCardIdx = null;
+  sendAction({ type:'place', cardIdx, r, c });
+}
+
+document.getElementById('bomb-btn').onclick = () => togglePower('bomb');
+document.getElementById('poison-btn').onclick = () => togglePower('poison');
+document.getElementById('clearrow-btn').onclick = () => togglePower('clearRow');
+document.getElementById('clearcol-btn').onclick = () => togglePower('clearCol');
+document.getElementById('gravity-btn').onclick = () => togglePower('gravity');
+document.getElementById('traitor-btn').onclick = () => togglePowerStaged('traitor');
+document.getElementById('swap-btn').onclick = () => togglePowerStaged('swap');
 document.getElementById('shield-btn').onclick = () => {
   if (!isMyTurn()) return;
-  myPendingPower = null;
-  sendAction({ type: 'shield' });
+  mySelectedCardIdx = null; myPendingPower = null;
+  sendAction({ type:'shield' });
+};
+function togglePower(type){
+  if (!isMyTurn()) return;
+  mySelectedCardIdx = null;
+  myPendingPower = (myPendingPower === type) ? null : type;
+  renderGame();
+}
+function togglePowerStaged(type){
+  if (!isMyTurn()) return;
+  mySelectedCardIdx = null;
+  const active = myPendingPower && myPendingPower.type === type;
+  myPendingPower = active ? null : { type, stage:1 };
+  renderGame();
+}
+
+document.getElementById('discard-btn').onclick = () => {
+  if (!isMyTurn()) return;
+  sendAction({ type:'discard' });
 };
 
-document.getElementById('rules-toggle').onclick = (e) => {
-  const body = document.getElementById('rules-body');
-  body.classList.toggle('open');
-  e.target.textContent = body.classList.contains('open') ? 'Hide power details \u25b4' : 'Show power details \u25be';
-};
-document.getElementById('rules-btn').onclick = () => {
-  const body = document.getElementById('rules-body');
-  body.classList.add('open');
-  document.getElementById('rules-toggle').textContent = 'Hide power details \u25b4';
-  body.scrollIntoView({ behavior:'smooth', block:'center' });
-};
-
-// ---- restart ----
-document.getElementById('btn-restart').onclick = () => { showingRestartConfirm = true; renderRestartUI(); };
-document.getElementById('btn-restart').addEventListener('contextmenu', e => e.preventDefault());
+document.getElementById('btn-restart').onclick = () => { showingRestartConfirm = true; renderGame(); };
 
 let toastTimer = null;
-function showToast(msg) {
+function showToast(msg){
   const el = document.getElementById('toast');
   el.textContent = msg;
   el.classList.add('show');
@@ -1466,276 +1209,226 @@ function showToast(msg) {
   toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
 }
 
-// =========================================================
-// GAME RENDER (board/action-panel/players/log ported from the
-// original renderGame, adapted to read GAME/ROOM/myPendingPower)
-// =========================================================
-// Flashes the affected cells when a NEW bomb event arrives. On the very
-// first render after connecting, GAME.lastBomb might already be set from
-// an explosion that happened before this client joined — that shouldn't
-// replay as a flash, so the first sighting just records the timestamp
-// without animating anything.
-function checkBombFlash() {
+function checkBombFlash(){
   if (!GAME.lastBomb) return;
   if (lastSeenBombTs === undefined) { lastSeenBombTs = GAME.lastBomb.ts; return; }
   if (GAME.lastBomb.ts === lastSeenBombTs) return;
   lastSeenBombTs = GAME.lastBomb.ts;
-  GAME.lastBomb.cells.forEach(([r, c]) => {
+  GAME.lastBomb.cells.forEach(([r,c]) => {
     const el = document.querySelector(`#board [data-r="${r}"][data-c="${c}"]`);
     if (el) el.classList.add('blast');
   });
 }
 
-function renderGame() {
+// =========================================================
+// GAME RENDER
+// =========================================================
+function renderGame(){
   if (!GAME) return;
-  document.getElementById('round-num').textContent = String(GAME.round).padStart(3, '0');
+  document.getElementById('round-num').textContent = String(GAME.round).padStart(2,'0');
 
   renderReconnectBox();
   renderRestartUI();
 
   const board = document.getElementById('board');
-  board.style.gridTemplateColumns = `repeat(${GAME.size}, 1fr)`;
-  board.style.gridTemplateRows = `repeat(${GAME.size}, 1fr)`;
+  board.style.gridTemplateColumns = `repeat(${GAME.N}, 1fr)`;
+  board.style.gridTemplateRows = `repeat(${GAME.N}, 1fr)`;
   board.innerHTML = '';
   const myTurn = isMyTurn();
   const player = currentPlayer(GAME);
+  const selectedCard = (myTurn && mySelectedCardIdx !== null) ? player.hand[mySelectedCardIdx] : null;
+  const validCells = selectedCard ? validCellsForCard(GAME, selectedCard) : [];
 
-  for (let r = 0; r < GAME.size; r++) {
-    for (let c = 0; c < GAME.size; c++) {
-      const cell = GAME.cells[r][c];
+  for (let r=0; r<GAME.N; r++){
+    for (let c=0; c<GAME.N; c++){
+      const cell = GAME.board[r][c];
       const div = document.createElement('div');
       div.className = 'cell';
-      div.tabIndex = 0;
-      div.dataset.r = r;
-      div.dataset.c = c;
-      div.style.gridRow = String(r + 1);
-      div.style.gridColumn = String(c + 1);
-      if (cell.occupant) div.classList.add('filled');
-      if (isProtected(GAME, cell)) div.classList.add('shielded');
-      if (cell.poison) div.classList.add('poisoned');
+      div.dataset.r = r; div.dataset.c = c;
+      if (isShielded(cell)) div.classList.add('shielded');
+      if (cell && cell.poison) div.classList.add('poisoned');
 
-      if (myTurn) {
-        if (myPendingPower === 'bomb' && cell.occupant === player.symbol) div.classList.add('targetable');
-        if (myPendingPower === 'poison' && cell.occupant === player.symbol && !cell.poison) div.classList.add('targetable');
-        if (myPendingPower === 'clearrow' || myPendingPower === 'clearcol' || myPendingPower === 'gravity') div.classList.add('targetable-enemy');
-        if (myPendingPower && myPendingPower.type === 'swap') {
-          if (myPendingPower.stage === 2 && r === myPendingPower.source.r && c === myPendingPower.source.c) div.classList.add('selected-source');
-          else if (cell.occupant !== null) div.classList.add('targetable-enemy');
-        }
-        if (myPendingPower && myPendingPower.type === 'traitor') {
-          if (myPendingPower.stage === 1 && cell.occupant === player.symbol) div.classList.add('targetable');
-          if (myPendingPower.stage === 2) {
+      let isValidTarget = false;
+      if (myTurn && selectedCard) isValidTarget = validCells.some(([vr,vc]) => vr===r && vc===c);
+      if (myTurn && myPendingPower) {
+        const type = typeof myPendingPower === 'string' ? myPendingPower : myPendingPower.type;
+        if (type === 'bomb' && isOwn(GAME, cell)) isValidTarget = true;
+        if (type === 'poison' && isOwn(GAME, cell)) isValidTarget = true;
+        if (type === 'clearRow' || type === 'clearCol' || type === 'gravity') isValidTarget = true;
+        if (type === 'traitor') {
+          if (myPendingPower.stage === 1) { if (isOwn(GAME, cell)) isValidTarget = true; }
+          else {
             const src = myPendingPower.source;
-            if (r === src.r && c === src.c) div.classList.add('selected-source');
-            else {
-              const isAdjacent = Math.abs(r-src.r) <= 1 && Math.abs(c-src.c) <= 1;
-              if (isAdjacent && cell.occupant !== null && cell.occupant !== player.symbol && !isProtected(GAME, cell)) div.classList.add('targetable-enemy');
-            }
+            if (r===src.r && c===src.c) div.classList.add('selected-source');
+            else if (isAdjacent8(src.r,src.c,r,c) && isEnemy(GAME, cell) && !isShielded(cell)) isValidTarget = true;
           }
         }
-        if (!cell.occupant && !myPendingPower) div.classList.add('clickable');
+        if (type === 'swap') {
+          if (myPendingPower.stage === 1) { if (cell) isValidTarget = true; }
+          else {
+            const src = myPendingPower.source;
+            if (r===src.r && c===src.c) div.classList.add('selected-source');
+            else if (cell) isValidTarget = true;
+          }
+        }
+      }
+      if (isValidTarget) { div.classList.add('valid-target', 'clickable'); }
+
+      if (cell) {
+        div.innerHTML = symbolSvg(cell.symbol, '70%', false);
+        if (cell.owner !== null && cell.owner !== undefined) {
+          const ring = document.createElement('div');
+          ring.className = 'owner-ring';
+          ring.style.boxShadow = `inset 0 0 0 3px ${PLAYER_COLORS[cell.owner]}`;
+          div.appendChild(ring);
+        }
+        if (cell.poison) {
+          const badge = document.createElement('span');
+          badge.className = 'poison-badge';
+          const next = cell.poison.placedRound + (cell.poison && (GAME.round - cell.poison.placedRound) < 2 ? 2 : 3);
+          const remaining = Math.max(0, next - GAME.round);
+          badge.textContent = remaining === 0 ? '!' : String(remaining);
+          div.appendChild(badge);
+        }
       }
 
-      if (cell.occupant) {
-        const cfg = GAME.players.find(p => p.symbol === cell.occupant);
-        const glyph = document.createElement('span');
-        glyph.className = 'glyph';
-        glyph.textContent = cell.occupant;
-        glyph.style.color = cfg ? cfg.color : 'var(--text)';
-        div.appendChild(glyph);
-      }
-      if (cell.poison) {
-        const badge = document.createElement('span');
-        badge.className = 'poison-badge';
-        const next = cell.poison.stage === 0 ? cell.poison.castRound + 2 : cell.poison.castRound + 3;
-        const remaining = Math.max(0, next - GAME.round);
-        badge.textContent = remaining === 0 ? '!' : String(remaining);
-        div.appendChild(badge);
-      }
-
-      div.addEventListener('click', () => onCellClick(r, c));
-      div.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCellClick(r, c); } });
+      div.addEventListener('click', () => onBoardClick(r, c));
       board.appendChild(div);
     }
   }
   checkBombFlash();
 
-  const actionCurrent = document.getElementById('action-current');
-  const mySeatIdx = ROOM.seats.indexOf(player.id);
-  actionCurrent.innerHTML = `
-    <div class="action-glyph" style="background:${player.color}22; color:${player.color}; border:1px solid ${player.color}55;">${player.symbol}</div>
-    <div>
-      <div style="font-weight:600;">${player.id === myId ? 'You' : 'Player ' + (mySeatIdx + 1)}${!connectedIds.includes(player.id) ? ' [offline]' : ''}</div>
-      <div class="action-sub">${player.tokens} token${player.tokens===1?'':'s'} remaining</div>
-    </div>
-  `;
+  // hand strip
+  const strip = document.getElementById('hand-strip');
+  strip.innerHTML = '';
+  const stuck = myTurn && !myPendingPower && !handHasAnyMove(GAME, player.hand) && player.hand.length > 0;
+  player.hand.forEach((card, idx) => {
+    const c = document.createElement('div');
+    const playable = myTurn && !myPendingPower && validCellsForCard(GAME, card).length > 0;
+    c.className = 'card' + (idx === mySelectedCardIdx ? ' selected' : '') + (playable ? '' : ' disabled');
+    c.innerHTML = symbolSvg(card.symbol, '60%', false) + `<span class="shape-tag">${SHAPE_TAGS[card.shape] || '\u254b'}</span>`;
+    if (playable) c.onclick = () => onCardClick(idx);
+    strip.appendChild(c);
+  });
+  document.getElementById('discard-btn').classList.toggle('hidden', !stuck);
 
-  const pendingHint = document.getElementById('pending-hint');
-  let hintText = null;
+  // pending hint
+  const hintBox = document.getElementById('pending-hint');
+  let hint = null;
   if (myTurn) {
-    if (myPendingPower === 'bomb') hintText = '\ud83d\udca3 Bomb: click one of your own symbols on the board.';
-    else if (myPendingPower === 'poison') hintText = '\u2620\ufe0f Poison: click one of your own symbols on the board.';
-    else if (myPendingPower === 'clearrow') hintText = '\ud83d\udea7 Clear Row: click any cell in the row you want to wipe.';
-    else if (myPendingPower === 'clearcol') hintText = '\ud83e\uddf9 Clear Column: click any cell in the column you want to wipe.';
-    else if (myPendingPower === 'gravity') hintText = '\ud83e\ude90 Gravity: click any cell in the row you want to drop.';
-    else if (myPendingPower && myPendingPower.type === 'traitor') hintText = myPendingPower.stage === 1 ? '\ud83c\udfad Traitor: click one of your own symbols to convert from.' : '\ud83c\udfad Traitor: click an adjacent opponent symbol (highlighted red) to convert.';
-    else if (myPendingPower && myPendingPower.type === 'swap') hintText = myPendingPower.stage === 1 ? '\ud83d\udd04 Swap: click the first symbol to swap.' : '\ud83d\udd04 Swap: click the second symbol (highlighted) to swap with.';
+    const type = myPendingPower && (typeof myPendingPower === 'string' ? myPendingPower : myPendingPower.type);
+    if (type === 'bomb') hint = '\ud83d\udca3 Bomb: click one of your own cells.';
+    else if (type === 'poison') hint = '\u2620\ufe0f Poison: click one of your own cells.';
+    else if (type === 'clearRow') hint = '\ud83d\udea7 Clear Row: click any cell in the row to wipe.';
+    else if (type === 'clearCol') hint = '\ud83e\uddf9 Clear Column: click any cell in the column to wipe.';
+    else if (type === 'gravity') hint = '\ud83e\ude90 Gravity: click any cell in the row to drop.';
+    else if (type === 'traitor') hint = myPendingPower.stage === 1 ? '\ud83c\udfad Traitor: click one of your own cells first.' : '\ud83c\udfad Traitor: click an adjacent opponent cell (highlighted).';
+    else if (type === 'swap') hint = myPendingPower.stage === 1 ? '\ud83d\udd04 Swap: click the first occupied cell.' : '\ud83d\udd04 Swap: click the second occupied cell.';
   }
-  if (hintText) {
-    pendingHint.innerHTML = `<div class="cancel-hint"><span>${hintText}</span><button id="cancel-power-btn">Cancel</button></div>`;
+  if (hint) {
+    hintBox.innerHTML = `<div class="cancel-hint"><span>${hint}</span><button id="cancel-power-btn">Cancel</button></div>`;
     document.getElementById('cancel-power-btn').onclick = () => { myPendingPower = null; renderGame(); };
-  } else {
-    pendingHint.innerHTML = '';
-  }
+  } else hintBox.innerHTML = '';
 
-  const gameOver = isGameOver(GAME);
-  const canAct = myTurn && !gameOver;
-  document.getElementById('bomb-btn').disabled = !canAct || player.tokens < GAME.costs.bomb;
-  document.getElementById('poison-btn').disabled = !canAct || player.tokens < GAME.costs.poison;
-  document.getElementById('traitor-btn').disabled = !canAct || player.tokens < GAME.costs.traitor;
-  document.getElementById('clearrow-btn').disabled = !canAct || player.tokens < GAME.costs.clearrow;
-  document.getElementById('clearcol-btn').disabled = !canAct || player.tokens < GAME.costs.clearcol;
-  document.getElementById('gravity-btn').disabled = !canAct || player.tokens < GAME.costs.gravity;
-  document.getElementById('swap-btn').disabled = !canAct || player.tokens < GAME.costs.swap;
-  document.getElementById('shield-btn').disabled = !canAct || player.tokens < GAME.costs.shield;
-  document.getElementById('bomb-btn').classList.toggle('pending', myPendingPower === 'bomb');
-  document.getElementById('poison-btn').classList.toggle('pending', myPendingPower === 'poison');
-  document.getElementById('traitor-btn').classList.toggle('pending', !!(myPendingPower && myPendingPower.type === 'traitor'));
-  document.getElementById('clearrow-btn').classList.toggle('pending', myPendingPower === 'clearrow');
-  document.getElementById('clearcol-btn').classList.toggle('pending', myPendingPower === 'clearcol');
-  document.getElementById('gravity-btn').classList.toggle('pending', myPendingPower === 'gravity');
-  document.getElementById('swap-btn').classList.toggle('pending', !!(myPendingPower && myPendingPower.type === 'swap'));
-
-  POWERS.forEach(p => {
-    const cost = GAME.costs[p.key];
-    const el = document.getElementById(`${p.key}-cost`);
-    if (el) el.textContent = `${cost} token${cost===1?'':'s'}`;
+  // power buttons
+  const gameOver = GAME.over;
+  const canAct = myTurn && !gameOver && GAME.powersEnabled;
+  ['bomb','shield','poison','traitor','clearrow','clearcol','gravity','swap'].forEach((domKey, i) => {
+    const key = ['bomb','shield','poison','traitor','clearRow','clearCol','gravity','swap'][i];
+    const btn = document.getElementById(domKey + '-btn');
+    btn.style.display = GAME.powersEnabled ? '' : 'none';
+    btn.disabled = !canAct || player.tokens < GAME.powerCosts[key];
+    const type = myPendingPower && (typeof myPendingPower === 'string' ? myPendingPower : myPendingPower.type);
+    btn.classList.toggle('pending', type === key);
+    const costEl = document.getElementById(domKey + '-cost');
+    if (costEl) costEl.textContent = `${GAME.powerCosts[key]} tok`;
   });
 
+  // player list
   const list = document.getElementById('player-list');
   list.innerHTML = '';
   GAME.players.forEach((p, idx) => {
     const row = document.createElement('div');
-    row.className = 'player-row' + (idx === GAME.turnIndex && !gameOver ? ' current' : '') + (!connectedIds.includes(p.id) ? ' offline' : '');
-    const pipCount = Math.max(GAME.maxTokens, p.tokens);
-    const pipsHtml = Array.from({length: pipCount}, (_, i) => `<span class="pip ${i < p.tokens ? 'filled' : ''}"></span>`).join('');
-    row.innerHTML = `
-      <div class="player-glyph" style="background:${p.color}22; color:${p.color}; border:1px solid ${p.color}55;">${p.symbol}</div>
-      <div class="player-name">${p.id === myId ? 'You' : 'Player ' + (idx+1)}</div>
-      <div class="pips">${pipsHtml}</div>
-    `;
+    row.className = 'roster-row' + (idx === GAME.current && !gameOver ? ' current' : '') + (!connectedIds.includes(p.id) ? ' offline' : '');
+    row.innerHTML = `<span class="dot" style="background:${PLAYER_COLORS[idx]}"></span><span>${p.id===myId?'You':'Player '+(idx+1)}${!connectedIds.includes(p.id)?' [offline]':''}</span><span class="stat">${p.hand.length}\ud83c\udccf ${p.tokens}\ud83e\ude99</span>`;
     list.appendChild(row);
   });
 
+  document.getElementById('turn-label').textContent = gameOver ? 'Game over' : (myTurn ? 'Your turn' : `Waiting for Player ${GAME.current+1}...`);
+
+  // log
   const logBox = document.getElementById('log-box');
-  const logWasNearBottom = logBox.scrollHeight - logBox.scrollTop - logBox.clientHeight < 30;
+  const wasNearBottom = logBox.scrollHeight - logBox.scrollTop - logBox.clientHeight < 30;
   logBox.innerHTML = '';
-  GAME.log.forEach((line, i) => {
+  GAME.log.forEach((line,i) => {
     const el = document.createElement('div');
-    el.className = 'log-line' + (i === GAME.log.length - 1 ? ' newest' : '');
+    el.className = 'log-line' + (i===GAME.log.length-1 ? ' newest' : '');
     el.textContent = line;
     logBox.appendChild(el);
   });
-  if (logWasNearBottom || logBox.dataset.everScrolled !== 'true') {
-    logBox.scrollTop = logBox.scrollHeight;
-    logBox.dataset.everScrolled = 'true';
-  }
+  if (wasNearBottom || logBox.dataset.everScrolled !== 'true') { logBox.scrollTop = logBox.scrollHeight; logBox.dataset.everScrolled = 'true'; }
 
+  // win/draw overlay — suppressed while a restart vote is active or
+  // being locally confirmed, so the vote UI underneath stays visible
   let overlay = document.getElementById('win-overlay-el');
   const restartInProgress = !!GAME.restartVote || showingRestartConfirm;
   if ((GAME.winner || GAME.draw) && !restartInProgress) {
-    if (!overlay) {
-      overlay = document.createElement('div');
-      overlay.id = 'win-overlay-el';
-      overlay.className = 'win-overlay';
-      document.body.appendChild(overlay);
-    }
+    if (!overlay) { overlay = document.createElement('div'); overlay.id='win-overlay-el'; overlay.className='win-overlay'; document.body.appendChild(overlay); }
     if (GAME.winner) {
       const w = GAME.winner;
-      const seatIdx = ROOM.seats.indexOf(w.id);
       overlay.innerHTML = `
         <div class="win-card">
-          <div class="win-glyph" style="background:${w.color}22; color:${w.color}; border:1px solid ${w.color}55;">${w.symbol}</div>
-          <div class="win-title">${w.id === myId ? 'You win!' : 'Player ' + (seatIdx+1) + ' wins!'}</div>
-          <div class="win-sub">Got ${GAME.winLen} in a row on round ${GAME.round}.</div>
-          ${isHost() ? '<button class="start-btn" id="win-restart-btn">Restart</button>' : '<div class="msg">Ask the host to restart.</div>'}
-        </div>
-      `;
+          <div style="margin-bottom:12px;">${symbolSvg(w.symbol, 64, false)}</div>
+          <div class="win-title">${w.seat === mySeatIdx() ? 'You win!' : 'Player ' + (w.seat+1) + ' wins!'}</div>
+          <div class="win-sub">Completed ${GAME.winLen} ${w.symbol} in a row on round ${GAME.round}.</div>
+          ${isHost() ? '<button id="win-restart-btn">Restart</button>' : '<div class="msg">Ask the host to restart.</div>'}
+        </div>`;
     } else {
       overlay.innerHTML = `
         <div class="win-card">
-          <div class="win-glyph" style="background:var(--panel-alt); color:var(--muted); border:1px solid var(--line);">\u2014</div>
           <div class="win-title">It's a draw</div>
           <div class="win-sub">The board filled up on round ${GAME.round} with no winner.</div>
-          ${isHost() ? '<button class="start-btn" id="win-restart-btn">Restart</button>' : '<div class="msg">Ask the host to restart.</div>'}
-        </div>
-      `;
+          ${isHost() ? '<button id="win-restart-btn">Restart</button>' : '<div class="msg">Ask the host to restart.</div>'}
+        </div>`;
     }
     const rBtn = document.getElementById('win-restart-btn');
-    if (rBtn) rBtn.onclick = () => {
-      showingRestartConfirm = true;
-      renderGame();
-      document.getElementById('restart-box').scrollIntoView({ behavior: 'smooth' });
-    };
+    if (rBtn) rBtn.onclick = () => { showingRestartConfirm = true; renderGame(); document.getElementById('restart-box').scrollIntoView({behavior:'smooth'}); };
   } else if (overlay) {
     overlay.remove();
   }
 }
 
-// =========================================================
-// RESTART VOTE UI
-// =========================================================
-function renderRestartUI() {
+function renderRestartUI(){
   const box = document.getElementById('restart-box');
   const restartBtn = document.getElementById('btn-restart');
   restartBtn.classList.toggle('hidden', !isHost() || showingRestartConfirm || !!GAME.restartVote);
 
   if (showingRestartConfirm) {
     box.classList.remove('hidden');
-    box.innerHTML = `
-      <div class="msg">Restart the game for everyone?</div>
-      <div class="row">
-        <button class="primary-btn" id="rc-yes">Yes, ask everyone</button>
-        <button class="ghost-btn" id="rc-no">Cancel</button>
-      </div>
-    `;
+    box.innerHTML = `<div class="msg">Restart the game for everyone?</div><div class="row"><button id="rc-yes">Yes, ask everyone</button><button class="secondary" id="rc-no">Cancel</button></div>`;
     document.getElementById('rc-yes').onclick = () => { showingRestartConfirm = false; room.send('restart_propose', {}); };
     document.getElementById('rc-no').onclick = () => { showingRestartConfirm = false; renderGame(); };
     return;
   }
-
-  if (!GAME.restartVote) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+  if (!GAME.restartVote) { box.classList.add('hidden'); box.innerHTML=''; return; }
 
   box.classList.remove('hidden');
   const { votes } = GAME.restartVote;
   const myVote = votes[myId];
   const total = Object.keys(votes).length;
   const yesCount = Object.values(votes).filter(v => v === true).length;
-
   let inner = '';
-  if (myVote === undefined) {
-    inner = `<div class="msg">Restart requested \u2014 ${yesCount}/${total} players agreed.</div>`;
-  } else if (myVote === true) {
-    inner = `<div class="msg">Waiting for other players... (${yesCount}/${total} confirmed)</div>`;
-  } else {
-    inner = `
-      <div class="msg">Host wants to restart. Restart the game?</div>
-      <div class="row"><button class="primary-btn" id="rv-yes">Yes</button><button class="ghost-btn" id="rv-no">No</button></div>
-    `;
-  }
-  if (isHost() && GAME.restartVote.initiatorId === myId) {
-    inner += `<div class="row"><button class="ghost-btn" id="rv-cancel">Cancel restart request</button></div>`;
-  }
+  if (myVote === undefined) inner = `<div class="msg">Restart requested \u2014 ${yesCount}/${total} players agreed.</div>`;
+  else if (myVote === true) inner = `<div class="msg">Waiting for other players... (${yesCount}/${total} confirmed)</div>`;
+  else inner = `<div class="msg">Host wants to restart. Restart the game?</div><div class="row"><button id="rv-yes">Yes</button><button class="secondary" id="rv-no">No</button></div>`;
+  if (isHost() && GAME.restartVote.initiatorId === myId) inner += `<div class="row"><button class="secondary" id="rv-cancel">Cancel restart request</button></div>`;
   box.innerHTML = inner;
-  const yesBtn = document.getElementById('rv-yes'); if (yesBtn) yesBtn.onclick = () => room.send('restart_vote', { vote: true });
-  const noBtn = document.getElementById('rv-no'); if (noBtn) noBtn.onclick = () => room.send('restart_vote', { vote: false });
-  const cancelBtn = document.getElementById('rv-cancel'); if (cancelBtn) cancelBtn.onclick = () => room.send('restart_cancel', {});
+  const y = document.getElementById('rv-yes'); if (y) y.onclick = () => room.send('restart_vote', { vote:true });
+  const n = document.getElementById('rv-no'); if (n) n.onclick = () => room.send('restart_vote', { vote:false });
+  const cc = document.getElementById('rv-cancel'); if (cc) cc.onclick = () => room.send('restart_cancel', {});
 }
 
-// =========================================================
-// RECONNECT UI
-// =========================================================
-function renderReconnectBox() {
+function renderReconnectBox(){
   const box = document.getElementById('reconnect-box');
   const amSeated = ROOM.seats.includes(myId);
   if (amSeated) { box.classList.add('hidden'); return; }
@@ -1744,13 +1437,12 @@ function renderReconnectBox() {
   box.classList.remove('hidden');
   box.innerHTML = `<div class="msg">You\u2019re spectating. A seat looks disconnected \u2014 is one of these yours?</div>`;
   const row = document.createElement('div');
-  row.className = 'row';
-  row.style.marginTop = '8px';
+  row.className = 'row'; row.style.marginTop = '8px';
   ghosts.forEach(oldId => {
     const idx = ROOM.seats.indexOf(oldId);
     const btn = document.createElement('button');
-    btn.className = 'ghost-btn';
-    btn.textContent = `Claim Player ${idx + 1}'s seat`;
+    btn.className = 'secondary';
+    btn.textContent = `Claim Player ${idx+1}'s seat`;
     btn.onclick = () => room.send('claim_seat', { oldId });
     row.appendChild(btn);
   });
@@ -1763,21 +1455,22 @@ function renderReconnectBox() {
 document.getElementById('chat-toggle').onclick = () => document.getElementById('chat-body').classList.toggle('hidden');
 document.getElementById('chat-send').onclick = sendChatMessage;
 document.getElementById('chat-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChatMessage(); });
-function sendChatMessage() {
+function sendChatMessage(){
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
   if (!text || !room) return;
   room.send('send_chat', { text });
   input.value = '';
 }
-function renderChat() {
+function renderChat(){
   const box = document.getElementById('chat-messages');
   const wasNearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 30;
   box.innerHTML = '';
   (ROOM.chat || []).forEach(m => {
     const div = document.createElement('div');
     div.className = 'chat-msg' + (m.senderId === myId ? ' mine' : '');
-    const who = m.senderId === myId ? 'You' : nameOf(m.senderId);
+    const idx = ROOM.seats.indexOf(m.senderId);
+    const who = m.senderId === myId ? 'You' : (idx >= 0 ? `Player ${idx+1}` : 'Player');
     div.innerHTML = `<span class="who">${who}:</span> `;
     div.appendChild(document.createTextNode(m.text));
     box.appendChild(div);
