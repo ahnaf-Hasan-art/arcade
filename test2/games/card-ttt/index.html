@@ -813,6 +813,16 @@ if (urlRoom) joinRoom(urlRoom.toUpperCase());
 
 // ---- lobby setup form ----
 let draftSettings = { ...DEFAULT_SETTINGS, powerCosts: { ...DEFAULT_SETTINGS.powerCosts } };
+// True whenever the host has made a change in the settings form that
+// hasn't been sent with "Save Settings" yet. Broadcasts echo back to
+// their own sender (self:true) — a periodic resync every 15s, or one
+// triggered by someone joining a seat or sending a chat message, was
+// unconditionally overwriting draftSettings from ROOM.settings even
+// mid-edit, silently reverting whatever the host was in the middle of
+// changing. While draftDirty is true, renderFromState() leaves the
+// draft alone so in-progress edits survive until explicitly saved
+// (or discarded by leaving/reloading the lobby).
+let draftDirty = false;
 
 function choiceRow(containerId, options, currentVal, onPick){
   const el = document.getElementById(containerId);
@@ -822,7 +832,7 @@ function choiceRow(containerId, options, currentVal, onPick){
     btn.className = 'choice-btn' + (opt.value === currentVal ? ' active' : '');
     btn.textContent = opt.label;
     btn.disabled = !isHost() || (ROOM && ROOM.started);
-    btn.onclick = () => { if (!isHost()) return; onPick(opt.value); renderLobby(); };
+    btn.onclick = () => { if (!isHost()) return; onPick(opt.value); draftDirty = true; renderLobby(); };
     el.appendChild(btn);
   });
 }
@@ -845,14 +855,14 @@ function renderSettingsForm(){
   document.getElementById('hm-val').textContent = s.handMultiplier;
   document.getElementById('hm-minus').disabled = !isHost() || (ROOM&&ROOM.started);
   document.getElementById('hm-plus').disabled = !isHost() || (ROOM&&ROOM.started);
-  document.getElementById('hm-minus').onclick = () => { if (isHost() && s.handMultiplier>1) { s.handMultiplier--; renderSettingsForm(); } };
-  document.getElementById('hm-plus').onclick = () => { if (isHost() && s.handMultiplier<8) { s.handMultiplier++; renderSettingsForm(); } };
+  document.getElementById('hm-minus').onclick = () => { if (isHost() && s.handMultiplier>1) { s.handMultiplier--; draftDirty = true; renderSettingsForm(); } };
+  document.getElementById('hm-plus').onclick = () => { if (isHost() && s.handMultiplier<8) { s.handMultiplier++; draftDirty = true; renderSettingsForm(); } };
 
   document.getElementById('tok-val').textContent = s.startingTokens;
   document.getElementById('tok-minus').disabled = !isHost() || (ROOM&&ROOM.started);
   document.getElementById('tok-plus').disabled = !isHost() || (ROOM&&ROOM.started);
-  document.getElementById('tok-minus').onclick = () => { if (isHost() && s.startingTokens>0) { s.startingTokens--; renderSettingsForm(); } };
-  document.getElementById('tok-plus').onclick = () => { if (isHost() && s.startingTokens<15) { s.startingTokens++; renderSettingsForm(); } };
+  document.getElementById('tok-minus').onclick = () => { if (isHost() && s.startingTokens>0) { s.startingTokens--; draftDirty = true; renderSettingsForm(); } };
+  document.getElementById('tok-plus').onclick = () => { if (isHost() && s.startingTokens<15) { s.startingTokens++; draftDirty = true; renderSettingsForm(); } };
 
   const costGrid = document.getElementById('cost-grid');
   costGrid.innerHTML = '';
@@ -868,15 +878,18 @@ function renderSettingsForm(){
       if (!isHost()) return;
       const key = b.dataset.p, delta = Number(b.dataset.d);
       s.powerCosts[key] = Math.max(0, Math.min(9, s.powerCosts[key] + delta));
+      draftDirty = true;
       renderSettingsForm();
     };
   });
   document.getElementById('btn-save-settings').classList.toggle('hidden', !isHost());
   document.getElementById('btn-save-settings').disabled = ROOM && ROOM.started;
+  document.getElementById('btn-save-settings').textContent = (draftDirty && !(ROOM && ROOM.started)) ? 'Save Settings (unsaved changes)' : 'Save Settings';
 }
 
 function saveSettingsFromForm(){
   if (!isHost() || (ROOM && ROOM.started)) return;
+  draftDirty = false;
   room.send('set_capacity_and_settings', { capacity: draftSettings.players, settings: draftSettings });
 }
 
@@ -889,6 +902,7 @@ async function createRoom(){
   roomCode = makeRoomCode();
   ROOM = freshRoom(myId);
   GAME = null;
+  draftDirty = false;
   await setupRoom();
   showScreen('screen-lobby');
   renderLobby();
@@ -899,6 +913,7 @@ async function joinRoom(code){
   if (!SUPABASE_CONFIGURED) { homeErr.textContent = 'Multiplayer isn\u2019t connected yet.'; return; }
   roomCode = code;
   ROOM = null; GAME = null;
+  draftDirty = false;
   await setupRoom();
   showScreen('screen-lobby');
   document.getElementById('lobby-msg').textContent = 'Connecting...';
@@ -1041,7 +1056,12 @@ function renderFromState(){
   if (!ROOM) return;
   document.getElementById('chat-panel').classList.remove('hidden');
   renderChat();
-  draftSettings = { ...ROOM.settings, powerCosts: { ...ROOM.settings.powerCosts } };
+  // Don't clobber an in-progress edit: only the non-host (who has no
+  // draft of their own to protect) or a host with no unsaved changes
+  // gets their draft refreshed from the authoritative ROOM.settings.
+  if (!isHost() || !draftDirty) {
+    draftSettings = { ...ROOM.settings, powerCosts: { ...ROOM.settings.powerCosts } };
+  }
   if (!ROOM.started) { showScreen('screen-lobby'); renderLobby(); }
   else { showScreen('game-screen'); renderGame(); }
 }
