@@ -1,0 +1,1789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Power Tic-Tac-Toe — Multiplayer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* =========================================================
+     BASE THEME — preserved from the original single-player file.
+     ========================================================= */
+  :root{
+    --bg: #0d1117;
+    --bg-grid: #10151d;
+    --panel: #161c26;
+    --panel-alt: #1b2230;
+    --line: #2a3241;
+    --line-soft: #212836;
+    --text: #e7ecf3;
+    --muted: #7d8aa0;
+    --accent: #ffb454;
+    --accent-dim: #6b5636;
+    --danger: #ff5470;
+    --safe: #3ddc97;
+    --poison: #7CFF6B;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    --font-body: 'Inter', system-ui, sans-serif;
+
+    --p0: #ff5470; /* X */
+    --p1: #3ddc97; /* O */
+    --p2: #5eb1ff; /* △ */
+    --p3: #ffd166; /* □ */
+    --p4: #c792ea; /* ★ */
+    --p5: #ff8c42; /* ● */
+  }
+
+  * { box-sizing: border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #1a2230 0%, transparent 60%),
+      radial-gradient(1000px 500px at 110% 10%, #1a1420 0%, transparent 55%),
+      var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    display:flex;
+    flex-direction: column;
+    align-items:center;
+    padding: 28px 16px 60px;
+  }
+
+  button{ font-family: inherit; }
+  button:focus-visible, input:focus-visible, select:focus-visible, .cell:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  #app{ width: 100%; max-width: 1080px; }
+  .hidden{ display:none !important; }
+
+  .back-link { display: inline-block; margin-bottom: 16px; font-size: 12px; color: var(--accent); text-decoration: none; }
+  .back-link:hover { text-decoration: underline; }
+
+  .eyebrow{
+    font-family: var(--font-mono);
+    letter-spacing: .18em;
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  h1.title{
+    font-family: var(--font-mono);
+    font-size: clamp(24px, 4vw, 34px);
+    letter-spacing: .02em;
+    margin: 4px 0 2px;
+    font-weight: 700;
+  }
+  h1.title span{ color: var(--accent); }
+
+  .subtitle{ color: var(--muted); font-size: 14px; margin-bottom: 26px; }
+  .msg { color: var(--muted); font-size: 13px; }
+  .err { color: var(--danger); font-size: 13px; min-height: 16px; }
+
+  .screen { display:flex; flex-direction:column; align-items:center; text-align:center; gap:14px; width:100%; }
+
+  input, select {
+    background: var(--panel-alt);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: var(--font-mono);
+    font-size: 14px;
+  }
+
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center; }
+
+  .ghost-btn{
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    cursor: pointer;
+    transition: border-color .15s, color .15s;
+  }
+  .ghost-btn:hover{ border-color: var(--accent); color: var(--accent); }
+
+  .start-btn, .primary-btn{
+    background: var(--accent);
+    color: #16110a;
+    border: none;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: .04em;
+    padding: 14px 26px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform .1s, filter .15s;
+  }
+  .start-btn:hover, .primary-btn:hover{ filter: brightness(1.08); }
+  .start-btn:active, .primary-btn:active{ transform: scale(.98); }
+  .start-btn:disabled, .primary-btn:disabled { opacity:.4; cursor:not-allowed; filter:none; }
+
+  .code-badge {
+    font-size: 26px; letter-spacing: 6px; color: var(--accent);
+    border: 2px dashed var(--accent-dim); padding: 6px 18px;
+    font-family: var(--font-mono); background: rgba(255,180,84,.06);
+  }
+
+  /* ---------- Setup / lobby card (reused look from original setup screen) ---------- */
+  .setup-card{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 28px;
+    width: 100%;
+    max-width: 640px;
+    text-align: left;
+  }
+  .field-group{ margin-bottom: 24px; }
+  .field-label{
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--muted);
+    margin-bottom: 10px;
+    display:block;
+  }
+  .count-row{ display:flex; gap:10px; flex-wrap:wrap; }
+  .count-btn{
+    background: var(--panel-alt);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 10px;
+    width: 56px; height: 56px;
+    font-family: var(--font-mono);
+    font-size: 18px;
+    cursor:pointer;
+    transition: border-color .15s, transform .1s, background .15s;
+  }
+  .count-btn:hover{ border-color: var(--accent); }
+  .count-btn.active{ background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+  .count-btn:disabled { opacity:.4; cursor:not-allowed; }
+
+  .symbol-preview{ display:flex; gap:14px; margin-top:14px; flex-wrap:wrap; }
+  .symbol-chip{
+    display:flex; align-items:center; gap:8px;
+    background: var(--panel-alt); border:1px solid var(--line);
+    border-radius: 8px; padding: 6px 12px;
+    font-family: var(--font-mono); font-size: 13px;
+  }
+  .symbol-chip.filled { border-color: var(--accent); }
+  .symbol-swatch{ width:14px; height:14px; border-radius:3px; }
+
+  .num-row{ display:flex; gap:18px; flex-wrap:wrap; }
+  .num-field{ display:flex; flex-direction:column; gap:6px; }
+  .num-field input{ width: 140px; }
+  .num-field input:disabled { opacity:.5; }
+
+  .cost-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .cost-field{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background: var(--panel-alt);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .cost-field label{
+    font-size: 12px; display:flex; align-items:center; gap:6px; color: var(--text);
+  }
+  .cost-field input{
+    background: var(--bg-grid);
+    border-radius: 6px;
+    padding: 4px 6px;
+    font-size: 13px;
+    width: 48px;
+    text-align:center;
+  }
+  .hint{ color: var(--muted); font-size: 12px; margin-top: 8px; line-height:1.5; }
+
+  .seat-list { display:flex; flex-direction:column; gap:6px; width:100%; margin-top:6px; }
+  .seat-row {
+    display:flex; align-items:center; gap:10px; padding:8px 12px;
+    border:1px solid var(--line); background: var(--panel-alt); font-size:13px; border-radius: 8px;
+  }
+  .seat-row.mine { border-color: var(--accent); }
+  .seat-row.filled { color: var(--text); }
+  .seat-row .who { flex:1; text-align:left; color: var(--muted); }
+  .seat-row.filled .who { color: var(--text); }
+
+  /* ---------- Game screen (preserved from original) ---------- */
+  .hud-bar{
+    display:flex; align-items:center; justify-content:space-between;
+    background: var(--panel);
+    border:1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 18px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    gap: 10px;
+    width: 100%;
+  }
+  .hud-round{
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: .08em;
+  }
+  .hud-round b{ color: var(--accent); font-size:15px; }
+  .hud-actions{ display:flex; gap:10px; }
+
+  .game-layout{
+    display:grid;
+    grid-template-columns: minmax(0,1fr) 300px;
+    gap: 20px;
+    align-items:start;
+    width: 100%;
+  }
+  @media (max-width: 760px){
+    .game-layout{ grid-template-columns: 1fr; }
+  }
+
+  .board-wrap{
+    background: var(--bg-grid);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  #board{
+    display:grid;
+    gap: 5px;
+    width: min(560px, 100%);
+    aspect-ratio: 1 / 1;
+  }
+  .cell{
+    background: var(--panel-alt);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    display:flex; align-items:center; justify-content:center;
+    position: relative;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    transition: border-color .12s, background .12s;
+    aspect-ratio: 1/1;
+  }
+  .cell:hover:not(.filled){ border-color: var(--accent); background:#20283a; }
+  .cell.filled{ cursor: default; }
+  .cell:not(.clickable){ cursor: default; }
+  .cell .glyph{ font-size: min(4.2vw, 26px); line-height:1; }
+
+  .cell.targetable{ box-shadow: inset 0 0 0 2px var(--accent); cursor: pointer; }
+  .cell.targetable:hover{ background: #2a2210; }
+
+  .cell.selected-source{ box-shadow: inset 0 0 0 2px var(--p4); }
+  .cell.targetable-enemy{ box-shadow: inset 0 0 0 2px var(--danger); cursor: pointer; }
+  .cell.targetable-enemy:hover{ background: #2a1418; }
+
+  .cell.shielded::before{
+    content:"";
+    position:absolute; inset: -1px;
+    border-radius: 6px;
+    box-shadow: 0 0 0 2px var(--p2), 0 0 10px 1px rgba(94,177,255,.55);
+    pointer-events:none;
+  }
+  .cell.poisoned::after{
+    content:"";
+    position:absolute; inset: -1px;
+    border-radius: 6px;
+    box-shadow: 0 0 0 2px var(--poison), 0 0 12px 2px rgba(124,255,107,.5);
+    pointer-events:none;
+    animation: pulse-poison 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse-poison{
+    0%,100%{ opacity:.55; }
+    50%{ opacity:1; }
+  }
+  .poison-badge{
+    position:absolute; bottom:2px; right:3px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--poison);
+    background: rgba(0,0,0,.55);
+    padding: 0 3px;
+    border-radius: 3px;
+    letter-spacing:.02em;
+  }
+
+  .cell.blast{
+    animation: blast-flash .55s ease-out;
+  }
+  @keyframes blast-flash{
+    0%{ background: #ffb454; box-shadow: 0 0 24px 6px rgba(255,180,84,.9); }
+    100%{ background: var(--panel-alt); box-shadow:none; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .cell.poisoned::after{ animation: none; opacity: .85; }
+    .cell.blast{ animation: none; }
+  }
+
+  /* Sidebar */
+  .sidebar{ display:flex; flex-direction:column; gap:14px; }
+  .panel-box{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .panel-title{
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .player-row{
+    display:flex; align-items:center; gap:10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    border: 1px solid transparent;
+  }
+  .player-row.current{
+    background: rgba(255,180,84,.08);
+    border-color: var(--accent-dim);
+  }
+  .player-row.offline { opacity: .5; }
+  .player-glyph{
+    width: 28px; height:28px; border-radius:7px;
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--font-mono); font-weight:700; font-size:15px;
+    flex-shrink:0;
+  }
+  .player-name{ font-size: 13px; flex:1; }
+  .player-row.current .player-name::after{
+    content: "— turn"; color: var(--accent); font-size: 11px; margin-left:6px; font-family: var(--font-mono);
+  }
+  .pips{ display:flex; gap:3px; }
+  .pip{ width:8px; height:8px; border-radius:50%; background: var(--line-soft); }
+  .pip.filled{ background: var(--accent); }
+
+  .action-current{
+    display:flex; align-items:center; gap:10px; margin-bottom:14px;
+  }
+  .action-glyph{
+    width:40px; height:40px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--font-mono); font-weight:700; font-size:20px;
+  }
+  .action-sub{ font-size:12px; color: var(--muted); }
+
+  .power-btn{
+    width:100%;
+    display:flex; align-items:center; gap:10px;
+    background: var(--panel-alt);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 9px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    text-align:left;
+    transition: border-color .15s, background .15s;
+  }
+  .power-btn:hover:not(:disabled){ border-color: var(--accent); }
+  .power-btn:disabled{ opacity:.35; cursor:not-allowed; }
+  .power-btn .icon{ font-size:17px; }
+  .power-btn .cost{ margin-left:auto; font-family: var(--font-mono); font-size:11px; color: var(--muted); }
+  .power-btn.pending{ border-color: var(--accent); background: rgba(255,180,84,.1); }
+
+  .cancel-hint{
+    font-size: 12px; color: var(--accent); font-family: var(--font-mono);
+    display:flex; align-items:center; justify-content:space-between;
+    background: rgba(255,180,84,.08);
+    border: 1px dashed var(--accent-dim);
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+  }
+  .cancel-hint button{
+    background:none; border:none; color:var(--danger); cursor:pointer; font-family: var(--font-mono); font-size:11px;
+  }
+
+  .log-box{ max-height: 180px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
+  .log-line{ font-size:12px; color: var(--muted); font-family: var(--font-mono); line-height:1.4; }
+  .log-line.newest { color: var(--text); font-weight: 700; }
+  .log-line b{ color: var(--text); }
+
+  .rules-toggle{
+    background:none; border:1px solid var(--line); color: var(--muted);
+    border-radius:8px; padding:8px 10px; font-size:12px; cursor:pointer; width:100%;
+    font-family: var(--font-mono);
+  }
+  .rules-toggle:hover{ color: var(--accent); border-color: var(--accent); }
+  .rules-body{ font-size:12px; color:var(--muted); line-height:1.6; margin-top:10px; display:none; }
+  .rules-body.open{ display:block; }
+  .rules-body b{ color: var(--text); }
+
+  /* Win overlay */
+  .win-overlay{
+    position: fixed; inset:0; background: rgba(9,12,17,.86);
+    display:flex; align-items:center; justify-content:center; z-index: 50;
+  }
+  .win-card{
+    background: var(--panel); border: 1px solid var(--line); border-radius:16px;
+    padding: 40px 48px; text-align:center; max-width: 420px;
+  }
+  .win-glyph{
+    width:72px; height:72px; border-radius:16px; margin: 0 auto 18px;
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--font-mono); font-size:34px; font-weight:700;
+  }
+  .win-title{ font-family: var(--font-mono); font-size:22px; margin-bottom:6px; }
+  .win-sub{ color: var(--muted); font-size:13px; margin-bottom:22px; }
+
+  .msg-toast{
+    position: fixed; bottom: 24px; left:50%; transform: translateX(-50%);
+    background: var(--panel-alt); border:1px solid var(--danger); color: var(--text);
+    padding: 10px 18px; border-radius: 9px; font-size: 13px; z-index: 60;
+    opacity:0; pointer-events:none; transition: opacity .25s;
+  }
+  .msg-toast.show{ opacity:1; }
+
+  /* ---------- Reconnect / restart panels (matching site conventions) ---------- */
+  .reconnect-box, .restart-box {
+    background: var(--panel); border: 1px solid var(--accent-dim); border-radius: 12px;
+    padding: 14px; margin-bottom: 14px; width: 100%; text-align: left;
+  }
+  .restart-box .row { justify-content: flex-start; margin-top: 8px; }
+
+  /* ---------- Chat panel (matching Monopoly's) ---------- */
+  #chat-panel { position: fixed; right: 16px; bottom: 16px; z-index: 90; }
+  #chat-toggle {
+    padding: 10px 16px; border-radius: 20px; font-size: 13px;
+    background: var(--panel); border: 1px solid var(--accent-dim); color: var(--text);
+    cursor: pointer; box-shadow: 0 6px 16px rgba(0,0,0,.4); font-family: var(--font-mono);
+  }
+  #chat-body {
+    position: absolute; right: 0; bottom: 52px;
+    width: 280px; max-width: 80vw;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.5);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  #chat-messages { max-height: 260px; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .chat-msg { font-size: 12px; line-height: 1.35; }
+  .chat-msg .who { font-weight: 900; color: var(--accent); }
+  .chat-msg.mine .who { color: var(--safe); }
+  .chat-input-row { display: flex; border-top: 1px solid var(--line); }
+  .chat-input-row input { flex: 1; border: none; border-radius: 0; font-size: 13px; padding: 10px; background: var(--panel-alt); }
+  .chat-input-row button { border: none; border-radius: 0; font-size: 12px; padding: 10px 14px; background: var(--accent-dim); color: var(--text); cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="app">
+
+<a class="back-link" href="../../">&larr; All games</a>
+
+<!-- ================= HOME ================= -->
+<div id="screen-home" class="screen">
+  <div class="eyebrow">Tactical Grid Combat · Realtime</div>
+  <h1 class="title">POWER TIC-TAC-TOE <span>// Multiplayer</span></h1>
+  <div class="subtitle">3–6 players, separate devices. Place symbols, deploy Bombs, Shields and Poison to control the grid.</div>
+  <div class="row">
+    <button class="start-btn" id="btn-create">Create Room</button>
+    <button class="ghost-btn" id="btn-join-open">Join Room</button>
+  </div>
+  <div id="join-form" class="row hidden">
+    <input id="join-code" maxlength="5" placeholder="ROOM CODE" style="text-transform:uppercase; letter-spacing:3px; width:130px;">
+    <button class="ghost-btn" id="btn-join">Join</button>
+  </div>
+  <div id="home-err" class="err"></div>
+</div>
+
+<!-- ================= LOBBY ================= -->
+<div id="screen-lobby" class="screen hidden">
+  <div class="eyebrow">Room Code</div>
+  <div class="code-badge" id="lobby-code">-----</div>
+  <div class="row">
+    <input id="share-link" readonly style="width:320px;">
+    <button class="ghost-btn" id="btn-copy-link">Copy</button>
+  </div>
+
+  <div class="setup-card">
+    <div class="field-group">
+      <label class="field-label">Number of players <span id="host-tag" class="hidden" style="color:var(--accent);">(you're host — settings below)</span></label>
+      <div class="count-row" id="count-row"></div>
+      <div class="symbol-preview" id="symbol-preview"></div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Board &amp; win settings</label>
+      <div class="num-row">
+        <div class="num-field">
+          <label for="board-size">Board size (N × N)</label>
+          <input type="number" id="board-size" min="5" max="10" value="5">
+        </div>
+        <div class="num-field">
+          <label for="win-len">Win length (in a row)</label>
+          <input type="number" id="win-len" min="3" max="6" value="4">
+        </div>
+      </div>
+      <div class="hint">Turn order follows seating order below — first seated goes first.</div>
+    </div>
+
+    <div class="field-group" style="margin-bottom:6px;">
+      <label class="field-label">Power economy</label>
+      <div class="num-row">
+        <div class="num-field">
+          <label for="max-tokens">Starting tokens per player</label>
+          <input type="number" id="max-tokens" min="0" max="9" value="3">
+        </div>
+      </div>
+      <div class="hint">Token cost per power (0 = free):</div>
+      <div class="cost-grid" id="cost-grid"></div>
+    </div>
+
+    <button class="ghost-btn" id="btn-save-settings">Save Settings</button>
+  </div>
+
+  <div class="seat-list" id="seat-list"></div>
+  <button class="ghost-btn" id="btn-join-seat">Take a Seat</button>
+  <button class="start-btn hidden" id="btn-start">Launch →</button>
+  <div class="msg" id="lobby-msg">Waiting...</div>
+</div>
+
+<!-- ================= GAME ================= -->
+<div id="game-screen" class="screen hidden" style="align-items: stretch;">
+  <div class="hud-bar">
+    <div>
+      <div class="eyebrow">Power Tic-Tac-Toe</div>
+      <div class="hud-round">ROUND <b id="round-num">001</b></div>
+    </div>
+    <div class="hud-actions">
+      <button class="ghost-btn" id="rules-btn">Rules</button>
+      <button class="ghost-btn hidden" id="btn-restart">Restart Game</button>
+    </div>
+  </div>
+
+  <div id="reconnect-box" class="reconnect-box hidden"></div>
+  <div id="restart-box" class="restart-box hidden"></div>
+
+  <div class="game-layout">
+    <div class="board-wrap">
+      <div id="board"></div>
+    </div>
+
+    <div class="sidebar">
+      <div class="panel-box">
+        <div class="panel-title">Current turn</div>
+        <div id="action-current" class="action-current"></div>
+        <div id="pending-hint"></div>
+        <button class="power-btn" id="bomb-btn">
+          <span class="icon">💣</span> Bomb <span class="cost" id="bomb-cost">1 token</span>
+        </button>
+        <button class="power-btn" id="shield-btn">
+          <span class="icon">🛡️</span> Shield <span class="cost" id="shield-cost">1 token</span>
+        </button>
+        <button class="power-btn" id="poison-btn">
+          <span class="icon">☠️</span> Poison <span class="cost" id="poison-cost">1 token</span>
+        </button>
+        <button class="power-btn" id="traitor-btn">
+          <span class="icon">🎭</span> Traitor <span class="cost" id="traitor-cost">1 token</span>
+        </button>
+        <button class="power-btn" id="clearrow-btn">
+          <span class="icon">🚧</span> Clear Row <span class="cost" id="clearrow-cost">1 token</span>
+        </button>
+        <button class="power-btn" id="clearcol-btn">
+          <span class="icon">🧹</span> Clear Column <span class="cost" id="clearcol-cost">1 token</span>
+        </button>
+        <button class="power-btn" id="gravity-btn">
+          <span class="icon">🪐</span> Gravity <span class="cost" id="gravity-cost">1 token</span>
+        </button>
+        <button class="power-btn" id="swap-btn">
+          <span class="icon">🔄</span> Swap <span class="cost" id="swap-cost">1 token</span>
+        </button>
+        <button class="rules-toggle" id="rules-toggle">Show power details ▾</button>
+        <div class="rules-body" id="rules-body">
+          <b>💣 Bomb</b> — pick one of your symbols on the board. Destroys all unshielded symbols in its 8 adjacent cells. Your chosen symbol survives.<br><br>
+          <b>🛡️ Shield</b> — protects all of your symbols currently on the board for the next 2 full rounds. Blocks Bomb, Traitor, Clear Row and Clear Column, does not block Poison, Gravity, or Swap.<br><br>
+          <b>☠️ Poison</b> — mark one of your symbols. At end of round +2 it destroys symbols orthogonally adjacent (↑↓←→) to it — ignoring Shield. At end of round +3 it hits the next ring further out in those same 4 directions, then the effect ends. Diagonals are always safe.<br><br>
+          <b>🎭 Traitor</b> — pick one of your own symbols, then pick one adjacent opponent symbol (any of its 8 neighbors) to convert to your symbol. Blocked by Shield.<br><br>
+          <b>🚧 Clear Row</b> — pick any cell. Destroys every unshielded symbol in that entire row, yours and opponents' alike.<br><br>
+          <b>🧹 Clear Column</b> — pick any cell. Destroys every unshielded symbol in that entire column, yours and opponents' alike.<br><br>
+          <b>🪐 Gravity</b> — pick any row. Every symbol in it falls straight down through its own column until it hits the bottom or another symbol. Shield/Poison travel with their symbol. Can complete a line for any player, not just you.<br><br>
+          <b>🔄 Swap</b> — pick any two occupied cells on the board (yours or opponents') and swap their symbols. Can complete a line for whoever ends up with the winning symbols.
+        </div>
+      </div>
+
+      <div class="panel-box">
+        <div class="panel-title">Players</div>
+        <div id="player-list"></div>
+      </div>
+
+      <div class="panel-box">
+        <div class="panel-title">Event Log</div>
+        <div class="log-box" id="log-box"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<div class="msg-toast" id="toast"></div>
+
+<!-- CHAT PANEL -->
+<div id="chat-panel" class="hidden">
+  <button id="chat-toggle">💬 Chat</button>
+  <div id="chat-body" class="hidden">
+    <div id="chat-messages"></div>
+    <div class="chat-input-row">
+      <input id="chat-input" type="text" maxlength="240" placeholder="Say something…">
+      <button id="chat-send">Send</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { openRoom, makeRoomCode, getPersistentId, SUPABASE_URL } from '../../shared/supabase.js';
+
+// =========================================================
+// RULES ENGINE — ported from the original single-player file.
+// Operates on an explicit `g` state object (rather than a module
+// global) so the host can run it authoritatively. Logic for each
+// power (bomb, shield, poison, traitor, clear row/col, gravity,
+// swap) and the win-check is intentionally kept as close to the
+// original as possible, since that logic was already correct and
+// well-tested by the person who built it — the conversion work is
+// almost entirely in the networking/turn-authority layer around it.
+// =========================================================
+const PLAYER_CONFIGS = [
+  { symbol: 'X', color: 'var(--p0)' },
+  { symbol: 'O', color: 'var(--p1)' },
+  { symbol: '\u25b3', color: 'var(--p2)' },
+  { symbol: '\u25a1', color: 'var(--p3)' },
+  { symbol: '\u2605', color: 'var(--p4)' },
+  { symbol: '\u25cf', color: 'var(--p5)' },
+];
+
+function getDefaults(n){
+  switch(n){
+    case 3: return { size:5, win:4 };
+    case 4: return { size:6, win:4 };
+    case 5: return { size:7, win:5 };
+    case 6: return { size:8, win:5 };
+    default: return { size:5, win:4 };
+  }
+}
+
+const POWERS = [
+  { key:'bomb', icon:'\ud83d\udca3', label:'Bomb' },
+  { key:'shield', icon:'\ud83d\udee1\ufe0f', label:'Shield' },
+  { key:'poison', icon:'\u2620\ufe0f', label:'Poison' },
+  { key:'traitor', icon:'\ud83c\udfad', label:'Traitor' },
+  { key:'clearrow', icon:'\ud83d\udea7', label:'Clear Row' },
+  { key:'clearcol', icon:'\ud83e\uddf9', label:'Clear Column' },
+  { key:'gravity', icon:'\ud83e\ude90', label:'Gravity' },
+  { key:'swap', icon:'\ud83d\udd04', label:'Swap' },
+];
+
+function inBounds(g,r,c){ return r>=0 && c>=0 && r<g.size && c<g.size; }
+function isProtected(g,cell){ return cell.shieldUntil !== null && g.round <= cell.shieldUntil; }
+
+function destroyCell(g,r,c){
+  const cell = g.cells[r][c];
+  cell.occupant = null;
+  cell.shieldUntil = null;
+  cell.poison = null;
+}
+
+function pushLog(g, msg) { g.log = [...g.log.slice(-39), msg]; }
+function currentPlayer(g){ return g.players[g.turnIndex]; }
+function isGameOver(g){ return !!g.winner || !!g.draw; }
+
+function isBoardFull(g){
+  for(let r=0;r<g.size;r++) for(let c=0;c<g.size;c++) if(g.cells[r][c].occupant === null) return false;
+  return true;
+}
+
+function checkWinner(g, symbol){
+  const n = g.size, need = g.winLen;
+  const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+  for(let r=0;r<n;r++){
+    for(let c=0;c<n;c++){
+      if(g.cells[r][c].occupant !== symbol) continue;
+      for(const [dr,dc] of dirs){
+        let count = 1, rr = r+dr, cc = c+dc;
+        while(inBounds(g,rr,cc) && g.cells[rr][cc].occupant === symbol){
+          count++;
+          if(count >= need) return true;
+          rr += dr; cc += dc;
+        }
+      }
+    }
+  }
+  return false;
+}
+function checkAnyWinner(g){
+  for(const p of g.players) if(checkWinner(g, p.symbol)) return p;
+  return null;
+}
+
+function applyBomb(g,r,c){
+  const player = currentPlayer(g);
+  const deltas = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+  let destroyedAny = false;
+  const blastCells = [[r,c]]; // origin + every in-bounds neighbor, for the flash effect
+  for(const [dr,dc] of deltas){
+    const nr=r+dr, nc=c+dc;
+    if(!inBounds(g,nr,nc)) continue;
+    blastCells.push([nr,nc]);
+    const target = g.cells[nr][nc];
+    if(target.occupant === null) continue;
+    if(isProtected(g,target)) continue;
+    destroyCell(g,nr,nc);
+    destroyedAny = true;
+  }
+  g.lastBomb = { ts: Date.now(), cells: blastCells };
+  pushLog(g, `\ud83d\udca3 ${player.symbol} detonated a Bomb at (${r+1},${c+1})${destroyedAny ? '' : ' \u2014 no unshielded targets hit'}.`);
+}
+
+function applyShield(g){
+  const player = currentPlayer(g);
+  let count = 0;
+  for(let r=0;r<g.size;r++) for(let c=0;c<g.size;c++){
+    const cell = g.cells[r][c];
+    if(cell.occupant === player.symbol){ cell.shieldUntil = g.round + 2; count++; }
+  }
+  pushLog(g, `\ud83d\udee1\ufe0f ${player.symbol} raised a Shield over ${count} symbol${count===1?'':'s'} (protected through round ${g.round+2}).`);
+}
+
+function applyPoisonMark(g,r,c){
+  const player = currentPlayer(g);
+  g.cells[r][c].poison = { castRound: g.round, stage: 0 };
+  pushLog(g, `\u2620\ufe0f ${player.symbol} poisoned their symbol at (${r+1},${c+1}).`);
+}
+
+function applyTraitor(g,sr,sc,tr,tc){
+  const player = currentPlayer(g);
+  const target = g.cells[tr][tc];
+  const fromSymbol = target.occupant;
+  target.occupant = player.symbol;
+  pushLog(g, `\ud83c\udfad ${player.symbol} turned ${fromSymbol}'s symbol at (${tr+1},${tc+1}) into a traitor.`);
+}
+
+function applyClearRow(g,r){
+  const player = currentPlayer(g);
+  let hit = 0;
+  for(let c=0;c<g.size;c++){
+    const target = g.cells[r][c];
+    if(target.occupant === null || isProtected(g,target)) continue;
+    destroyCell(g,r,c); hit++;
+  }
+  pushLog(g, `\ud83d\udea7 ${player.symbol} cleared row ${r+1} \u2014 ${hit} symbol${hit===1?'':'s'} destroyed.`);
+}
+
+function applyClearColumn(g,c){
+  const player = currentPlayer(g);
+  let hit = 0;
+  for(let r=0;r<g.size;r++){
+    const target = g.cells[r][c];
+    if(target.occupant === null || isProtected(g,target)) continue;
+    destroyCell(g,r,c); hit++;
+  }
+  pushLog(g, `\ud83e\uddf9 ${player.symbol} cleared column ${c+1} \u2014 ${hit} symbol${hit===1?'':'s'} destroyed.`);
+}
+
+function applyGravity(g,r){
+  const player = currentPlayer(g);
+  let moved = 0;
+  for(let c=0;c<g.size;c++){
+    const startCell = g.cells[r][c];
+    if(startCell.occupant === null) continue;
+    let target = r;
+    for(let rr=r+1; rr<g.size; rr++){
+      if(g.cells[rr][c].occupant === null) target = rr; else break;
+    }
+    if(target !== r){
+      const targetCell = g.cells[target][c];
+      targetCell.occupant = startCell.occupant;
+      targetCell.shieldUntil = startCell.shieldUntil;
+      targetCell.poison = startCell.poison;
+      startCell.occupant = null; startCell.shieldUntil = null; startCell.poison = null;
+      moved++;
+    }
+  }
+  pushLog(g, `\ud83e\ude90 ${player.symbol} triggered Gravity on row ${r+1} \u2014 ${moved} symbol${moved===1?'':'s'} fell.`);
+}
+
+function applySwap(g,r1,c1,r2,c2){
+  const player = currentPlayer(g);
+  const a = g.cells[r1][c1], b = g.cells[r2][c2];
+  const temp = { occupant:a.occupant, shieldUntil:a.shieldUntil, poison:a.poison };
+  a.occupant=b.occupant; a.shieldUntil=b.shieldUntil; a.poison=b.poison;
+  b.occupant=temp.occupant; b.shieldUntil=temp.shieldUntil; b.poison=temp.poison;
+  pushLog(g, `\ud83d\udd04 ${player.symbol} swapped the symbols at (${r1+1},${c1+1}) and (${r2+1},${c2+1}).`);
+}
+
+function processEndOfRound(g, completedRound){
+  const ring1 = [[-1,0],[1,0],[0,-1],[0,1]];
+  const ring2 = [[-2,0],[2,0],[0,-2],[0,2]];
+  for(let r=0;r<g.size;r++){
+    for(let c=0;c<g.size;c++){
+      const cell = g.cells[r][c];
+      if(!cell.poison) continue;
+      const p = cell.poison;
+      if(p.stage === 0 && completedRound === p.castRound + 2){
+        let hit = 0;
+        for(const [dr,dc] of ring1){
+          const nr=r+dr, nc=c+dc;
+          if(!inBounds(g,nr,nc)) continue;
+          if(g.cells[nr][nc].occupant !== null){ destroyCell(g,nr,nc); hit++; }
+        }
+        p.stage = 1;
+        pushLog(g, `\u2620\ufe0f Poison at (${r+1},${c+1}) detonated (ring 1) \u2014 ${hit} symbol${hit===1?'':'s'} destroyed.`);
+      } else if(p.stage === 1 && completedRound === p.castRound + 3){
+        let hit = 0;
+        for(const [dr,dc] of ring2){
+          const nr=r+dr, nc=c+dc;
+          if(!inBounds(g,nr,nc)) continue;
+          if(g.cells[nr][nc].occupant !== null){ destroyCell(g,nr,nc); hit++; }
+        }
+        pushLog(g, `\u2620\ufe0f Poison at (${r+1},${c+1}) detonated (ring 2, final) \u2014 ${hit} symbol${hit===1?'':'s'} destroyed.`);
+        cell.poison = null;
+      }
+    }
+  }
+}
+
+function endTurn(g){
+  g.turnIndex++;
+  if(g.turnIndex >= g.players.length){
+    g.turnIndex = 0;
+    const completed = g.round;
+    processEndOfRound(g, completed);
+    g.round = completed + 1;
+  }
+}
+
+function freshGame(seats, settings){
+  const players = seats.map((id, i) => ({
+    id, symbol: PLAYER_CONFIGS[i].symbol, color: PLAYER_CONFIGS[i].color, tokens: settings.maxTokens,
+  }));
+  const cells = [];
+  for(let r=0;r<settings.size;r++){
+    const row = [];
+    for(let c=0;c<settings.size;c++) row.push({ occupant:null, shieldUntil:null, poison:null });
+    cells.push(row);
+  }
+  return {
+    players, size: settings.size, winLen: settings.winLen, maxTokens: settings.maxTokens,
+    costs: { ...settings.costs },
+    cells, round: 1, turnIndex: 0, winner: null, draw: false,
+    log: [`Game started \u2014 ${seats.length} players on a ${settings.size}\u00d7${settings.size} grid, ${settings.winLen} in a row to win.`],
+    restartVote: null,
+    lastBomb: null, // { ts, cells:[[r,c],...] } — drives the flash effect on every client
+  };
+}
+
+// Host-side action resolver: validates and applies ONE completed
+// action (a placement, or a fully-targeted power), mirroring the
+// original onCellClick's per-power branches but taking explicit
+// coordinates instead of incremental clicks (targeting stages are
+// handled client-side locally before a single network message is
+// sent — see CLIENT STATE below).
+function resolveAction(g, senderId, action) {
+  if (isGameOver(g)) return false;
+  const player = currentPlayer(g);
+  if (player.id !== senderId) return false;
+
+  if (action.type === 'place') {
+    const { r, c } = action;
+    if (!inBounds(g,r,c)) return false;
+    const cell = g.cells[r][c];
+    if (cell.occupant) return false;
+    cell.occupant = player.symbol;
+    pushLog(g, `${player.symbol} placed at (${r+1},${c+1}).`);
+    if (checkWinner(g, player.symbol)) { g.winner = player; return true; }
+    if (isBoardFull(g)) { g.draw = true; pushLog(g, 'Board full \u2014 it\u2019s a draw.'); return true; }
+    endTurn(g);
+    return true;
+  }
+
+  if (action.type === 'shield') {
+    if (player.tokens < g.costs.shield) return false;
+    player.tokens -= g.costs.shield;
+    applyShield(g);
+    endTurn(g);
+    return true;
+  }
+
+  if (action.type === 'bomb') {
+    const { r, c } = action;
+    if (!inBounds(g,r,c) || player.tokens < g.costs.bomb) return false;
+    if (g.cells[r][c].occupant !== player.symbol) return false;
+    player.tokens -= g.costs.bomb;
+    applyBomb(g,r,c);
+    endTurn(g);
+    return true;
+  }
+
+  if (action.type === 'poison') {
+    const { r, c } = action;
+    if (!inBounds(g,r,c) || player.tokens < g.costs.poison) return false;
+    const cell = g.cells[r][c];
+    if (cell.occupant !== player.symbol || cell.poison) return false;
+    player.tokens -= g.costs.poison;
+    applyPoisonMark(g,r,c);
+    endTurn(g);
+    return true;
+  }
+
+  if (action.type === 'clearrow') {
+    const { r } = action;
+    if (r < 0 || r >= g.size || player.tokens < g.costs.clearrow) return false;
+    player.tokens -= g.costs.clearrow;
+    applyClearRow(g,r);
+    endTurn(g);
+    return true;
+  }
+
+  if (action.type === 'clearcol') {
+    const { c } = action;
+    if (c < 0 || c >= g.size || player.tokens < g.costs.clearcol) return false;
+    player.tokens -= g.costs.clearcol;
+    applyClearColumn(g,c);
+    endTurn(g);
+    return true;
+  }
+
+  if (action.type === 'gravity') {
+    const { r } = action;
+    if (r < 0 || r >= g.size || player.tokens < g.costs.gravity) return false;
+    player.tokens -= g.costs.gravity;
+    applyGravity(g,r);
+    const winner = checkAnyWinner(g);
+    if (winner) { g.winner = winner; return true; }
+    endTurn(g);
+    return true;
+  }
+
+  if (action.type === 'swap') {
+    const { r1, c1, r2, c2 } = action;
+    if (!inBounds(g,r1,c1) || !inBounds(g,r2,c2)) return false;
+    if (r1 === r2 && c1 === c2) return false;
+    if (player.tokens < g.costs.swap) return false;
+    if (g.cells[r1][c1].occupant === null || g.cells[r2][c2].occupant === null) return false;
+    player.tokens -= g.costs.swap;
+    applySwap(g,r1,c1,r2,c2);
+    const winner = checkAnyWinner(g);
+    if (winner) { g.winner = winner; return true; }
+    endTurn(g);
+    return true;
+  }
+
+  if (action.type === 'traitor') {
+    const { sr, sc, tr, tc } = action;
+    if (!inBounds(g,sr,sc) || !inBounds(g,tr,tc) || player.tokens < g.costs.traitor) return false;
+    if (g.cells[sr][sc].occupant !== player.symbol) return false;
+    const isAdjacent = Math.abs(tr-sr) <= 1 && Math.abs(tc-sc) <= 1 && !(tr===sr && tc===sc);
+    if (!isAdjacent) return false;
+    const target = g.cells[tr][tc];
+    if (target.occupant === null || target.occupant === player.symbol) return false;
+    if (isProtected(g, target)) return false;
+    player.tokens -= g.costs.traitor;
+    applyTraitor(g,sr,sc,tr,tc);
+    if (checkWinner(g, player.symbol)) { g.winner = player; return true; }
+    endTurn(g);
+    return true;
+  }
+
+  return false;
+}
+
+// =========================================================
+// STATE
+// =========================================================
+const myId = getPersistentId();
+let roomCode = null;
+let ROOM = null;   // { hostId, capacity, seats, started, settings, restartVote, chat }
+let GAME = null;
+let room = null;
+let connectedIds = [];
+
+let setupCount = 3;
+let myPendingPower = null; // purely local UI state — see note above resolveAction
+let showingRestartConfirm = false;
+let lastSeenBombTs = undefined; // undefined = not yet initialized (see checkBombFlash)
+
+const SUPABASE_CONFIGURED = SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL';
+
+function isHost() { return !!ROOM && ROOM.hostId === myId; }
+function isMyTurn() { return GAME && !isGameOver(GAME) && currentPlayer(GAME).id === myId; }
+
+function freshRoom(hostId) {
+  return {
+    hostId, capacity: 3, seats: [], started: false,
+    settings: { size: 5, winLen: 4, maxTokens: 3, costs: { bomb:1, shield:1, poison:1, traitor:1, clearrow:1, clearcol:1, gravity:1, swap:1 } },
+    restartVote: null, chat: [],
+  };
+}
+
+function nameOf(id) {
+  if (!ROOM) return 'Player';
+  const idx = ROOM.seats.indexOf(id);
+  return idx === -1 ? 'Player' : `Player ${idx + 1}`;
+}
+
+// =========================================================
+// DOM
+// =========================================================
+const screenHome = document.getElementById('screen-home');
+const screenLobby = document.getElementById('screen-lobby');
+const gameScreen = document.getElementById('game-screen');
+const homeErr = document.getElementById('home-err');
+
+document.getElementById('btn-create').onclick = createRoom;
+document.getElementById('btn-join-open').onclick = () => document.getElementById('join-form').classList.remove('hidden');
+document.getElementById('btn-join').onclick = () => joinRoom(document.getElementById('join-code').value.trim().toUpperCase());
+document.getElementById('btn-copy-link').onclick = copyShareLink;
+document.getElementById('btn-join-seat').onclick = () => room?.send('join_seat', {});
+document.getElementById('btn-start').onclick = () => room?.send('start_game', {});
+document.getElementById('btn-save-settings').onclick = saveSettingsFromForm;
+
+function showScreen(id) {
+  for (const s of [screenHome, screenLobby, gameScreen]) s.classList.add('hidden');
+  document.getElementById(id).classList.remove('hidden');
+}
+
+const urlRoom = new URLSearchParams(location.search).get('room');
+if (urlRoom) joinRoom(urlRoom.toUpperCase());
+
+// ---- setup form wiring (lobby) ----
+const countRow = document.getElementById('count-row');
+const symbolPreview = document.getElementById('symbol-preview');
+const boardSizeInput = document.getElementById('board-size');
+const winLenInput = document.getElementById('win-len');
+const maxTokensInput = document.getElementById('max-tokens');
+const costGrid = document.getElementById('cost-grid');
+
+function renderCostGridInputs(costs) {
+  costGrid.innerHTML = '';
+  POWERS.forEach(p => {
+    const field = document.createElement('div');
+    field.className = 'cost-field';
+    field.innerHTML = `<label for="cost-${p.key}">${p.icon} ${p.label}</label><input type="number" id="cost-${p.key}" min="0" max="9" value="${costs[p.key]}">`;
+    costGrid.appendChild(field);
+  });
+}
+
+function renderCountButtons() {
+  countRow.innerHTML = '';
+  [3,4,5,6].forEach(n => {
+    const btn = document.createElement('button');
+    btn.className = 'count-btn' + (n === setupCount ? ' active' : '');
+    btn.textContent = n;
+    btn.disabled = !isHost() || (ROOM && ROOM.started);
+    btn.onclick = () => {
+      if (!isHost()) return;
+      setupCount = n;
+      const d = getDefaults(n);
+      boardSizeInput.value = d.size;
+      winLenInput.value = d.win;
+      renderCountButtons();
+      renderSymbolPreviewLobby();
+    };
+    countRow.appendChild(btn);
+  });
+}
+
+function renderSymbolPreviewLobby() {
+  symbolPreview.innerHTML = '';
+  for (let i = 0; i < setupCount; i++) {
+    const cfg = PLAYER_CONFIGS[i];
+    const filled = ROOM && !!ROOM.seats[i];
+    const chip = document.createElement('div');
+    chip.className = 'symbol-chip' + (filled ? ' filled' : '');
+    chip.innerHTML = `<span class="symbol-swatch" style="background:${cfg.color}"></span> Player ${i+1} \u2014 ${cfg.symbol}${filled ? (ROOM.seats[i]===myId ? ' (you)' : '') : ' (open)'}`;
+    symbolPreview.appendChild(chip);
+  }
+}
+
+function saveSettingsFromForm() {
+  if (!isHost() || (ROOM && ROOM.started)) return;
+  let size = parseInt(boardSizeInput.value, 10);
+  let win = parseInt(winLenInput.value, 10);
+  if (!size || size < 4) size = getDefaults(setupCount).size;
+  if (size > 12) size = 12;
+  if (!win || win < 3) win = getDefaults(setupCount).win;
+  if (win > size) win = size;
+  let maxTokens = parseInt(maxTokensInput.value, 10);
+  if (isNaN(maxTokens) || maxTokens < 0) maxTokens = 3;
+  const costs = {};
+  POWERS.forEach(p => {
+    let v = parseInt(document.getElementById(`cost-${p.key}`).value, 10);
+    if (isNaN(v) || v < 0) v = 1;
+    costs[p.key] = v;
+  });
+  room.send('set_capacity_and_settings', { capacity: setupCount, settings: { size, winLen: win, maxTokens, costs } });
+}
+
+// =========================================================
+// NETWORKING
+// =========================================================
+async function createRoom() {
+  homeErr.textContent = '';
+  if (!SUPABASE_CONFIGURED) { homeErr.textContent = 'Multiplayer isn\u2019t connected yet.'; return; }
+  roomCode = makeRoomCode();
+  ROOM = freshRoom(myId);
+  GAME = null;
+  await setupRoom();
+  showScreen('screen-lobby');
+  renderLobby();
+}
+
+async function joinRoom(code) {
+  homeErr.textContent = '';
+  if (!code) { homeErr.textContent = 'Enter a room code.'; return; }
+  if (!SUPABASE_CONFIGURED) { homeErr.textContent = 'Multiplayer isn\u2019t connected yet.'; return; }
+  roomCode = code;
+  ROOM = null; GAME = null;
+  await setupRoom();
+  showScreen('screen-lobby');
+  document.getElementById('lobby-msg').textContent = 'Connecting...';
+  room.send('request_sync', {});
+}
+
+async function setupRoom() {
+  room = openRoom({ gamePrefix: 'power-ttt', roomCode, myId });
+
+  room.on('set_capacity_and_settings', (payload) => {
+    if (!isHost() || ROOM.started) return;
+    const cap = Math.max(3, Math.min(6, payload.capacity | 0));
+    const s = payload.settings || {};
+    const size = Math.max(4, Math.min(12, s.size | 0 || ROOM.settings.size));
+    const winLen = Math.max(3, Math.min(size, s.winLen | 0 || ROOM.settings.winLen));
+    const maxTokens = Math.max(0, Math.min(9, s.maxTokens | 0));
+    const costs = { ...ROOM.settings.costs };
+    POWERS.forEach(p => { if (s.costs && typeof s.costs[p.key] === 'number') costs[p.key] = Math.max(0, Math.min(9, s.costs[p.key] | 0)); });
+    ROOM = { ...ROOM, capacity: cap, seats: ROOM.seats.slice(0, cap), settings: { size, winLen, maxTokens, costs } };
+    broadcastSync();
+  });
+
+  room.on('join_seat', (payload) => {
+    if (!isHost() || ROOM.started) return;
+    if (ROOM.seats.includes(payload.senderId)) return;
+    if (ROOM.seats.length < ROOM.capacity) {
+      ROOM = { ...ROOM, seats: [...ROOM.seats, payload.senderId] };
+    } else {
+      const ghostIdx = ROOM.seats.findIndex(id => !connectedIds.includes(id));
+      if (ghostIdx === -1) return;
+      const newSeats = ROOM.seats.slice();
+      newSeats[ghostIdx] = payload.senderId;
+      ROOM = { ...ROOM, seats: newSeats };
+    }
+    broadcastSync();
+  });
+
+  room.on('start_game', () => {
+    if (!isHost() || ROOM.started) return;
+    if (ROOM.seats.length !== ROOM.capacity || ROOM.seats.some(s => !s)) return;
+    ROOM = { ...ROOM, started: true };
+    GAME = freshGame(ROOM.seats, ROOM.settings);
+    broadcastSync();
+  });
+
+  room.on('action', (payload) => {
+    if (!isHost() || !GAME) return;
+    const applied = resolveAction(GAME, payload.senderId, payload.action);
+    if (applied) broadcastSync();
+  });
+
+  // Mid-game reconnection: claim a currently-disconnected seat.
+  room.on('claim_seat', (payload) => {
+    if (!isHost() || !ROOM || !ROOM.started) return;
+    const oldId = payload.oldId, newId = payload.senderId;
+    const idx = ROOM.seats.indexOf(oldId);
+    if (idx === -1) return;
+    if (connectedIds.includes(oldId)) return;
+    if (ROOM.seats.includes(newId)) return;
+    if (ROOM.hostId === oldId) ROOM.hostId = newId;
+    const newSeats = ROOM.seats.slice();
+    newSeats[idx] = newId;
+    ROOM = { ...ROOM, seats: newSeats };
+    const p = GAME.players.find(pl => pl.id === oldId);
+    if (p) p.id = newId;
+    pushLog(GAME, 'A player reconnected.');
+    broadcastSync();
+  });
+
+  // ---- restart vote (host proposes, every seated player must agree) ----
+  room.on('restart_propose', (payload) => {
+    if (!isHost() || !ROOM.started || GAME.restartVote) return;
+    const votes = {};
+    ROOM.seats.forEach(id => { votes[id] = id === payload.senderId ? true : null; });
+    GAME.restartVote = { initiatorId: payload.senderId, votes };
+    broadcastSync();
+  });
+  room.on('restart_vote', (payload) => {
+    if (!isHost() || !GAME.restartVote) return;
+    if (!(payload.senderId in GAME.restartVote.votes)) return;
+    if (payload.vote === false) { GAME.restartVote = null; broadcastSync(); return; }
+    GAME.restartVote.votes[payload.senderId] = true;
+    const allYes = Object.values(GAME.restartVote.votes).every(v => v === true);
+    if (allYes) {
+      GAME = freshGame(ROOM.seats, ROOM.settings);
+    }
+    broadcastSync();
+  });
+  room.on('restart_cancel', (payload) => {
+    if (!isHost() || !GAME?.restartVote || GAME.restartVote.initiatorId !== payload.senderId) return;
+    GAME.restartVote = null;
+    broadcastSync();
+  });
+
+  room.on('send_chat', (payload) => {
+    if (!isHost() || !ROOM) return;
+    const text = String(payload.text || '').slice(0, 240).trim();
+    if (!text) return;
+    ROOM = { ...ROOM, chat: [...ROOM.chat, { senderId: payload.senderId, text, ts: Date.now() }].slice(-60) };
+    broadcastSync();
+  });
+
+  room.on('request_sync', () => { if (isHost()) broadcastSync(); });
+
+  room.on('sync', (payload) => {
+    ROOM = payload.room;
+    GAME = payload.game;
+    renderFromState();
+  });
+
+  room.onPresence(({ ids }) => {
+    connectedIds = ids;
+    if (!ROOM || ids.length === 0) return;
+    if (!ids.includes(ROOM.hostId) && ids[0] === myId) { ROOM = { ...ROOM, hostId: myId }; broadcastSync(); }
+    if (ROOM.started) renderGame(); // keep offline indicators live
+  });
+
+  await room.connect();
+  document.getElementById('share-link').value = `${location.origin}${location.pathname}?room=${roomCode}`;
+  document.getElementById('lobby-code').textContent = roomCode;
+
+  // Heartbeat — same fix as Ultimate Tic Tac Toe: guards against a
+  // lost/out-of-order sync leaving a client stuck on stale state.
+  setInterval(() => { if (isHost() && ROOM) broadcastSync(); }, 15000);
+}
+
+function broadcastSync() { room.send('sync', { room: ROOM, game: GAME }); }
+function copyShareLink() {
+  const el = document.getElementById('share-link');
+  el.select();
+  navigator.clipboard?.writeText(el.value).catch(() => {});
+}
+
+// =========================================================
+// RENDER DISPATCH
+// =========================================================
+function renderFromState() {
+  if (!ROOM) return;
+  document.getElementById('chat-panel').classList.remove('hidden');
+  renderChat();
+  if (!ROOM.started) { showScreen('screen-lobby'); renderLobby(); }
+  else { showScreen('game-screen'); renderGame(); }
+}
+
+// =========================================================
+// LOBBY RENDER
+// =========================================================
+function renderLobby() {
+  setupCount = ROOM.capacity;
+  document.getElementById('host-tag').classList.toggle('hidden', !isHost());
+  renderCountButtons();
+  renderSymbolPreviewLobby();
+  boardSizeInput.value = ROOM.settings.size;
+  winLenInput.value = ROOM.settings.winLen;
+  maxTokensInput.value = ROOM.settings.maxTokens;
+  renderCostGridInputs(ROOM.settings.costs);
+  [boardSizeInput, winLenInput, maxTokensInput, ...POWERS.map(p => document.getElementById(`cost-${p.key}`))].forEach(el => { el.disabled = !isHost(); });
+  document.getElementById('btn-save-settings').classList.toggle('hidden', !isHost());
+
+  const listEl = document.getElementById('seat-list');
+  listEl.innerHTML = '';
+  for (let i = 0; i < ROOM.capacity; i++) {
+    const id = ROOM.seats[i];
+    const row = document.createElement('div');
+    row.className = 'seat-row' + (id ? ' filled' : '') + (id === myId ? ' mine' : '');
+    const dot = document.createElement('span');
+    dot.style.cssText = `width:12px;height:12px;border-radius:3px;background:${PLAYER_CONFIGS[i].color};flex-shrink:0;`;
+    const who = document.createElement('span');
+    who.className = 'who';
+    who.textContent = id ? (id === myId ? `You (${PLAYER_CONFIGS[i].symbol})` : `Player ${i + 1} (${PLAYER_CONFIGS[i].symbol})`) : 'open seat';
+    row.appendChild(dot); row.appendChild(who);
+    listEl.appendChild(row);
+  }
+
+  const joinBtn = document.getElementById('btn-join-seat');
+  const alreadyIn = ROOM.seats.includes(myId);
+  joinBtn.disabled = alreadyIn || ROOM.seats.filter(Boolean).length >= ROOM.capacity;
+  joinBtn.textContent = alreadyIn ? 'You\u2019re seated' : 'Take a Seat';
+
+  const startBtn = document.getElementById('btn-start');
+  const full = ROOM.seats.filter(Boolean).length === ROOM.capacity;
+  startBtn.classList.toggle('hidden', !isHost());
+  startBtn.disabled = !full;
+
+  document.getElementById('lobby-msg').textContent = full
+    ? (isHost() ? 'Ready to launch whenever you are.' : 'Waiting for host to launch.')
+    : `Need ${ROOM.capacity} players seated (${ROOM.seats.filter(Boolean).length}/${ROOM.capacity}).`;
+}
+
+// =========================================================
+// GAME ACTIONS (client-side dispatch — mirrors the original
+// onCellClick's branches, but sends ONE network 'action' message
+// per completed decision instead of mutating shared state locally)
+// =========================================================
+function sendAction(action) { room.send('action', { action }); }
+
+function onCellClick(r, c) {
+  if (!GAME || isGameOver(GAME) || !isMyTurn()) return;
+  const player = currentPlayer(GAME);
+  const cell = GAME.cells[r][c];
+
+  if (myPendingPower === 'bomb') {
+    if (cell.occupant !== player.symbol) { showToast('Choose one of your own symbols to Bomb from.'); return; }
+    myPendingPower = null;
+    sendAction({ type: 'bomb', r, c });
+    return;
+  }
+  if (myPendingPower === 'poison') {
+    if (cell.occupant !== player.symbol) { showToast('Choose one of your own symbols to Poison.'); return; }
+    if (cell.poison) { showToast('That symbol is already poisoned.'); return; }
+    myPendingPower = null;
+    sendAction({ type: 'poison', r, c });
+    return;
+  }
+  if (myPendingPower && myPendingPower.type === 'traitor') {
+    if (myPendingPower.stage === 1) {
+      if (cell.occupant !== player.symbol) { showToast('Choose one of your own symbols first.'); return; }
+      myPendingPower = { type: 'traitor', stage: 2, source: { r, c } };
+      renderGame();
+      return;
+    } else {
+      const { r: sr, c: sc } = myPendingPower.source;
+      const isAdjacent = Math.abs(r-sr) <= 1 && Math.abs(c-sc) <= 1 && !(r===sr && c===sc);
+      if (!isAdjacent) { showToast('Pick a symbol adjacent to the one you selected.'); return; }
+      if (cell.occupant === null) { showToast('Pick an occupied opponent symbol.'); return; }
+      if (cell.occupant === player.symbol) { showToast('That\u2019s already your symbol.'); return; }
+      if (isProtected(GAME, cell)) { showToast('That symbol is shielded \u2014 Traitor can\u2019t convert it.'); return; }
+      myPendingPower = null;
+      sendAction({ type: 'traitor', sr, sc, tr: r, tc: c });
+      return;
+    }
+  }
+  if (myPendingPower === 'clearrow') { myPendingPower = null; sendAction({ type: 'clearrow', r }); return; }
+  if (myPendingPower === 'clearcol') { myPendingPower = null; sendAction({ type: 'clearcol', c }); return; }
+  if (myPendingPower === 'gravity') { myPendingPower = null; sendAction({ type: 'gravity', r }); return; }
+  if (myPendingPower && myPendingPower.type === 'swap') {
+    if (myPendingPower.stage === 1) {
+      if (cell.occupant === null) { showToast('Pick an occupied cell to swap.'); return; }
+      myPendingPower = { type: 'swap', stage: 2, source: { r, c } };
+      renderGame();
+      return;
+    } else {
+      const src = myPendingPower.source;
+      if (r === src.r && c === src.c) { showToast('Pick a different cell to swap with.'); return; }
+      if (cell.occupant === null) { showToast('Pick an occupied cell to swap.'); return; }
+      myPendingPower = null;
+      sendAction({ type: 'swap', r1: src.r, c1: src.c, r2: r, c2: c });
+      return;
+    }
+  }
+
+  // no pending power — plain placement
+  if (cell.occupant) { showToast('That cell is already occupied.'); return; }
+  sendAction({ type: 'place', r, c });
+}
+
+document.getElementById('bomb-btn').onclick = () => { if (!isMyTurn()) return; myPendingPower = myPendingPower === 'bomb' ? null : 'bomb'; renderGame(); };
+document.getElementById('poison-btn').onclick = () => { if (!isMyTurn()) return; myPendingPower = myPendingPower === 'poison' ? null : 'poison'; renderGame(); };
+document.getElementById('clearrow-btn').onclick = () => { if (!isMyTurn()) return; myPendingPower = myPendingPower === 'clearrow' ? null : 'clearrow'; renderGame(); };
+document.getElementById('clearcol-btn').onclick = () => { if (!isMyTurn()) return; myPendingPower = myPendingPower === 'clearcol' ? null : 'clearcol'; renderGame(); };
+document.getElementById('gravity-btn').onclick = () => { if (!isMyTurn()) return; myPendingPower = myPendingPower === 'gravity' ? null : 'gravity'; renderGame(); };
+document.getElementById('traitor-btn').onclick = () => {
+  if (!isMyTurn()) return;
+  const isActive = myPendingPower && myPendingPower.type === 'traitor';
+  myPendingPower = isActive ? null : { type: 'traitor', stage: 1 };
+  renderGame();
+};
+document.getElementById('swap-btn').onclick = () => {
+  if (!isMyTurn()) return;
+  const isActive = myPendingPower && myPendingPower.type === 'swap';
+  myPendingPower = isActive ? null : { type: 'swap', stage: 1 };
+  renderGame();
+};
+document.getElementById('shield-btn').onclick = () => {
+  if (!isMyTurn()) return;
+  myPendingPower = null;
+  sendAction({ type: 'shield' });
+};
+
+document.getElementById('rules-toggle').onclick = (e) => {
+  const body = document.getElementById('rules-body');
+  body.classList.toggle('open');
+  e.target.textContent = body.classList.contains('open') ? 'Hide power details \u25b4' : 'Show power details \u25be';
+};
+document.getElementById('rules-btn').onclick = () => {
+  const body = document.getElementById('rules-body');
+  body.classList.add('open');
+  document.getElementById('rules-toggle').textContent = 'Hide power details \u25b4';
+  body.scrollIntoView({ behavior:'smooth', block:'center' });
+};
+
+// ---- restart ----
+document.getElementById('btn-restart').onclick = () => { showingRestartConfirm = true; renderRestartUI(); };
+document.getElementById('btn-restart').addEventListener('contextmenu', e => e.preventDefault());
+
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// =========================================================
+// GAME RENDER (board/action-panel/players/log ported from the
+// original renderGame, adapted to read GAME/ROOM/myPendingPower)
+// =========================================================
+// Flashes the affected cells when a NEW bomb event arrives. On the very
+// first render after connecting, GAME.lastBomb might already be set from
+// an explosion that happened before this client joined — that shouldn't
+// replay as a flash, so the first sighting just records the timestamp
+// without animating anything.
+function checkBombFlash() {
+  if (!GAME.lastBomb) return;
+  if (lastSeenBombTs === undefined) { lastSeenBombTs = GAME.lastBomb.ts; return; }
+  if (GAME.lastBomb.ts === lastSeenBombTs) return;
+  lastSeenBombTs = GAME.lastBomb.ts;
+  GAME.lastBomb.cells.forEach(([r, c]) => {
+    const el = document.querySelector(`#board [data-r="${r}"][data-c="${c}"]`);
+    if (el) el.classList.add('blast');
+  });
+}
+
+function renderGame() {
+  if (!GAME) return;
+  document.getElementById('round-num').textContent = String(GAME.round).padStart(3, '0');
+
+  renderReconnectBox();
+  renderRestartUI();
+
+  const board = document.getElementById('board');
+  board.style.gridTemplateColumns = `repeat(${GAME.size}, 1fr)`;
+  board.style.gridTemplateRows = `repeat(${GAME.size}, 1fr)`;
+  board.innerHTML = '';
+  const myTurn = isMyTurn();
+  const player = currentPlayer(GAME);
+
+  for (let r = 0; r < GAME.size; r++) {
+    for (let c = 0; c < GAME.size; c++) {
+      const cell = GAME.cells[r][c];
+      const div = document.createElement('div');
+      div.className = 'cell';
+      div.tabIndex = 0;
+      div.dataset.r = r;
+      div.dataset.c = c;
+      div.style.gridRow = String(r + 1);
+      div.style.gridColumn = String(c + 1);
+      if (cell.occupant) div.classList.add('filled');
+      if (isProtected(GAME, cell)) div.classList.add('shielded');
+      if (cell.poison) div.classList.add('poisoned');
+
+      if (myTurn) {
+        if (myPendingPower === 'bomb' && cell.occupant === player.symbol) div.classList.add('targetable');
+        if (myPendingPower === 'poison' && cell.occupant === player.symbol && !cell.poison) div.classList.add('targetable');
+        if (myPendingPower === 'clearrow' || myPendingPower === 'clearcol' || myPendingPower === 'gravity') div.classList.add('targetable-enemy');
+        if (myPendingPower && myPendingPower.type === 'swap') {
+          if (myPendingPower.stage === 2 && r === myPendingPower.source.r && c === myPendingPower.source.c) div.classList.add('selected-source');
+          else if (cell.occupant !== null) div.classList.add('targetable-enemy');
+        }
+        if (myPendingPower && myPendingPower.type === 'traitor') {
+          if (myPendingPower.stage === 1 && cell.occupant === player.symbol) div.classList.add('targetable');
+          if (myPendingPower.stage === 2) {
+            const src = myPendingPower.source;
+            if (r === src.r && c === src.c) div.classList.add('selected-source');
+            else {
+              const isAdjacent = Math.abs(r-src.r) <= 1 && Math.abs(c-src.c) <= 1;
+              if (isAdjacent && cell.occupant !== null && cell.occupant !== player.symbol && !isProtected(GAME, cell)) div.classList.add('targetable-enemy');
+            }
+          }
+        }
+        if (!cell.occupant && !myPendingPower) div.classList.add('clickable');
+      }
+
+      if (cell.occupant) {
+        const cfg = GAME.players.find(p => p.symbol === cell.occupant);
+        const glyph = document.createElement('span');
+        glyph.className = 'glyph';
+        glyph.textContent = cell.occupant;
+        glyph.style.color = cfg ? cfg.color : 'var(--text)';
+        div.appendChild(glyph);
+      }
+      if (cell.poison) {
+        const badge = document.createElement('span');
+        badge.className = 'poison-badge';
+        const next = cell.poison.stage === 0 ? cell.poison.castRound + 2 : cell.poison.castRound + 3;
+        const remaining = Math.max(0, next - GAME.round);
+        badge.textContent = remaining === 0 ? '!' : String(remaining);
+        div.appendChild(badge);
+      }
+
+      div.addEventListener('click', () => onCellClick(r, c));
+      div.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCellClick(r, c); } });
+      board.appendChild(div);
+    }
+  }
+  checkBombFlash();
+
+  const actionCurrent = document.getElementById('action-current');
+  const mySeatIdx = ROOM.seats.indexOf(player.id);
+  actionCurrent.innerHTML = `
+    <div class="action-glyph" style="background:${player.color}22; color:${player.color}; border:1px solid ${player.color}55;">${player.symbol}</div>
+    <div>
+      <div style="font-weight:600;">${player.id === myId ? 'You' : 'Player ' + (mySeatIdx + 1)}${!connectedIds.includes(player.id) ? ' [offline]' : ''}</div>
+      <div class="action-sub">${player.tokens} token${player.tokens===1?'':'s'} remaining</div>
+    </div>
+  `;
+
+  const pendingHint = document.getElementById('pending-hint');
+  let hintText = null;
+  if (myTurn) {
+    if (myPendingPower === 'bomb') hintText = '\ud83d\udca3 Bomb: click one of your own symbols on the board.';
+    else if (myPendingPower === 'poison') hintText = '\u2620\ufe0f Poison: click one of your own symbols on the board.';
+    else if (myPendingPower === 'clearrow') hintText = '\ud83d\udea7 Clear Row: click any cell in the row you want to wipe.';
+    else if (myPendingPower === 'clearcol') hintText = '\ud83e\uddf9 Clear Column: click any cell in the column you want to wipe.';
+    else if (myPendingPower === 'gravity') hintText = '\ud83e\ude90 Gravity: click any cell in the row you want to drop.';
+    else if (myPendingPower && myPendingPower.type === 'traitor') hintText = myPendingPower.stage === 1 ? '\ud83c\udfad Traitor: click one of your own symbols to convert from.' : '\ud83c\udfad Traitor: click an adjacent opponent symbol (highlighted red) to convert.';
+    else if (myPendingPower && myPendingPower.type === 'swap') hintText = myPendingPower.stage === 1 ? '\ud83d\udd04 Swap: click the first symbol to swap.' : '\ud83d\udd04 Swap: click the second symbol (highlighted) to swap with.';
+  }
+  if (hintText) {
+    pendingHint.innerHTML = `<div class="cancel-hint"><span>${hintText}</span><button id="cancel-power-btn">Cancel</button></div>`;
+    document.getElementById('cancel-power-btn').onclick = () => { myPendingPower = null; renderGame(); };
+  } else {
+    pendingHint.innerHTML = '';
+  }
+
+  const gameOver = isGameOver(GAME);
+  const canAct = myTurn && !gameOver;
+  document.getElementById('bomb-btn').disabled = !canAct || player.tokens < GAME.costs.bomb;
+  document.getElementById('poison-btn').disabled = !canAct || player.tokens < GAME.costs.poison;
+  document.getElementById('traitor-btn').disabled = !canAct || player.tokens < GAME.costs.traitor;
+  document.getElementById('clearrow-btn').disabled = !canAct || player.tokens < GAME.costs.clearrow;
+  document.getElementById('clearcol-btn').disabled = !canAct || player.tokens < GAME.costs.clearcol;
+  document.getElementById('gravity-btn').disabled = !canAct || player.tokens < GAME.costs.gravity;
+  document.getElementById('swap-btn').disabled = !canAct || player.tokens < GAME.costs.swap;
+  document.getElementById('shield-btn').disabled = !canAct || player.tokens < GAME.costs.shield;
+  document.getElementById('bomb-btn').classList.toggle('pending', myPendingPower === 'bomb');
+  document.getElementById('poison-btn').classList.toggle('pending', myPendingPower === 'poison');
+  document.getElementById('traitor-btn').classList.toggle('pending', !!(myPendingPower && myPendingPower.type === 'traitor'));
+  document.getElementById('clearrow-btn').classList.toggle('pending', myPendingPower === 'clearrow');
+  document.getElementById('clearcol-btn').classList.toggle('pending', myPendingPower === 'clearcol');
+  document.getElementById('gravity-btn').classList.toggle('pending', myPendingPower === 'gravity');
+  document.getElementById('swap-btn').classList.toggle('pending', !!(myPendingPower && myPendingPower.type === 'swap'));
+
+  POWERS.forEach(p => {
+    const cost = GAME.costs[p.key];
+    const el = document.getElementById(`${p.key}-cost`);
+    if (el) el.textContent = `${cost} token${cost===1?'':'s'}`;
+  });
+
+  const list = document.getElementById('player-list');
+  list.innerHTML = '';
+  GAME.players.forEach((p, idx) => {
+    const row = document.createElement('div');
+    row.className = 'player-row' + (idx === GAME.turnIndex && !gameOver ? ' current' : '') + (!connectedIds.includes(p.id) ? ' offline' : '');
+    const pipCount = Math.max(GAME.maxTokens, p.tokens);
+    const pipsHtml = Array.from({length: pipCount}, (_, i) => `<span class="pip ${i < p.tokens ? 'filled' : ''}"></span>`).join('');
+    row.innerHTML = `
+      <div class="player-glyph" style="background:${p.color}22; color:${p.color}; border:1px solid ${p.color}55;">${p.symbol}</div>
+      <div class="player-name">${p.id === myId ? 'You' : 'Player ' + (idx+1)}</div>
+      <div class="pips">${pipsHtml}</div>
+    `;
+    list.appendChild(row);
+  });
+
+  const logBox = document.getElementById('log-box');
+  const logWasNearBottom = logBox.scrollHeight - logBox.scrollTop - logBox.clientHeight < 30;
+  logBox.innerHTML = '';
+  GAME.log.forEach((line, i) => {
+    const el = document.createElement('div');
+    el.className = 'log-line' + (i === GAME.log.length - 1 ? ' newest' : '');
+    el.textContent = line;
+    logBox.appendChild(el);
+  });
+  if (logWasNearBottom || logBox.dataset.everScrolled !== 'true') {
+    logBox.scrollTop = logBox.scrollHeight;
+    logBox.dataset.everScrolled = 'true';
+  }
+
+  let overlay = document.getElementById('win-overlay-el');
+  const restartInProgress = !!GAME.restartVote || showingRestartConfirm;
+  if ((GAME.winner || GAME.draw) && !restartInProgress) {
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'win-overlay-el';
+      overlay.className = 'win-overlay';
+      document.body.appendChild(overlay);
+    }
+    if (GAME.winner) {
+      const w = GAME.winner;
+      const seatIdx = ROOM.seats.indexOf(w.id);
+      overlay.innerHTML = `
+        <div class="win-card">
+          <div class="win-glyph" style="background:${w.color}22; color:${w.color}; border:1px solid ${w.color}55;">${w.symbol}</div>
+          <div class="win-title">${w.id === myId ? 'You win!' : 'Player ' + (seatIdx+1) + ' wins!'}</div>
+          <div class="win-sub">Got ${GAME.winLen} in a row on round ${GAME.round}.</div>
+          ${isHost() ? '<button class="start-btn" id="win-restart-btn">Restart</button>' : '<div class="msg">Ask the host to restart.</div>'}
+        </div>
+      `;
+    } else {
+      overlay.innerHTML = `
+        <div class="win-card">
+          <div class="win-glyph" style="background:var(--panel-alt); color:var(--muted); border:1px solid var(--line);">\u2014</div>
+          <div class="win-title">It's a draw</div>
+          <div class="win-sub">The board filled up on round ${GAME.round} with no winner.</div>
+          ${isHost() ? '<button class="start-btn" id="win-restart-btn">Restart</button>' : '<div class="msg">Ask the host to restart.</div>'}
+        </div>
+      `;
+    }
+    const rBtn = document.getElementById('win-restart-btn');
+    if (rBtn) rBtn.onclick = () => {
+      showingRestartConfirm = true;
+      renderGame();
+      document.getElementById('restart-box').scrollIntoView({ behavior: 'smooth' });
+    };
+  } else if (overlay) {
+    overlay.remove();
+  }
+}
+
+// =========================================================
+// RESTART VOTE UI
+// =========================================================
+function renderRestartUI() {
+  const box = document.getElementById('restart-box');
+  const restartBtn = document.getElementById('btn-restart');
+  restartBtn.classList.toggle('hidden', !isHost() || showingRestartConfirm || !!GAME.restartVote);
+
+  if (showingRestartConfirm) {
+    box.classList.remove('hidden');
+    box.innerHTML = `
+      <div class="msg">Restart the game for everyone?</div>
+      <div class="row">
+        <button class="primary-btn" id="rc-yes">Yes, ask everyone</button>
+        <button class="ghost-btn" id="rc-no">Cancel</button>
+      </div>
+    `;
+    document.getElementById('rc-yes').onclick = () => { showingRestartConfirm = false; room.send('restart_propose', {}); };
+    document.getElementById('rc-no').onclick = () => { showingRestartConfirm = false; renderGame(); };
+    return;
+  }
+
+  if (!GAME.restartVote) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+
+  box.classList.remove('hidden');
+  const { votes } = GAME.restartVote;
+  const myVote = votes[myId];
+  const total = Object.keys(votes).length;
+  const yesCount = Object.values(votes).filter(v => v === true).length;
+
+  let inner = '';
+  if (myVote === undefined) {
+    inner = `<div class="msg">Restart requested \u2014 ${yesCount}/${total} players agreed.</div>`;
+  } else if (myVote === true) {
+    inner = `<div class="msg">Waiting for other players... (${yesCount}/${total} confirmed)</div>`;
+  } else {
+    inner = `
+      <div class="msg">Host wants to restart. Restart the game?</div>
+      <div class="row"><button class="primary-btn" id="rv-yes">Yes</button><button class="ghost-btn" id="rv-no">No</button></div>
+    `;
+  }
+  if (isHost() && GAME.restartVote.initiatorId === myId) {
+    inner += `<div class="row"><button class="ghost-btn" id="rv-cancel">Cancel restart request</button></div>`;
+  }
+  box.innerHTML = inner;
+  const yesBtn = document.getElementById('rv-yes'); if (yesBtn) yesBtn.onclick = () => room.send('restart_vote', { vote: true });
+  const noBtn = document.getElementById('rv-no'); if (noBtn) noBtn.onclick = () => room.send('restart_vote', { vote: false });
+  const cancelBtn = document.getElementById('rv-cancel'); if (cancelBtn) cancelBtn.onclick = () => room.send('restart_cancel', {});
+}
+
+// =========================================================
+// RECONNECT UI
+// =========================================================
+function renderReconnectBox() {
+  const box = document.getElementById('reconnect-box');
+  const amSeated = ROOM.seats.includes(myId);
+  if (amSeated) { box.classList.add('hidden'); return; }
+  const ghosts = ROOM.seats.filter(id => !connectedIds.includes(id));
+  if (ghosts.length === 0) { box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+  box.innerHTML = `<div class="msg">You\u2019re spectating. A seat looks disconnected \u2014 is one of these yours?</div>`;
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.style.marginTop = '8px';
+  ghosts.forEach(oldId => {
+    const idx = ROOM.seats.indexOf(oldId);
+    const btn = document.createElement('button');
+    btn.className = 'ghost-btn';
+    btn.textContent = `Claim Player ${idx + 1}'s seat`;
+    btn.onclick = () => room.send('claim_seat', { oldId });
+    row.appendChild(btn);
+  });
+  box.appendChild(row);
+}
+
+// =========================================================
+// CHAT
+// =========================================================
+document.getElementById('chat-toggle').onclick = () => document.getElementById('chat-body').classList.toggle('hidden');
+document.getElementById('chat-send').onclick = sendChatMessage;
+document.getElementById('chat-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChatMessage(); });
+function sendChatMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text || !room) return;
+  room.send('send_chat', { text });
+  input.value = '';
+}
+function renderChat() {
+  const box = document.getElementById('chat-messages');
+  const wasNearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 30;
+  box.innerHTML = '';
+  (ROOM.chat || []).forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'chat-msg' + (m.senderId === myId ? ' mine' : '');
+    const who = m.senderId === myId ? 'You' : nameOf(m.senderId);
+    div.innerHTML = `<span class="who">${who}:</span> `;
+    div.appendChild(document.createTextNode(m.text));
+    box.appendChild(div);
+  });
+  if (wasNearBottom) box.scrollTop = box.scrollHeight;
+}
+</script>
+</body>
+</html>
