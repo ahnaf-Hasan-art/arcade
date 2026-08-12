@@ -140,9 +140,10 @@
 
   .hand-strip { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; max-width:520px; }
   .card {
-    width:56px; height:78px; background:var(--parchment); border:2px solid var(--ink); border-radius:6px;
+    width:56px; height:78px; border:2px solid var(--ink); border-radius:6px;
     display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer;
-    position:relative; transition: transform .1s, box-shadow .12s; flex-shrink:0;
+    position:relative; overflow:hidden; transition: transform .1s, box-shadow .12s; flex-shrink:0;
+    background:var(--parchment);
   }
   .card:hover { transform: translateY(-4px); }
   .card.selected { box-shadow:0 0 0 3px var(--gold), 0 6px 14px rgba(0,0,0,.4); transform: translateY(-6px); }
@@ -150,6 +151,9 @@
   .card.disabled:hover { transform:none; }
   .card svg { width:60%; height:60%; }
   .card .shape-tag { position:absolute; bottom:3px; font-size:8px; font-family:var(--font-mono); color:var(--muted); letter-spacing:.05em; }
+  .card .card-lines { position:absolute; inset:0; width:100%; height:100%; z-index:1; }
+  .card .card-icon { position:absolute; top:5px; left:5px; z-index:2; display:flex; align-items:center; justify-content:center; }
+  .card .card-icon svg { width:22px; height:22px; }
 
   .sidebar { display:flex; flex-direction:column; gap:12px; }
   .roster-row { display:flex; align-items:center; gap:8px; font-size:14px; padding:5px 0; }
@@ -362,10 +366,10 @@ import { openRoom, makeRoomCode, getPersistentId, SUPABASE_URL } from '../../sha
 // seat's id. See STATE section below for how that's used.
 // =========================================================
 const SYMBOL_DEFS = [
-  { id:'X',   colorDk:'#c0392b', cap:true,  board:'<line x1="24" y1="24" x2="76" y2="76"/><line x1="76" y1="24" x2="24" y2="76"/>', mini:'<line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/>' },
-  { id:'O',   colorDk:'#1f4e79', cap:false, board:'<circle cx="50" cy="50" r="32"/>', mini:'<circle cx="12" cy="12" r="8"/>' },
-  { id:'SQ',  colorDk:'#6a3d9a', cap:true,  board:'<rect x="25" y="25" width="50" height="50" rx="4"/>', mini:'<rect x="4.5" y="4.5" width="15" height="15" rx="1.5"/>' },
-  { id:'TRI', colorDk:'#2c5f2d', cap:true,  board:'<path d="M50 17 L84 79 L16 79 Z"/>', mini:'<path d="M12 3.5 L20.5 19.5 L3.5 19.5 Z"/>' },
+  { id:'X',   colorDk:'#c0392b', cardBg:'#e8302a', cap:true,  board:'<line x1="24" y1="24" x2="76" y2="76"/><line x1="76" y1="24" x2="24" y2="76"/>', mini:'<line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/>' },
+  { id:'O',   colorDk:'#1f4e79', cardBg:'#1a9fe0', cap:false, board:'<circle cx="50" cy="50" r="32"/>', mini:'<circle cx="12" cy="12" r="8"/>' },
+  { id:'SQ',  colorDk:'#6a3d9a', cardBg:'#9b30c9', cap:true,  board:'<rect x="25" y="25" width="50" height="50" rx="4"/>', mini:'<rect x="4.5" y="4.5" width="15" height="15" rx="1.5"/>' },
+  { id:'TRI', colorDk:'#2c5f2d', cardBg:'#3fa34d', cap:true,  board:'<path d="M50 17 L84 79 L16 79 Z"/>', mini:'<path d="M12 3.5 L20.5 19.5 L3.5 19.5 Z"/>' },
 ];
 const PLAYER_COLORS = ['#d4af37','#4fb3d9','#e07a5f','#8fbf6f'];
 const POWER_DEFS = [
@@ -403,6 +407,17 @@ const SHAPE_LABELS = {
   straight: 'straight', diagonal: 'diagonal',
   horizontal: 'horizontal', vertical: 'vertical',
   diagTLBR: 'diagonal \\', diagTRBL: 'diagonal /',
+};
+// Line endpoints used to draw the directional-mode card art (see
+// image reference): a single black line running the axis that
+// card's shape is allowed to move along. Coordinates live in a
+// 100x140 viewBox so they line up with the 56x78 card regardless of
+// actual rendered size.
+const SHAPE_LINE_SEGMENTS = {
+  vertical:   [[66,20,66,122]],
+  horizontal: [[18,82,88,82]],
+  diagTLBR:   [[30,36,90,126]],
+  diagTRBL:   [[16,126,86,32]],
 };
 
 function shuffle(arr){
@@ -1119,6 +1134,26 @@ function symbolSvg(symId, size, isMini){
   return `<svg viewBox="${vb}" width="${size}" height="${size}" fill="none" stroke="${def.colorDk}" stroke-width="${isMini?2.4:9}" stroke-linecap="${cap}" stroke-linejoin="round">${path}</svg>`;
 }
 
+// Small corner icon used on directional-mode card art: always a
+// solid black outline (with a white fill for the hollow O) so it
+// reads clearly against any of the four bright card backgrounds,
+// rather than using the symbol's own (sometimes low-contrast) color.
+function cardIconSvg(symId){
+  const def = SYMBOL_DEFS.find(s => s.id === symId);
+  if (!def) return '';
+  const cap = def.cap ? 'round' : 'butt';
+  const fill = symId === 'O' ? '#ffffff' : 'none';
+  return `<svg viewBox="0 0 24 24" fill="${fill}" stroke="#1c1712" stroke-width="2.6" stroke-linecap="${cap}" stroke-linejoin="round">${def.mini}</svg>`;
+}
+
+// Directional-mode card art: a single thick black line spanning the
+// card along whichever axis that card's shape is restricted to.
+function cardLinesSvg(shape){
+  const segs = SHAPE_LINE_SEGMENTS[shape] || SHAPE_LINE_SEGMENTS.vertical;
+  const lines = segs.map(([x1,y1,x2,y2]) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#1c1712" stroke-width="6" stroke-linecap="round"/>`).join('');
+  return `<svg class="card-lines" viewBox="0 0 100 140" preserveAspectRatio="none">${lines}</svg>`;
+}
+
 // =========================================================
 // GAME ACTIONS
 // =========================================================
@@ -1326,11 +1361,22 @@ function renderGame(){
   const strip = document.getElementById('hand-strip');
   strip.innerHTML = '';
   const stuck = myTurn && !myPendingPower && !handHasAnyMove(GAME, player.hand) && player.hand.length > 0;
+  const directional = GAME.cardMode === 'directional';
   player.hand.forEach((card, idx) => {
     const c = document.createElement('div');
     const playable = myTurn && !myPendingPower && validCellsForCard(GAME, card).length > 0;
     c.className = 'card' + (idx === mySelectedCardIdx ? ' selected' : '') + (playable ? '' : ' disabled');
-    c.innerHTML = symbolSvg(card.symbol, '60%', false) + `<span class="shape-tag">${SHAPE_TAGS[card.shape] || '\u254b'}</span>`;
+    if (directional) {
+      // Colored-background directional card: bg matches the symbol's
+      // color, a small icon sits in the top-left corner, and a black
+      // line runs the single axis this card is restricted to.
+      const def = SYMBOL_DEFS.find(s => s.id === card.symbol);
+      c.style.background = def.cardBg;
+      c.innerHTML = cardLinesSvg(card.shape) + `<div class="card-icon">${cardIconSvg(card.symbol)}</div>`;
+    } else {
+      c.style.background = '';
+      c.innerHTML = symbolSvg(card.symbol, '60%', false) + `<span class="shape-tag">${SHAPE_TAGS[card.shape] || '\u254b'}</span>`;
+    }
     if (playable) c.onclick = () => onCardClick(idx);
     strip.appendChild(c);
   });
