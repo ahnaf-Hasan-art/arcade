@@ -362,10 +362,10 @@ import { openRoom, makeRoomCode, getPersistentId, SUPABASE_URL } from '../../sha
 // seat's id. See STATE section below for how that's used.
 // =========================================================
 const SYMBOL_DEFS = [
-  { id:'O', colorDk:'#c0392b', cap:false, board:'<circle cx="50" cy="50" r="32"/>', mini:'<circle cx="12" cy="12" r="8"/>' },
-  { id:'X', colorDk:'#2c5f2d', cap:true,  board:'<line x1="24" y1="24" x2="76" y2="76"/><line x1="76" y1="24" x2="24" y2="76"/>', mini:'<line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/>' },
-  { id:'T', colorDk:'#1f4e79', cap:true,  board:'<line x1="50" y1="20" x2="50" y2="80"/><line x1="22" y1="35" x2="78" y2="35"/>', mini:'<line x1="12" y1="4" x2="12" y2="20"/><line x1="5" y1="8" x2="19" y2="8"/>' },
-  { id:'S', colorDk:'#6a3d9a', cap:true,  board:'<path d="M72 30 Q30 30 30 50 Q30 70 72 70" fill="none"/>', mini:'<path d="M18 6 Q6 6 6 12 Q6 18 18 18" fill="none"/>' },
+  { id:'X',   colorDk:'#c0392b', cap:true,  board:'<line x1="24" y1="24" x2="76" y2="76"/><line x1="76" y1="24" x2="24" y2="76"/>', mini:'<line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/>' },
+  { id:'O',   colorDk:'#1f4e79', cap:false, board:'<circle cx="50" cy="50" r="32"/>', mini:'<circle cx="12" cy="12" r="8"/>' },
+  { id:'SQ',  colorDk:'#6a3d9a', cap:true,  board:'<rect x="25" y="25" width="50" height="50" rx="4"/>', mini:'<rect x="4.5" y="4.5" width="15" height="15" rx="1.5"/>' },
+  { id:'TRI', colorDk:'#2c5f2d', cap:true,  board:'<path d="M50 17 L84 79 L16 79 Z"/>', mini:'<path d="M12 3.5 L20.5 19.5 L3.5 19.5 Z"/>' },
 ];
 const PLAYER_COLORS = ['#d4af37','#4fb3d9','#e07a5f','#8fbf6f'];
 const POWER_DEFS = [
@@ -390,9 +390,13 @@ const SHAPE_DIRS = {
   diagTLBR:  [[-1,-1],[1,1]],   // "\" diagonal
   diagTRBL:  [[-1,1],[1,-1]],   // "/" diagonal
 };
+// Combined-mode tags show the full crossed pair (a "+" for either
+// orthogonal direction, an "x" for either diagonal). Directional-mode
+// tags are the same idea cut down to a single line, since each of
+// those cards only works along one specific axis.
 const SHAPE_TAGS = {
   straight: '\u254b', diagonal: '\u2573',
-  horizontal: '\u2194', vertical: '\u2195',
+  horizontal: '\u2500', vertical: '\u2502',
   diagTLBR: '\u2572', diagTRBL: '\u2571',
 };
 const SHAPE_LABELS = {
@@ -1112,7 +1116,7 @@ function symbolSvg(symId, size, isMini){
   const cap = def.cap ? 'round' : 'butt';
   const path = isMini ? def.mini : def.board;
   const vb = isMini ? '0 0 24 24' : '0 0 100 100';
-  return `<svg viewBox="${vb}" width="${size}" height="${size}" fill="none" stroke="${def.colorDk}" stroke-width="${isMini?2.4:9}" stroke-linecap="${cap}">${path}</svg>`;
+  return `<svg viewBox="${vb}" width="${size}" height="${size}" fill="none" stroke="${def.colorDk}" stroke-width="${isMini?2.4:9}" stroke-linecap="${cap}" stroke-linejoin="round">${path}</svg>`;
 }
 
 // =========================================================
