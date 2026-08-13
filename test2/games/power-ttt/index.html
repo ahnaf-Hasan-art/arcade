@@ -7,9 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-  /* =========================================================
-     BASE THEME — preserved from the original single-player file.
-     ========================================================= */
   :root{
     --bg: #0d1117;
     --bg-grid: #10151d;
@@ -27,12 +24,12 @@
     --font-mono: 'JetBrains Mono', ui-monospace, monospace;
     --font-body: 'Inter', system-ui, sans-serif;
 
-    --p0: #ff5470; /* X */
-    --p1: #3ddc97; /* O */
-    --p2: #5eb1ff; /* △ */
-    --p3: #ffd166; /* □ */
-    --p4: #c792ea; /* ★ */
-    --p5: #ff8c42; /* ● */
+    --p0: #ff5470;
+    --p1: #3ddc97;
+    --p2: #5eb1ff;
+    --p3: #ffd166;
+    --p4: #c792ea;
+    --p5: #ff8c42;
   }
 
   * { box-sizing: border-box; }
@@ -135,7 +132,6 @@
     font-family: var(--font-mono); background: rgba(255,180,84,.06);
   }
 
-  /* ---------- Setup / lobby card (reused look from original setup screen) ---------- */
   .setup-card{
     background: var(--panel);
     border: 1px solid var(--line);
@@ -222,7 +218,6 @@
   .seat-row .who { flex:1; text-align:left; color: var(--muted); }
   .seat-row.filled .who { color: var(--text); }
 
-  /* ---------- Game screen (preserved from original) ---------- */
   .hud-bar{
     display:flex; align-items:center; justify-content:space-between;
     background: var(--panel);
@@ -337,7 +332,6 @@
     .cell.blast{ animation: none; }
   }
 
-  /* Sidebar */
   .sidebar{ display:flex; flex-direction:column; gap:14px; }
   .panel-box{
     background: var(--panel);
@@ -438,7 +432,6 @@
   .rules-body.open{ display:block; }
   .rules-body b{ color: var(--text); }
 
-  /* Win overlay */
   .win-overlay{
     position: fixed; inset:0; background: rgba(9,12,17,.86);
     display:flex; align-items:center; justify-content:center; z-index: 50;
@@ -463,14 +456,12 @@
   }
   .msg-toast.show{ opacity:1; }
 
-  /* ---------- Reconnect / restart panels (matching site conventions) ---------- */
   .reconnect-box, .restart-box {
     background: var(--panel); border: 1px solid var(--accent-dim); border-radius: 12px;
     padding: 14px; margin-bottom: 14px; width: 100%; text-align: left;
   }
   .restart-box .row { justify-content: flex-start; margin-top: 8px; }
 
-  /* ---------- Chat panel (matching Monopoly's) ---------- */
   #chat-panel { position: fixed; right: 16px; bottom: 16px; z-index: 90; }
   #chat-toggle {
     padding: 10px 16px; border-radius: 20px; font-size: 13px;
@@ -498,11 +489,10 @@
 
 <a class="back-link" href="../../">&larr; All games</a>
 
-<!-- ================= HOME ================= -->
 <div id="screen-home" class="screen">
   <div class="eyebrow">Tactical Grid Combat · Realtime</div>
   <h1 class="title">POWER TIC-TAC-TOE <span>// Multiplayer</span></h1>
-  <div class="subtitle">3–6 players, separate devices. Place symbols, deploy Bombs, Shields and Poison to control the grid.</div>
+  <div class="subtitle">2–6 players, separate devices. Place symbols, deploy Bombs, Shields and Poison to control the grid.</div>
   <div class="row">
     <button class="start-btn" id="btn-create">Create Room</button>
     <button class="ghost-btn" id="btn-join-open">Join Room</button>
@@ -514,7 +504,6 @@
   <div id="home-err" class="err"></div>
 </div>
 
-<!-- ================= LOBBY ================= -->
 <div id="screen-lobby" class="screen hidden">
   <div class="eyebrow">Room Code</div>
   <div class="code-badge" id="lobby-code">-----</div>
@@ -535,7 +524,7 @@
       <div class="num-row">
         <div class="num-field">
           <label for="board-size">Board size (N × N)</label>
-          <input type="number" id="board-size" min="5" max="10" value="5">
+          <input type="number" id="board-size" min="4" max="10" value="5">
         </div>
         <div class="num-field">
           <label for="win-len">Win length (in a row)</label>
@@ -566,7 +555,6 @@
   <div class="msg" id="lobby-msg">Waiting...</div>
 </div>
 
-<!-- ================= GAME ================= -->
 <div id="game-screen" class="screen hidden" style="align-items: stretch;">
   <div class="hud-bar">
     <div>
@@ -595,6 +583,9 @@
         <button class="power-btn" id="bomb-btn">
           <span class="icon">💣</span> Bomb <span class="cost" id="bomb-cost">1 token</span>
         </button>
+        <button class="power-btn" id="minibomb-btn">
+          <span class="icon">🧨</span> Mini Bomb <span class="cost" id="minibomb-cost">1 token</span>
+        </button>
         <button class="power-btn" id="shield-btn">
           <span class="icon">🛡️</span> Shield <span class="cost" id="shield-cost">1 token</span>
         </button>
@@ -619,7 +610,8 @@
         <button class="rules-toggle" id="rules-toggle">Show power details ▾</button>
         <div class="rules-body" id="rules-body">
           <b>💣 Bomb</b> — pick one of your symbols on the board. Destroys all unshielded symbols in its 8 adjacent cells. Your chosen symbol survives.<br><br>
-          <b>🛡️ Shield</b> — protects all of your symbols currently on the board for the next 2 full rounds. Blocks Bomb, Traitor, Clear Row and Clear Column, does not block Poison, Gravity, or Swap.<br><br>
+          <b>🧨 Mini Bomb</b> — pick one of your symbols. Destroys the unshielded symbols immediately left and right of it, plus the next 3 cells straight down that column. Your chosen symbol survives.<br><br>
+          <b>🛡️ Shield</b> — protects all of your symbols currently on the board for the next 2 full rounds. Blocks Bomb, Mini Bomb, Traitor, Clear Row and Clear Column, does not block Poison, Gravity, or Swap.<br><br>
           <b>☠️ Poison</b> — mark one of your symbols. At end of round +2 it destroys symbols orthogonally adjacent (↑↓←→) to it — ignoring Shield. At end of round +3 it hits the next ring further out in those same 4 directions, then the effect ends. Diagonals are always safe.<br><br>
           <b>🎭 Traitor</b> — pick one of your own symbols, then pick one adjacent opponent symbol (any of its 8 neighbors) to convert to your symbol. Blocked by Shield.<br><br>
           <b>🚧 Clear Row</b> — pick any cell. Destroys every unshielded symbol in that entire row, yours and opponents' alike.<br><br>
@@ -646,7 +638,6 @@
 
 <div class="msg-toast" id="toast"></div>
 
-<!-- CHAT PANEL -->
 <div id="chat-panel" class="hidden">
   <button id="chat-toggle">💬 Chat</button>
   <div id="chat-body" class="hidden">
@@ -661,16 +652,6 @@
 <script type="module">
 import { openRoom, makeRoomCode, getPersistentId, SUPABASE_URL } from '../../shared/supabase.js';
 
-// =========================================================
-// RULES ENGINE — ported from the original single-player file.
-// Operates on an explicit `g` state object (rather than a module
-// global) so the host can run it authoritatively. Logic for each
-// power (bomb, shield, poison, traitor, clear row/col, gravity,
-// swap) and the win-check is intentionally kept as close to the
-// original as possible, since that logic was already correct and
-// well-tested by the person who built it — the conversion work is
-// almost entirely in the networking/turn-authority layer around it.
-// =========================================================
 const PLAYER_CONFIGS = [
   { symbol: 'X', color: 'var(--p0)' },
   { symbol: 'O', color: 'var(--p1)' },
@@ -682,6 +663,7 @@ const PLAYER_CONFIGS = [
 
 function getDefaults(n){
   switch(n){
+    case 2: return { size:4, win:3 };
     case 3: return { size:5, win:4 };
     case 4: return { size:6, win:4 };
     case 5: return { size:7, win:5 };
@@ -692,6 +674,7 @@ function getDefaults(n){
 
 const POWERS = [
   { key:'bomb', icon:'\ud83d\udca3', label:'Bomb' },
+  { key:'minibomb', icon:'🧨', label:'Mini Bomb' },
   { key:'shield', icon:'\ud83d\udee1\ufe0f', label:'Shield' },
   { key:'poison', icon:'\u2620\ufe0f', label:'Poison' },
   { key:'traitor', icon:'\ud83c\udfad', label:'Traitor' },
@@ -747,7 +730,7 @@ function applyBomb(g,r,c){
   const player = currentPlayer(g);
   const deltas = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
   let destroyedAny = false;
-  const blastCells = [[r,c]]; // origin + every in-bounds neighbor, for the flash effect
+  const blastCells = [[r,c]];
   for(const [dr,dc] of deltas){
     const nr=r+dr, nc=c+dc;
     if(!inBounds(g,nr,nc)) continue;
@@ -760,6 +743,25 @@ function applyBomb(g,r,c){
   }
   g.lastBomb = { ts: Date.now(), cells: blastCells };
   pushLog(g, `\ud83d\udca3 ${player.symbol} detonated a Bomb at (${r+1},${c+1})${destroyedAny ? '' : ' \u2014 no unshielded targets hit'}.`);
+}
+
+function applyMiniBomb(g,r,c){
+  const player = currentPlayer(g);
+  const deltas = [[0,-1],[0,1],[1,0],[2,0],[3,0]];
+  let destroyedAny = false;
+  const blastCells = [[r,c]];
+  for(const [dr,dc] of deltas){
+    const nr=r+dr, nc=c+dc;
+    if(!inBounds(g,nr,nc)) continue;
+    blastCells.push([nr,nc]);
+    const target = g.cells[nr][nc];
+    if(target.occupant === null) continue;
+    if(isProtected(g,target)) continue;
+    destroyCell(g,nr,nc);
+    destroyedAny = true;
+  }
+  g.lastBomb = { ts: Date.now(), cells: blastCells };
+  pushLog(g, `🧨 ${player.symbol} detonated a Mini Bomb at (${r+1},${c+1})${destroyedAny ? '' : ' \u2014 no unshielded targets hit'}.`);
 }
 
 function applyShield(g){
@@ -896,16 +898,10 @@ function freshGame(seats, settings){
     cells, round: 1, turnIndex: 0, winner: null, draw: false,
     log: [`Game started \u2014 ${seats.length} players on a ${settings.size}\u00d7${settings.size} grid, ${settings.winLen} in a row to win.`],
     restartVote: null,
-    lastBomb: null, // { ts, cells:[[r,c],...] } — drives the flash effect on every client
+    lastBomb: null,
   };
 }
 
-// Host-side action resolver: validates and applies ONE completed
-// action (a placement, or a fully-targeted power), mirroring the
-// original onCellClick's per-power branches but taking explicit
-// coordinates instead of incremental clicks (targeting stages are
-// handled client-side locally before a single network message is
-// sent — see CLIENT STATE below).
 function resolveAction(g, senderId, action) {
   if (isGameOver(g)) return false;
   const player = currentPlayer(g);
@@ -938,6 +934,16 @@ function resolveAction(g, senderId, action) {
     if (g.cells[r][c].occupant !== player.symbol) return false;
     player.tokens -= g.costs.bomb;
     applyBomb(g,r,c);
+    endTurn(g);
+    return true;
+  }
+
+  if (action.type === 'minibomb') {
+    const { r, c } = action;
+    if (!inBounds(g,r,c) || player.tokens < g.costs.minibomb) return false;
+    if (g.cells[r][c].occupant !== player.symbol) return false;
+    player.tokens -= g.costs.minibomb;
+    applyMiniBomb(g,r,c);
     endTurn(g);
     return true;
   }
@@ -1015,20 +1021,17 @@ function resolveAction(g, senderId, action) {
   return false;
 }
 
-// =========================================================
-// STATE
-// =========================================================
 const myId = getPersistentId();
 let roomCode = null;
-let ROOM = null;   // { hostId, capacity, seats, started, settings, restartVote, chat }
+let ROOM = null;
 let GAME = null;
 let room = null;
 let connectedIds = [];
 
 let setupCount = 3;
-let myPendingPower = null; // purely local UI state — see note above resolveAction
+let myPendingPower = null;
 let showingRestartConfirm = false;
-let lastSeenBombTs = undefined; // undefined = not yet initialized (see checkBombFlash)
+let lastSeenBombTs = undefined;
 
 const SUPABASE_CONFIGURED = SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL';
 
@@ -1038,7 +1041,7 @@ function isMyTurn() { return GAME && !isGameOver(GAME) && currentPlayer(GAME).id
 function freshRoom(hostId) {
   return {
     hostId, capacity: 3, seats: [], started: false,
-    settings: { size: 5, winLen: 4, maxTokens: 3, costs: { bomb:1, shield:1, poison:1, traitor:1, clearrow:1, clearcol:1, gravity:1, swap:1 } },
+    settings: { size: 5, winLen: 4, maxTokens: 3, costs: { bomb:1, minibomb:1, shield:1, poison:1, traitor:1, clearrow:1, clearcol:1, gravity:1, swap:1 } },
     restartVote: null, chat: [],
   };
 }
@@ -1049,9 +1052,6 @@ function nameOf(id) {
   return idx === -1 ? 'Player' : `Player ${idx + 1}`;
 }
 
-// =========================================================
-// DOM
-// =========================================================
 const screenHome = document.getElementById('screen-home');
 const screenLobby = document.getElementById('screen-lobby');
 const gameScreen = document.getElementById('game-screen');
@@ -1073,7 +1073,6 @@ function showScreen(id) {
 const urlRoom = new URLSearchParams(location.search).get('room');
 if (urlRoom) joinRoom(urlRoom.toUpperCase());
 
-// ---- setup form wiring (lobby) ----
 const countRow = document.getElementById('count-row');
 const symbolPreview = document.getElementById('symbol-preview');
 const boardSizeInput = document.getElementById('board-size');
@@ -1093,7 +1092,7 @@ function renderCostGridInputs(costs) {
 
 function renderCountButtons() {
   countRow.innerHTML = '';
-  [3,4,5,6].forEach(n => {
+  [2,3,4,5,6].forEach(n => {
     const btn = document.createElement('button');
     btn.className = 'count-btn' + (n === setupCount ? ' active' : '');
     btn.textContent = n;
@@ -1142,9 +1141,6 @@ function saveSettingsFromForm() {
   room.send('set_capacity_and_settings', { capacity: setupCount, settings: { size, winLen: win, maxTokens, costs } });
 }
 
-// =========================================================
-// NETWORKING
-// =========================================================
 async function createRoom() {
   homeErr.textContent = '';
   if (!SUPABASE_CONFIGURED) { homeErr.textContent = 'Multiplayer isn\u2019t connected yet.'; return; }
@@ -1173,7 +1169,7 @@ async function setupRoom() {
 
   room.on('set_capacity_and_settings', (payload) => {
     if (!isHost() || ROOM.started) return;
-    const cap = Math.max(3, Math.min(6, payload.capacity | 0));
+    const cap = Math.max(2, Math.min(6, payload.capacity | 0));
     const s = payload.settings || {};
     const size = Math.max(4, Math.min(12, s.size | 0 || ROOM.settings.size));
     const winLen = Math.max(3, Math.min(size, s.winLen | 0 || ROOM.settings.winLen));
@@ -1213,7 +1209,6 @@ async function setupRoom() {
     if (applied) broadcastSync();
   });
 
-  // Mid-game reconnection: claim a currently-disconnected seat.
   room.on('claim_seat', (payload) => {
     if (!isHost() || !ROOM || !ROOM.started) return;
     const oldId = payload.oldId, newId = payload.senderId;
@@ -1231,7 +1226,6 @@ async function setupRoom() {
     broadcastSync();
   });
 
-  // ---- restart vote (host proposes, every seated player must agree) ----
   room.on('restart_propose', (payload) => {
     if (!isHost() || !ROOM.started || GAME.restartVote) return;
     const votes = {};
@@ -1276,15 +1270,13 @@ async function setupRoom() {
     connectedIds = ids;
     if (!ROOM || ids.length === 0) return;
     if (!ids.includes(ROOM.hostId) && ids[0] === myId) { ROOM = { ...ROOM, hostId: myId }; broadcastSync(); }
-    if (ROOM.started) renderGame(); // keep offline indicators live
+    if (ROOM.started) renderGame();
   });
 
   await room.connect();
   document.getElementById('share-link').value = `${location.origin}${location.pathname}?room=${roomCode}`;
   document.getElementById('lobby-code').textContent = roomCode;
 
-  // Heartbeat — same fix as Ultimate Tic Tac Toe: guards against a
-  // lost/out-of-order sync leaving a client stuck on stale state.
   setInterval(() => { if (isHost() && ROOM) broadcastSync(); }, 15000);
 }
 
@@ -1295,9 +1287,6 @@ function copyShareLink() {
   navigator.clipboard?.writeText(el.value).catch(() => {});
 }
 
-// =========================================================
-// RENDER DISPATCH
-// =========================================================
 function renderFromState() {
   if (!ROOM) return;
   document.getElementById('chat-panel').classList.remove('hidden');
@@ -1306,9 +1295,6 @@ function renderFromState() {
   else { showScreen('game-screen'); renderGame(); }
 }
 
-// =========================================================
-// LOBBY RENDER
-// =========================================================
 function renderLobby() {
   setupCount = ROOM.capacity;
   document.getElementById('host-tag').classList.toggle('hidden', !isHost());
@@ -1351,11 +1337,6 @@ function renderLobby() {
     : `Need ${ROOM.capacity} players seated (${ROOM.seats.filter(Boolean).length}/${ROOM.capacity}).`;
 }
 
-// =========================================================
-// GAME ACTIONS (client-side dispatch — mirrors the original
-// onCellClick's branches, but sends ONE network 'action' message
-// per completed decision instead of mutating shared state locally)
-// =========================================================
 function sendAction(action) { room.send('action', { action }); }
 
 function onCellClick(r, c) {
@@ -1367,6 +1348,12 @@ function onCellClick(r, c) {
     if (cell.occupant !== player.symbol) { showToast('Choose one of your own symbols to Bomb from.'); return; }
     myPendingPower = null;
     sendAction({ type: 'bomb', r, c });
+    return;
+  }
+  if (myPendingPower === 'minibomb') {
+    if (cell.occupant !== player.symbol) { showToast('Choose one of your own symbols to Mini Bomb from.'); return; }
+    myPendingPower = null;
+    sendAction({ type: 'minibomb', r, c });
     return;
   }
   if (myPendingPower === 'poison') {
@@ -1413,12 +1400,12 @@ function onCellClick(r, c) {
     }
   }
 
-  // no pending power — plain placement
   if (cell.occupant) { showToast('That cell is already occupied.'); return; }
   sendAction({ type: 'place', r, c });
 }
 
 document.getElementById('bomb-btn').onclick = () => { if (!isMyTurn()) return; myPendingPower = myPendingPower === 'bomb' ? null : 'bomb'; renderGame(); };
+document.getElementById('minibomb-btn').onclick = () => { if (!isMyTurn()) return; myPendingPower = myPendingPower === 'minibomb' ? null : 'minibomb'; renderGame(); };
 document.getElementById('poison-btn').onclick = () => { if (!isMyTurn()) return; myPendingPower = myPendingPower === 'poison' ? null : 'poison'; renderGame(); };
 document.getElementById('clearrow-btn').onclick = () => { if (!isMyTurn()) return; myPendingPower = myPendingPower === 'clearrow' ? null : 'clearrow'; renderGame(); };
 document.getElementById('clearcol-btn').onclick = () => { if (!isMyTurn()) return; myPendingPower = myPendingPower === 'clearcol' ? null : 'clearcol'; renderGame(); };
@@ -1453,7 +1440,6 @@ document.getElementById('rules-btn').onclick = () => {
   body.scrollIntoView({ behavior:'smooth', block:'center' });
 };
 
-// ---- restart ----
 document.getElementById('btn-restart').onclick = () => { showingRestartConfirm = true; renderRestartUI(); };
 document.getElementById('btn-restart').addEventListener('contextmenu', e => e.preventDefault());
 
@@ -1466,15 +1452,6 @@ function showToast(msg) {
   toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
 }
 
-// =========================================================
-// GAME RENDER (board/action-panel/players/log ported from the
-// original renderGame, adapted to read GAME/ROOM/myPendingPower)
-// =========================================================
-// Flashes the affected cells when a NEW bomb event arrives. On the very
-// first render after connecting, GAME.lastBomb might already be set from
-// an explosion that happened before this client joined — that shouldn't
-// replay as a flash, so the first sighting just records the timestamp
-// without animating anything.
 function checkBombFlash() {
   if (!GAME.lastBomb) return;
   if (lastSeenBombTs === undefined) { lastSeenBombTs = GAME.lastBomb.ts; return; }
@@ -1516,6 +1493,7 @@ function renderGame() {
 
       if (myTurn) {
         if (myPendingPower === 'bomb' && cell.occupant === player.symbol) div.classList.add('targetable');
+        if (myPendingPower === 'minibomb' && cell.occupant === player.symbol) div.classList.add('targetable');
         if (myPendingPower === 'poison' && cell.occupant === player.symbol && !cell.poison) div.classList.add('targetable');
         if (myPendingPower === 'clearrow' || myPendingPower === 'clearcol' || myPendingPower === 'gravity') div.classList.add('targetable-enemy');
         if (myPendingPower && myPendingPower.type === 'swap') {
@@ -1574,6 +1552,7 @@ function renderGame() {
   let hintText = null;
   if (myTurn) {
     if (myPendingPower === 'bomb') hintText = '\ud83d\udca3 Bomb: click one of your own symbols on the board.';
+    else if (myPendingPower === 'minibomb') hintText = '🧨 Mini Bomb: click one of your own symbols on the board.';
     else if (myPendingPower === 'poison') hintText = '\u2620\ufe0f Poison: click one of your own symbols on the board.';
     else if (myPendingPower === 'clearrow') hintText = '\ud83d\udea7 Clear Row: click any cell in the row you want to wipe.';
     else if (myPendingPower === 'clearcol') hintText = '\ud83e\uddf9 Clear Column: click any cell in the column you want to wipe.';
@@ -1591,6 +1570,7 @@ function renderGame() {
   const gameOver = isGameOver(GAME);
   const canAct = myTurn && !gameOver;
   document.getElementById('bomb-btn').disabled = !canAct || player.tokens < GAME.costs.bomb;
+  document.getElementById('minibomb-btn').disabled = !canAct || player.tokens < GAME.costs.minibomb;
   document.getElementById('poison-btn').disabled = !canAct || player.tokens < GAME.costs.poison;
   document.getElementById('traitor-btn').disabled = !canAct || player.tokens < GAME.costs.traitor;
   document.getElementById('clearrow-btn').disabled = !canAct || player.tokens < GAME.costs.clearrow;
@@ -1599,6 +1579,7 @@ function renderGame() {
   document.getElementById('swap-btn').disabled = !canAct || player.tokens < GAME.costs.swap;
   document.getElementById('shield-btn').disabled = !canAct || player.tokens < GAME.costs.shield;
   document.getElementById('bomb-btn').classList.toggle('pending', myPendingPower === 'bomb');
+  document.getElementById('minibomb-btn').classList.toggle('pending', myPendingPower === 'minibomb');
   document.getElementById('poison-btn').classList.toggle('pending', myPendingPower === 'poison');
   document.getElementById('traitor-btn').classList.toggle('pending', !!(myPendingPower && myPendingPower.type === 'traitor'));
   document.getElementById('clearrow-btn').classList.toggle('pending', myPendingPower === 'clearrow');
@@ -1682,9 +1663,6 @@ function renderGame() {
   }
 }
 
-// =========================================================
-// RESTART VOTE UI
-// =========================================================
 function renderRestartUI() {
   const box = document.getElementById('restart-box');
   const restartBtn = document.getElementById('btn-restart');
@@ -1732,9 +1710,6 @@ function renderRestartUI() {
   const cancelBtn = document.getElementById('rv-cancel'); if (cancelBtn) cancelBtn.onclick = () => room.send('restart_cancel', {});
 }
 
-// =========================================================
-// RECONNECT UI
-// =========================================================
 function renderReconnectBox() {
   const box = document.getElementById('reconnect-box');
   const amSeated = ROOM.seats.includes(myId);
@@ -1757,9 +1732,6 @@ function renderReconnectBox() {
   box.appendChild(row);
 }
 
-// =========================================================
-// CHAT
-// =========================================================
 document.getElementById('chat-toggle').onclick = () => document.getElementById('chat-body').classList.toggle('hidden');
 document.getElementById('chat-send').onclick = sendChatMessage;
 document.getElementById('chat-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChatMessage(); });
