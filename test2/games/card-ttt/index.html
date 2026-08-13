@@ -150,7 +150,6 @@
   .card.disabled { opacity:.35; cursor:not-allowed; }
   .card.disabled:hover { transform:none; }
   .card svg { width:60%; height:60%; }
-  .card .shape-tag { position:absolute; bottom:3px; font-size:8px; font-family:var(--font-mono); color:var(--muted); letter-spacing:.05em; }
   .card .card-lines { position:absolute; inset:0; width:100%; height:100%; z-index:1; }
   .card .card-icon { position:absolute; top:5px; left:5px; z-index:2; display:flex; align-items:center; justify-content:center; }
   .card .card-icon svg { width:22px; height:22px; }
@@ -398,11 +397,6 @@ const SHAPE_DIRS = {
 // orthogonal direction, an "x" for either diagonal). Directional-mode
 // tags are the same idea cut down to a single line, since each of
 // those cards only works along one specific axis.
-const SHAPE_TAGS = {
-  straight: '\u254b', diagonal: '\u2573',
-  horizontal: '\u2500', vertical: '\u2502',
-  diagTLBR: '\u2572', diagTRBL: '\u2571',
-};
 const SHAPE_LABELS = {
   straight: 'straight', diagonal: 'diagonal',
   horizontal: 'horizontal', vertical: 'vertical',
@@ -418,6 +412,8 @@ const SHAPE_LINE_SEGMENTS = {
   horizontal: [[18,82,88,82]],
   diagTLBR:   [[30,36,90,126]],
   diagTRBL:   [[16,126,86,32]],
+  straight:   [[66,20,66,122],[18,82,88,82]],
+  diagonal:   [[30,36,90,126],[16,126,86,32]],
 };
 
 function shuffle(arr){
@@ -1146,8 +1142,10 @@ function cardIconSvg(symId){
   return `<svg viewBox="0 0 24 24" fill="${fill}" stroke="#1c1712" stroke-width="2.6" stroke-linecap="${cap}" stroke-linejoin="round">${def.mini}</svg>`;
 }
 
-// Directional-mode card art: a single thick black line spanning the
-// card along whichever axis that card's shape is restricted to.
+// Card art lines: directional-mode cards get a single thick black
+// line along their one legal axis; combined-mode cards get a cross
+// spanning both legal axes of that family ("+" for straight, "x" for
+// diagonal), so the same colored-card look works in both movement modes.
 function cardLinesSvg(shape){
   const segs = SHAPE_LINE_SEGMENTS[shape] || SHAPE_LINE_SEGMENTS.vertical;
   const lines = segs.map(([x1,y1,x2,y2]) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#1c1712" stroke-width="6" stroke-linecap="round"/>`).join('');
@@ -1361,22 +1359,17 @@ function renderGame(){
   const strip = document.getElementById('hand-strip');
   strip.innerHTML = '';
   const stuck = myTurn && !myPendingPower && !handHasAnyMove(GAME, player.hand) && player.hand.length > 0;
-  const directional = GAME.cardMode === 'directional';
   player.hand.forEach((card, idx) => {
     const c = document.createElement('div');
     const playable = myTurn && !myPendingPower && validCellsForCard(GAME, card).length > 0;
     c.className = 'card' + (idx === mySelectedCardIdx ? ' selected' : '') + (playable ? '' : ' disabled');
-    if (directional) {
-      // Colored-background directional card: bg matches the symbol's
-      // color, a small icon sits in the top-left corner, and a black
-      // line runs the single axis this card is restricted to.
-      const def = SYMBOL_DEFS.find(s => s.id === card.symbol);
-      c.style.background = def.cardBg;
-      c.innerHTML = cardLinesSvg(card.shape) + `<div class="card-icon">${cardIconSvg(card.symbol)}</div>`;
-    } else {
-      c.style.background = '';
-      c.innerHTML = symbolSvg(card.symbol, '60%', false) + `<span class="shape-tag">${SHAPE_TAGS[card.shape] || '\u254b'}</span>`;
-    }
+    // Colored-background card design (both movement modes): bg
+    // matches the symbol's color, a small icon sits in the top-left
+    // corner, and a black line (or cross, for combined mode) marks
+    // which axis/axes this card is restricted to.
+    const def = SYMBOL_DEFS.find(s => s.id === card.symbol);
+    c.style.background = def.cardBg;
+    c.innerHTML = cardLinesSvg(card.shape) + `<div class="card-icon">${cardIconSvg(card.symbol)}</div>`;
     if (playable) c.onclick = () => onCardClick(idx);
     strip.appendChild(c);
   });
