@@ -268,19 +268,19 @@
   /* subtle global scrollbar treatment so every scroll region in the
      HUD/modals/chat shares one quiet, on-theme look instead of the
      stock OS scrollbar clashing with the cream/gold panels */
-  #hud, .modal-card, #chat-messages, #log-box, .props-list, .prop-picker, .settings-list{
+  .modal-card, #chat-messages, #log-box, .props-list, .prop-picker, .settings-list{
     scrollbar-width: thin;
     scrollbar-color: var(--gold) transparent;
   }
-  #hud::-webkit-scrollbar, .modal-card::-webkit-scrollbar, #chat-messages::-webkit-scrollbar,
+  .modal-card::-webkit-scrollbar, #chat-messages::-webkit-scrollbar,
   #log-box::-webkit-scrollbar, .props-list::-webkit-scrollbar, .prop-picker::-webkit-scrollbar{
     width: 7px;
   }
-  #hud::-webkit-scrollbar-thumb, .modal-card::-webkit-scrollbar-thumb, #chat-messages::-webkit-scrollbar-thumb,
+  .modal-card::-webkit-scrollbar-thumb, #chat-messages::-webkit-scrollbar-thumb,
   #log-box::-webkit-scrollbar-thumb, .props-list::-webkit-scrollbar-thumb, .prop-picker::-webkit-scrollbar-thumb{
     background: var(--gold); border-radius: 10px;
   }
-  #hud::-webkit-scrollbar-track, .modal-card::-webkit-scrollbar-track, #chat-messages::-webkit-scrollbar-track,
+  .modal-card::-webkit-scrollbar-track, #chat-messages::-webkit-scrollbar-track,
   #log-box::-webkit-scrollbar-track, .props-list::-webkit-scrollbar-track, .prop-picker::-webkit-scrollbar-track{
     background: transparent;
   }
@@ -425,11 +425,6 @@
     flex-direction: column;
     gap: 12px;
     color: var(--ink);
-    max-height: calc(100vh - 32px);
-    overflow-y: auto;
-    padding-right: 2px;
-    position: sticky;
-    top: 16px;
   }
   .hud-box {
     border: 2px solid var(--panel-border);
@@ -657,7 +652,7 @@
 
   @media (max-width: 900px) {
     #game-shell { flex-direction: column; align-items: center; }
-    #hud { width: 100%; max-width: 480px; flex-basis: auto; position: static; max-height: none; }
+    #hud { width: 100%; max-width: 480px; flex-basis: auto; }
   }
 </style>
 </head>
