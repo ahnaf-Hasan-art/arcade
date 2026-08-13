@@ -565,6 +565,32 @@
   .modal-primary { background: linear-gradient(160deg,var(--gold-light),var(--gold)); border-color: var(--gold-dark); }
   .modal-primary:hover:not(:disabled) { background: linear-gradient(160deg,#f5ecc0,#dcb93a); }
 
+  /* ---- auction modal (pops up centered, same overlay/card system
+     as the trade/settings modals, sized up a bit and non-dismissable) ---- */
+  .auction-modal-card { width: min(460px, 100%); text-align: center; }
+  .auction-modal-card .modal-head { justify-content: center; }
+  .auction-modal-card .modal-head h3 { letter-spacing: 2px; text-transform: uppercase; font-size: 20px; }
+  #auction-modal-status { font-size: 15px; font-weight: 700; }
+  #auction-modal-order { color: #5c5642; }
+  .auction-timer {
+    font-size: 40px; font-weight: 900; font-variant-numeric: tabular-nums;
+    color: var(--ink); margin: 14px auto 4px; width: 84px; height: 84px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; border: 4px solid var(--gold);
+    background: radial-gradient(circle at 50% 30%, #fffdf6 0%, var(--panel-bg-flat) 75%);
+    box-shadow: 0 6px 16px rgba(0,0,0,.25);
+    transition: border-color .2s var(--ease), color .2s var(--ease);
+  }
+  .auction-timer.low { border-color: var(--accent-red); color: var(--accent-red); animation: turn-pulse 1s ease-in-out infinite; }
+  .auction-modal-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+  .auction-modal-actions .raise-btn {
+    font-size: 15px; padding: 12px; border-radius: var(--radius-sm);
+    background: linear-gradient(160deg,var(--gold-light),var(--gold)); border-color: var(--gold-dark);
+  }
+  .auction-modal-actions .raise-btn:hover:not(:disabled) { background: linear-gradient(160deg,#f5ecc0,#dcb93a); }
+  .auction-modal-actions .pass-btn { font-size: 15px; padding: 12px; border-radius: var(--radius-sm); background: var(--panel-bg); }
+  .auction-modal-waiting { font-size: 13px; color: #5c5642; font-style: italic; margin-top: 16px; }
+
   @media (max-width: 560px) {
     .trade-columns { flex-direction: column; }
     .trade-arrow { transform: rotate(90deg); }
@@ -830,10 +856,6 @@
       <h4>Your Hand</h4>
       <div class="dice-row" id="hand-row" style="justify-content:flex-start;"></div>
     </div>
-    <div class="hud-box" id="auction-hud-box" style="display:none;">
-      <h4>Auction</h4>
-      <div id="auction-box"></div>
-    </div>
     <div class="hud-box" id="tax-choice-hud-box" style="display:none;">
       <h4>Income Tax</h4>
       <div id="tax-choice-box"></div>
@@ -915,6 +937,22 @@
       <button id="btn-save-settings" class="modal-primary">Save</button>
       <button id="btn-reset-settings">Reset to Defaults</button>
     </div>
+  </div>
+</div>
+
+<!-- AUCTION MODAL — pops up centered for everyone once an auction starts.
+     No close (X) button: an auction can't be dismissed by anyone, it
+     resolves on its own via bids/passes/timeout. -->
+<div id="auction-modal-overlay" class="modal-overlay hidden">
+  <div class="modal-card auction-modal-card">
+    <div class="modal-head">
+      <h3 id="auction-modal-title">Auction</h3>
+    </div>
+    <div class="msg" id="auction-modal-status"></div>
+    <div class="msg" id="auction-modal-order" style="font-size:11px; margin-top:6px;"></div>
+    <div id="auction-modal-timer" class="auction-timer"></div>
+    <div id="auction-modal-turnmsg" class="msg" style="font-weight:700; margin-top:2px;"></div>
+    <div class="auction-modal-actions" id="auction-modal-actions"></div>
   </div>
 </div>
 
@@ -1711,20 +1749,18 @@ function landOn(g, playerId, spaceIdx, diceSum, opts = {}) {
 // non-bankrupt players (including the one who declined). Bidding
 // goes turn-by-turn around the table (starting with whoever's turn
 // it currently is, i.e. the decliner); each player gets exactly one
-// action on their turn — raise by a fixed step, or pass — within a
-// time limit, no free-for-all typing of arbitrary amounts. Passing
-// is permanent for that auction. When only one non-passed
-// participant remains, they win at their standing bid (or, if
-// nobody ever bid, the property simply stays unowned).
+// action on their turn — raise by one of three fixed steps above the
+// current (present) bid, or pass — within a time limit, no free-for-all
+// typing of arbitrary amounts. Passing is permanent for that auction.
+// When only one non-passed participant remains, they win at their
+// standing bid (or, if nobody ever bid, the property simply stays
+// unowned).
 const AUCTION_TURN_MS = 5000;
 
-// Fixed raise step, scaled to the property's price so cheap and
-// expensive properties both take a sane number of turns to settle —
-// never a free-form amount, always this one discrete number.
-function auctionIncrement(spaceIdx) {
-  const price = priceOf(spaceIdx);
-  return Math.max(10, Math.ceil((price * 0.1) / 10) * 10);
-}
+// The three raise buttons always add one of these flat amounts on top
+// of the current bid — same three steps regardless of property price,
+// so "present value + 20/40/60" is always what's on the buttons.
+const AUCTION_RAISE_STEPS = [20, 40, 60];
 
 function startAuction(g, spaceIdx) {
   g.pendingBuySpace = null;
@@ -1740,7 +1776,7 @@ function startAuction(g, spaceIdx) {
     deadline: Date.now() + AUCTION_TURN_MS,
   };
   g.phase = 'auction';
-  pushLog(g, `${SPACES[spaceIdx].name} goes to auction — Tk${auctionIncrement(spaceIdx)} per raise, ${AUCTION_TURN_MS / 1000}s per turn.`);
+  pushLog(g, `${SPACES[spaceIdx].name} goes to auction — raise by Tk20/40/60 or pass, ${AUCTION_TURN_MS / 1000}s per turn.`);
 }
 
 function auctionActivePlayers(g) {
@@ -2240,7 +2276,9 @@ async function setupRoom() {
     const bidderId = payload.senderId;
     if (GAME.auction.order[GAME.auction.turnIdx] !== bidderId) return; // not their turn
     if (GAME.auction.passed[bidderId]) return;
-    const newBid = GAME.auction.bid + auctionIncrement(GAME.auction.spaceIdx);
+    const step = payload.amount;
+    if (!AUCTION_RAISE_STEPS.includes(step)) return; // only the three fixed buttons are valid
+    const newBid = GAME.auction.bid + step;
     if (newBid > GAME.cash[bidderId]) return; // can't afford this raise
     GAME.auction.bid = newBid;
     GAME.auction.highestBidderId = bidderId;
@@ -2619,79 +2657,72 @@ function renderLobby() {
     + ` Disconnected-player auto-skip: ${timeoutLabel}.`;
 }
 
+// Auction UI is a centered modal, shown to every player the moment an
+// auction starts (not just whoever's turn it is) — everyone can see the
+// live bid, order, and countdown; only the active bidder gets live
+// (non-disabled) buttons. Present bid = GAME.auction.bid; each raise
+// button adds one of the three fixed AUCTION_RAISE_STEPS on top of it.
 function renderAuctionUI() {
-  const wrap = document.getElementById('auction-hud-box');
-  const box = document.getElementById('auction-box');
-  if (GAME.phase !== 'auction' || !GAME.auction) { wrap.style.display = 'none'; return; }
-  wrap.style.display = '';
-  box.innerHTML = '';
+  const overlay = document.getElementById('auction-modal-overlay');
+  if (GAME.phase !== 'auction' || !GAME.auction) { overlay.classList.add('hidden'); return; }
+  overlay.classList.remove('hidden');
 
   const { spaceIdx, bid, highestBidderId, order, passed, turnIdx, deadline } = GAME.auction;
   const space = SPACES[spaceIdx];
-  const increment = auctionIncrement(spaceIdx);
   const turnPlayerId = order[turnIdx];
   const secondsLeft = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
 
-  const title = document.createElement('div');
-  title.className = 'msg';
-  title.style.fontWeight = '700';
-  title.textContent = `${space.name} — up for auction`;
-  box.appendChild(title);
+  document.getElementById('auction-modal-title').textContent = `${space.name} — Auction`;
 
-  const status = document.createElement('div');
-  status.className = 'msg';
-  status.style.fontSize = '12px';
-  status.textContent = highestBidderId
-    ? `Current bid: Tk${bid} by ${nameOf(highestBidderId)}`
-    : 'No bids yet.';
-  box.appendChild(status);
+  const statusEl = document.getElementById('auction-modal-status');
+  statusEl.textContent = highestBidderId
+    ? `Present bid: Tk${bid} by ${nameOf(highestBidderId)}`
+    : 'No bids yet — starting bid Tk0.';
 
   // Turn order, with the active player highlighted and passed
   // players struck through — makes the rotation visible at a glance.
-  const orderLine = document.createElement('div');
-  orderLine.className = 'msg';
-  orderLine.style.fontSize = '11px';
-  orderLine.innerHTML = 'Order: ' + order.map(id => {
+  const orderEl = document.getElementById('auction-modal-order');
+  orderEl.innerHTML = 'Order: ' + order.map(id => {
     const label = nameOf(id) + (id === myId ? ' (you)' : '');
     if (passed[id]) return `<span style="text-decoration:line-through; opacity:.5;">${label}</span>`;
     if (id === turnPlayerId) return `<strong>${label}</strong>`;
     return label;
   }).join(' → ');
-  box.appendChild(orderLine);
 
-  const turnMsgEl = document.createElement('div');
-  turnMsgEl.className = 'msg';
-  turnMsgEl.style.fontSize = '13px';
-  turnMsgEl.style.marginTop = '6px';
-  turnMsgEl.style.fontWeight = '700';
-  turnMsgEl.textContent = turnPlayerId === myId
-    ? `Your turn — ${secondsLeft}s left`
-    : `Waiting for ${nameOf(turnPlayerId)}... ${secondsLeft}s left`;
-  box.appendChild(turnMsgEl);
+  const timerEl = document.getElementById('auction-modal-timer');
+  timerEl.textContent = secondsLeft;
+  timerEl.classList.toggle('low', secondsLeft <= 2);
 
-  if (turnPlayerId !== myId) return; // not my turn — nothing to act on
+  const turnMsgEl = document.getElementById('auction-modal-turnmsg');
+  turnMsgEl.textContent = turnPlayerId === myId ? 'Your turn to act' : `Waiting for ${nameOf(turnPlayerId)}…`;
 
-  const nextBid = bid + increment;
-  const canAfford = nextBid <= GAME.cash[myId];
-  const row = document.createElement('div');
-  row.className = 'row';
-  row.style.marginTop = '6px';
-  const raiseBtn = document.createElement('button');
-  raiseBtn.textContent = `Raise to Tk${nextBid}`;
-  raiseBtn.disabled = !canAfford;
-  raiseBtn.onclick = () => room.send('auction_raise', {});
+  const actions = document.getElementById('auction-modal-actions');
+  actions.innerHTML = '';
+
+  if (turnPlayerId !== myId) {
+    const waiting = document.createElement('div');
+    waiting.className = 'auction-modal-waiting';
+    waiting.textContent = `Only ${nameOf(turnPlayerId)} can act right now.`;
+    actions.appendChild(waiting);
+    return;
+  }
+
+  AUCTION_RAISE_STEPS.forEach(step => {
+    const nextBid = bid + step;
+    const canAfford = nextBid <= GAME.cash[myId];
+    const btn = document.createElement('button');
+    btn.className = 'raise-btn';
+    btn.textContent = `Raise to Tk${nextBid} (+${step})`;
+    btn.disabled = !canAfford;
+    btn.onclick = () => room.send('auction_raise', { amount: step });
+    actions.appendChild(btn);
+  });
+
   const passBtn = document.createElement('button');
+  passBtn.className = 'pass-btn';
   passBtn.textContent = 'Pass';
   passBtn.onclick = () => room.send('auction_pass', {});
-  row.appendChild(raiseBtn); row.appendChild(passBtn);
-  box.appendChild(row);
-  if (!canAfford) {
-    const note = document.createElement('div');
-    note.className = 'msg';
-    note.style.fontSize = '11px';
-    note.textContent = `Raising to Tk${nextBid} would exceed your Tk${GAME.cash[myId]} cash.`;
-    box.appendChild(note);
-  }
+  actions.appendChild(passBtn);
 }
 
 function renderTaxChoiceUI() {
