@@ -680,6 +680,80 @@
     #game-shell { flex-direction: column; align-items: center; }
     #hud { width: 100%; max-width: 480px; flex-basis: auto; }
   }
+
+  /* =========================================================
+     CENTER-BOARD CARDS-MODE UI — replaces the decorative
+     MONOPOLY logo / Chance / Chest stacks with two live regions
+     while movement mode is "cards", instead of duplicating the
+     trick + hand + assignment UI down in the sidebar/HUD (which
+     is what used to happen, and pushed the important controls
+     off-screen on mobile). Red-bordered box on top = the trick
+     currently being played (one card per player). Black-bordered
+     box below = your hand to play from, or the movement
+     assignment/confirmation UI once a trick is won.
+     ========================================================= */
+  #center-card-ui{
+    position:absolute;
+    inset:5%;
+    z-index:3;
+    display:flex;
+    flex-direction:column;
+    gap:1.6vmin;
+  }
+  #center-trick-box, #center-hand-box{
+    background: rgba(247,243,233,.94);
+    border-radius: 10px;
+    box-shadow: 0 6px 16px rgba(0,0,0,.28);
+    display:flex; flex-direction:column; align-items:center;
+    padding: 1.4vmin 1.6vmin;
+  }
+  #center-trick-box{
+    flex: 0 0 32%;
+    border: 3px solid #d21017;
+    justify-content:center;
+  }
+  #center-hand-box{
+    flex: 1 1 auto;
+    border: 3px solid #000;
+    justify-content:flex-start;
+    overflow:auto;
+  }
+  .center-box-label{
+    font-size:1.5vmin; letter-spacing:2px; text-transform:uppercase; font-weight:900;
+    color: var(--gold-dark); margin-bottom: 1vmin; text-align:center;
+  }
+  #center-trick-cards, #center-hand-cards{
+    display:flex; flex-wrap:wrap; gap:1vmin; justify-content:center; align-items:flex-start; width:100%;
+  }
+  .center-trick-slot{ display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .center-trick-slot .ct-card{
+    width:9vmin; max-width:70px; aspect-ratio:0.7;
+    background: linear-gradient(160deg,#fff,#f3f0e6);
+    border:2px solid #000; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:2.3vmin; font-weight:900;
+    box-shadow: 0 3px 6px rgba(0,0,0,.3);
+  }
+  .center-trick-slot .ct-card.empty{ opacity:.35; font-weight:400; font-size:2vmin; }
+  .center-trick-slot.active-turn .ct-card{ border-color:var(--gold); box-shadow:0 0 10px rgba(201,162,39,.7); }
+  .center-trick-slot.winner .ct-card{ border-color:var(--gold); box-shadow:0 0 10px rgba(201,162,39,.8); transform:translateY(-2px); }
+  .center-trick-slot .ct-name{ font-size:1.15vmin; color:#333; text-align:center; }
+  .center-hand-card{
+    width:8vmin; max-width:60px; aspect-ratio:0.7;
+    background: linear-gradient(160deg,#fff,#f3f0e6);
+    border:2px solid #000; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:2vmin; font-weight:900;
+    box-shadow: 0 3px 6px rgba(0,0,0,.3);
+    transition: transform .12s var(--ease);
+  }
+  .center-hand-card:hover{ transform:translateY(-3px); }
+  #center-hand-box .msg{ font-size:1.35vmin; line-height:1.4; }
+  #center-hand-box .center-assign-wrap{ width:100%; }
+  #center-hand-box .center-assign-wrap .msg{ margin-bottom:1vmin; }
+  #center-hand-box .center-assign-wrap > div{ margin-bottom:1vmin; }
+  #center-hand-box .center-assign-wrap .row{ justify-content:center; }
+  #center-hand-box .center-assign-wrap button{ font-size:1.3vmin; padding:0.8vmin 1.2vmin; }
 </style>
 </head>
 <body>
@@ -739,13 +813,6 @@
   </div>
   <div class="msg" id="movement-mode-desc" style="margin-top:2px;"></div>
 
-  <div class="eyebrow" id="hand-size-label" style="margin-top:8px; display:none;">Cards per player</div>
-  <div class="seat-select" id="hand-size-select" style="display:none;">
-    <button class="seat-btn" id="hand-size-btn-13" data-size="13">13 cards</button>
-    <button class="seat-btn" id="hand-size-btn-17" data-size="17">17 cards</button>
-  </div>
-  <div class="msg" id="hand-size-desc" style="margin-top:2px; display:none;"></div>
-
   <div class="seat-list" id="seat-list"></div>
 
   <div class="row" style="margin-top:4px;">
@@ -793,6 +860,21 @@
         <div class="card-stack chance-stack"><div class="card-face"><div class="card-icon">❓</div><div class="card-label">CHANCE</div></div></div>
         <div class="card-stack chest-stack"><div class="card-face"><div class="card-icon">🎁</div><div class="card-label">COMMUNITY<br>CHEST</div></div></div>
         <div class="logo">MONOPOLY</div>
+
+        <!-- CARDS-MODE center UI: replaces the logo/stacks above while
+             movement mode is "cards" and the game is running (toggled
+             from JS). Red box = current trick; black box = your hand
+             / movement assignment + confirmation. -->
+        <div id="center-card-ui" class="hidden">
+          <div id="center-trick-box">
+            <div class="center-box-label">Current Trick</div>
+            <div id="center-trick-cards"></div>
+          </div>
+          <div id="center-hand-box">
+            <div class="center-box-label" id="center-hand-label">Your Hand</div>
+            <div id="center-hand-cards"></div>
+          </div>
+        </div>
       </div>
 
       <div class="cell side-right" style="grid-column:11/12;grid-row:2/3;" data-idx="31"><div class="color-bar green"></div><div class="name">Delhi</div><div class="price">Tk300</div></div>
@@ -858,10 +940,6 @@
     <div class="hud-box" id="jail-hud-box" style="display:none;">
       <h4>Jail</h4>
       <div id="jail-box"></div>
-    </div>
-    <div class="hud-box" id="hand-hud-box" style="display:none;">
-      <h4>Your Hand</h4>
-      <div class="dice-row" id="hand-row" style="justify-content:flex-start;"></div>
     </div>
     <div class="hud-box" id="tax-choice-hud-box" style="display:none;">
       <h4>Income Tax</h4>
@@ -1154,37 +1232,17 @@ function cardBeats(a, b) {
   if (av !== bv) return av > bv;
   return cardSuit(a) < cardSuit(b);
 }
-// Hand size: normally 13 for everyone (fits any 2-4 player count within
-// one 52-card deck). Special case: in a 3-player game the host can opt
-// into 17 cards each instead (51 of the 52 cards dealt — see
-// dealNewHand, which sits out the 2 of Clubs for that mode).
-function handSizeForPlayers(n) {
-  if (n === 3 && ROOM && ROOM.threePlayerHandSize === 17) return 17;
-  return 13;
-}
-// The single card left out of circulation for the 3-player/17-card
-// variant: the 2 of Clubs (suit index 3 = Clubs, rank index 0 = '2').
-const THREE_PLAYER_SITOUT_CARD = 3 * 13 + 0;
+function handSizeForPlayers(n) { return 13; } // fixed regardless of player count — Cards mode caps at 4 players, so 13 each always fits within one 52-card deck
 
-// Shuffles a fresh deck and deals a hand to every seated player. In the
-// normal case (13 each) this uses the full 52-card deck and any cards
-// left over when fewer than 4 are seated just sit out, unused, until
-// the next hand. In the 3-player/17-cards-each variant, the 2 of Clubs
-// is set aside first so the remaining 51 cards divide evenly.
+// Shuffles a fresh 52-card deck and deals 13 cards to every seated
+// player (any cards left over when fewer than 4 are seated just sit
+// out, unused, until the next hand).
 function dealNewHand(g) {
   const size = handSizeForPlayers(g.order.length);
-  const sitOutCard = size === 17 ? THREE_PLAYER_SITOUT_CARD : null;
-  let deck;
-  if (sitOutCard !== null) {
-    const pool = [];
-    for (let c = 0; c < 52; c++) if (c !== sitOutCard) pool.push(c);
-    deck = shuffleArray(pool); // shuffles the actual 51 card values
-  } else {
-    deck = shuffled(Array.from({ length: 52 })); // NOT `new Array(52)` — that's all holes, and .map() skips holes, so it would silently deal every hand full of `undefined` cards
-  }
+  const deck = shuffled(Array.from({ length: 52 })); // NOT `new Array(52)` — that's all holes, and .map() skips holes, so it would silently deal every hand full of `undefined` cards
   g.hands = {};
   g.order.forEach((id, i) => { g.hands[id] = deck.slice(i * size, (i + 1) * size); });
-  pushLog(g, `New hand dealt — ${size} cards each.${sitOutCard !== null ? ` (${cardLabel(sitOutCard)} sits out this deal.)` : ''}`);
+  pushLog(g, `New hand dealt — ${size} cards each.`);
 }
 
 // Starts a fresh trick led by `leaderId`, in seat order from there.
@@ -1968,7 +2026,7 @@ function isHost() { return !!ROOM && ROOM.hostId === myId; }
 function isMyTurn() { return GAME && currentPlayer(GAME) === myId; }
 
 function freshRoom(hostId) {
-  return { hostId, capacity: 4, seats: [], started: false, customPrices: {}, chat: [], disconnectTimeoutMs: 120000, restartVote: null, movementMode: 'dice', names: {}, threePlayerHandSize: 13 };
+  return { hostId, capacity: 4, seats: [], started: false, customPrices: {}, chat: [], disconnectTimeoutMs: 120000, restartVote: null, movementMode: 'dice', names: {} };
 }
 
 function priceOf(spaceIdx) {
@@ -2045,8 +2103,6 @@ const seatSelectEl = document.getElementById('seat-count-select');
 
 document.getElementById('mode-btn-dice').onclick = () => { if (isHost()) room.send('set_movement_mode', { mode: 'dice' }); };
 document.getElementById('mode-btn-cards').onclick = () => { if (isHost()) room.send('set_movement_mode', { mode: 'cards' }); };
-document.getElementById('hand-size-btn-13').onclick = () => { if (isHost()) room.send('set_hand_size', { size: 13 }); };
-document.getElementById('hand-size-btn-17').onclick = () => { if (isHost()) room.send('set_hand_size', { size: 17 }); };
 
 let showingRestartConfirm = false;
 document.getElementById('btn-restart').onclick = () => { showingRestartConfirm = true; renderRestartUI(); };
@@ -2168,14 +2224,6 @@ async function setupRoom() {
     const mode = payload.mode === 'cards' ? 'cards' : 'dice';
     const cap = mode === 'cards' ? Math.min(4, ROOM.capacity) : ROOM.capacity;
     ROOM = { ...ROOM, movementMode: mode, capacity: cap, seats: ROOM.seats.slice(0, cap) };
-    broadcastSync();
-  });
-
-  room.on('set_hand_size', (payload) => {
-    if (!isHost() || ROOM.started) return;
-    if (ROOM.movementMode !== 'cards' || ROOM.capacity !== 3) return;
-    const size = payload.size === 17 ? 17 : 13;
-    ROOM = { ...ROOM, threePlayerHandSize: size };
     broadcastSync();
   });
 
@@ -2662,26 +2710,6 @@ function renderLobby() {
     ? 'Cards mode (2-4 players): each hand deals everyone 13 cards (any leftover cards just sit out until the next hand). Every trick, all players (jailed ones too) play a card in turn, following the led suit if able. Spades trump everything; otherwise the highest card of the led suit wins the trick. The winner moves by their own card\'s number (A=14, K=13, Q=12, J=11, 10..2) and assigns the other cards\' numbers to the other players by clicking a number for each — only legal numbers are offered. A jailed winner still assigns numbers but never moves themselves. First bankruptcy ends the game — everyone else is ranked by cash + property value.'
     : 'Dice mode: classic two-die rolls, doubles go again (three in a row sends you to Jail).';
 
-  // Hand-size choice only applies to the 3-player Cards-mode game (see
-  // handSizeForPlayers/dealNewHand): 13 each (13 cards sit out) or 17
-  // each (51 of 52 cards dealt, 2♣ sits out every hand).
-  const showHandSize = mode === 'cards' && ROOM.capacity === 3;
-  document.getElementById('hand-size-label').style.display = showHandSize ? '' : 'none';
-  document.getElementById('hand-size-select').style.display = showHandSize ? '' : 'none';
-  document.getElementById('hand-size-desc').style.display = showHandSize ? '' : 'none';
-  if (showHandSize) {
-    const hs = ROOM.threePlayerHandSize === 17 ? 17 : 13;
-    const btn13 = document.getElementById('hand-size-btn-13');
-    const btn17 = document.getElementById('hand-size-btn-17');
-    btn13.classList.toggle('active', hs === 13);
-    btn17.classList.toggle('active', hs === 17);
-    btn13.disabled = !isHost() || ROOM.started;
-    btn17.disabled = !isHost() || ROOM.started;
-    document.getElementById('hand-size-desc').textContent = hs === 17
-      ? 'Deals 17 cards to each of the 3 players (51 of 52 cards) — the 2 of Clubs sits out every hand.'
-      : 'Deals 13 cards to each of the 3 players — 13 cards sit out each hand.';
-  }
-
   const listEl = document.getElementById('seat-list');
   listEl.innerHTML = '';
   for (let i = 0; i < ROOM.capacity; i++) {
@@ -2985,33 +3013,17 @@ function renderGame() {
     playersBox.appendChild(row);
   });
 
-  // dice / trick display
+  // dice / trick display — the card-mode trick/hand UI has moved onto
+  // the board itself (see renderCenterCardUI), so the HUD's dice-row
+  // only ever shows the classic two dice, and only in Dice mode.
   const cardsMode = ROOM.movementMode === 'cards';
   const diceRow = document.getElementById('dice-row');
   if (!cardsMode) {
+    diceRow.style.display = '';
     diceRow.innerHTML = `<div class="die">${GAME.lastRoll[0]}</div><div class="die">${GAME.lastRoll[1]}</div>`;
-  } else if (GAME.trick) {
-    diceRow.innerHTML = GAME.trick.order.map(id => {
-      const cardIdx = GAME.trick.plays[id];
-      const name = labelFor(id);
-      if (cardIdx === undefined) {
-        return `<div class="pit-card" style="opacity:.4;"><div class="pit-card-label">?</div><div class="pit-card-name">${name}</div></div>`;
-      }
-      const suit = cardSuit(cardIdx);
-      const red = suit === 1 || suit === 2;
-      return `<div class="pit-card" style="color:${red ? '#c0392b' : '#1a1a1a'}"><div class="pit-card-label">${cardLabel(cardIdx)}</div><div class="pit-card-name">${name}</div></div>`;
-    }).join('');
-  } else if (GAME.pit) {
-    diceRow.innerHTML = Object.keys(GAME.pit.plays).map(id => {
-      const cardIdx = GAME.pit.plays[id];
-      const isWinner = id === GAME.pit.winnerId;
-      const suit = cardSuit(cardIdx);
-      const red = suit === 1 || suit === 2;
-      const name = labelFor(id);
-      return `<div class="pit-card${isWinner ? ' winner' : ''}" style="color:${red ? '#c0392b' : '#1a1a1a'}"><div class="pit-card-label">${cardLabel(cardIdx)}</div><div class="pit-card-name">${name}</div></div>`;
-    }).join('');
   } else {
-    diceRow.innerHTML = `<div class="die" style="font-size:16px;">🃏</div>`;
+    diceRow.style.display = 'none';
+    diceRow.innerHTML = '';
   }
 
   // jail box — in cards mode, pay/use-card is available any time (no
@@ -3030,34 +3042,6 @@ function renderGame() {
     if ((GAME.jailCardsHeld[myId] || []).length > 0) addBtn(jailBox, 'Use Jail card', () => room.send('use_jail_card', {}));
   } else {
     jailWrap.style.display = 'none';
-  }
-
-  // hand box — cards mode only, always shows your current hand; cards
-  // become clickable exactly when it's your turn within the trick.
-  const handWrap = document.getElementById('hand-hud-box');
-  if (cardsMode && GAME.hands && GAME.hands[myId] && GAME.phase !== 'gameover') {
-    handWrap.style.display = '';
-    const handRow = document.getElementById('hand-row');
-    handRow.innerHTML = '';
-    const myTrickTurn = GAME.trick && GAME.trick.order[GAME.trick.turnIdx] === myId;
-    const led = GAME.trick ? GAME.trick.ledSuit : null;
-    const hand = GAME.hands[myId].slice().sort((a, b) => cardSuit(a) - cardSuit(b) || cardValue(a) - cardValue(b));
-    const hasLedSuit = led !== null && hand.some(c => cardSuit(c) === led);
-    hand.forEach(cardIdx => {
-      const suit = cardSuit(cardIdx);
-      const red = suit === 1 || suit === 2;
-      const legal = myTrickTurn && (led === null || suit === led || !hasLedSuit);
-      const card = document.createElement('div');
-      card.className = 'pit-card';
-      card.style.color = red ? '#c0392b' : '#1a1a1a';
-      card.style.cursor = legal ? 'pointer' : 'default';
-      card.style.opacity = myTrickTurn && !legal ? '.4' : '1';
-      card.innerHTML = `<div class="pit-card-label">${cardLabel(cardIdx)}</div>`;
-      if (legal) card.onclick = () => room.send('play_trick_card', { cardIdx });
-      handRow.appendChild(card);
-    });
-  } else {
-    handWrap.style.display = 'none';
   }
 
   // turn message + actions
@@ -3092,8 +3076,7 @@ function renderGame() {
   } else if (GAME.phase === 'card_pit_assign' && GAME.pit) {
     const winnerId = GAME.pit.winnerId;
     if (winnerId === myId) {
-      turnMsg.textContent = `You won the trick with ${cardLabel(GAME.pit.plays[winnerId])} (move ${GAME.pit.winnerVal}${GAME.jail[myId].in ? ' — but you\'re in Jail, so you stay put' : ''}). Assign ${GAME.pit.remainingValues.join(', ')} to the others.`;
-      renderPitAssignUI(actionRow);
+      turnMsg.textContent = `You won the trick with ${cardLabel(GAME.pit.plays[winnerId])} (move ${GAME.pit.winnerVal}${GAME.jail[myId].in ? ' — but you\'re in Jail, so you stay put' : ''}). Assign ${GAME.pit.remainingValues.join(', ')} to the others below.`;
     } else {
       turnMsg.textContent = `${nameOf(winnerId)} won the trick and is assigning movement numbers...`;
     }
@@ -3192,6 +3175,7 @@ function renderGame() {
   renderAuctionUI();
   renderTaxChoiceUI();
   renderTrades();
+  renderCenterCardUI(cardsMode);
   document.getElementById('btn-open-trade').disabled = GAME.phase === 'gameover';
 
   // log — natural chronological order (oldest to newest), auto-scrolled
@@ -3212,6 +3196,140 @@ function renderGame() {
   }
 }
 
+// =========================================================
+// CENTER-BOARD CARDS-MODE UI
+// Replaces the decorative MONOPOLY logo + Chance/Chest stacks
+// with two live regions while movement mode is "cards":
+//   - #center-trick-box (red border): the trick currently being
+//     played, one card slot per participant.
+//   - #center-hand-box (black border): your hand to play from,
+//     or — once a trick is won — the movement-assignment UI
+//     (including the "Confirm Assignment" button, i.e. the
+//     confirmation of movement).
+// This used to live down in the HUD sidebar (dice-row / a
+// dedicated hand box / the action-row), which pushed the actual
+// controls off-screen on mobile; now it sits on the board itself.
+// =========================================================
+function renderCenterCardUI(cardsMode) {
+  const cardUiEl = document.getElementById('center-card-ui');
+  const logoEl = document.querySelector('.center .logo');
+  const chanceStackEl = document.querySelector('.center .chance-stack');
+  const chestStackEl = document.querySelector('.center .chest-stack');
+
+  if (!cardsMode || GAME.phase === 'gameover') {
+    cardUiEl.classList.add('hidden');
+    if (logoEl) logoEl.style.display = '';
+    if (chanceStackEl) chanceStackEl.style.display = '';
+    if (chestStackEl) chestStackEl.style.display = '';
+    return;
+  }
+  cardUiEl.classList.remove('hidden');
+  if (logoEl) logoEl.style.display = 'none';
+  if (chanceStackEl) chanceStackEl.style.display = 'none';
+  if (chestStackEl) chestStackEl.style.display = 'none';
+
+  const trickBox = document.getElementById('center-trick-cards');
+  const handBox = document.getElementById('center-hand-cards');
+  const handLabel = document.getElementById('center-hand-label');
+  trickBox.innerHTML = '';
+  handBox.innerHTML = '';
+
+  // --- red box: the trick currently in progress (or just resolved) ---
+  if (GAME.trick) {
+    GAME.trick.order.forEach(id => {
+      const cardIdx = GAME.trick.plays[id];
+      const slot = document.createElement('div');
+      slot.className = 'center-trick-slot';
+      const isActive = id === GAME.trick.order[GAME.trick.turnIdx] && cardIdx === undefined;
+      if (isActive) slot.classList.add('active-turn');
+      if (cardIdx === undefined) {
+        slot.innerHTML = `<div class="ct-card empty">?</div><div class="ct-name">${labelFor(id)}</div>`;
+      } else {
+        const suit = cardSuit(cardIdx); const red = suit === 1 || suit === 2;
+        slot.innerHTML = `<div class="ct-card" style="color:${red ? '#c0392b' : '#1a1a1a'}">${cardLabel(cardIdx)}</div><div class="ct-name">${labelFor(id)}</div>`;
+      }
+      trickBox.appendChild(slot);
+    });
+  } else if (GAME.pit) {
+    Object.keys(GAME.pit.plays).forEach(id => {
+      const cardIdx = GAME.pit.plays[id];
+      const suit = cardSuit(cardIdx); const red = suit === 1 || suit === 2;
+      const isWinner = id === GAME.pit.winnerId;
+      const slot = document.createElement('div');
+      slot.className = 'center-trick-slot' + (isWinner ? ' winner' : '');
+      slot.innerHTML = `<div class="ct-card" style="color:${red ? '#c0392b' : '#1a1a1a'}">${cardLabel(cardIdx)}</div><div class="ct-name">${labelFor(id)}</div>`;
+      trickBox.appendChild(slot);
+    });
+  } else {
+    trickBox.innerHTML = '<div class="msg">Waiting for the next trick…</div>';
+  }
+
+  // --- black box: your hand to play from, or the movement-assignment
+  //     UI (with its confirmation button) once a trick is won ---
+  if (GAME.phase === 'card_pit_assign' && GAME.pit) {
+    handLabel.textContent = 'Assign Movement';
+    if (GAME.pit.winnerId === myId) {
+      renderPitAssignUI(handBox);
+    } else {
+      const msg = document.createElement('div');
+      msg.className = 'msg';
+      msg.textContent = `${nameOf(GAME.pit.winnerId)} is assigning movement…`;
+      handBox.appendChild(msg);
+    }
+    return;
+  }
+
+  handLabel.textContent = 'Your Hand';
+  if (!GAME.hands || !GAME.hands[myId]) {
+    handBox.innerHTML = '<div class="msg">Spectating.</div>';
+    return;
+  }
+
+  const myTrickTurn = GAME.trick && GAME.trick.order[GAME.trick.turnIdx] === myId;
+  const led = GAME.trick ? GAME.trick.ledSuit : null;
+  const hand = GAME.hands[myId].slice().sort((a, b) => cardSuit(a) - cardSuit(b) || cardValue(a) - cardValue(b));
+  const hasLedSuit = led !== null && hand.some(c => cardSuit(c) === led);
+
+  if (GAME.jail[myId] && GAME.jail[myId].in) {
+    const note = document.createElement('div');
+    note.className = 'msg';
+    note.style.marginBottom = '4px';
+    note.textContent = "You're in Jail — you still play, but won't move.";
+    handBox.appendChild(note);
+  }
+
+  const cardsWrap = document.createElement('div');
+  cardsWrap.id = 'center-hand-cards-inner';
+  cardsWrap.style.display = 'flex';
+  cardsWrap.style.flexWrap = 'wrap';
+  cardsWrap.style.gap = '1vmin';
+  cardsWrap.style.justifyContent = 'center';
+  cardsWrap.style.width = '100%';
+  hand.forEach(cardIdx => {
+    const suit = cardSuit(cardIdx); const red = suit === 1 || suit === 2;
+    const legal = myTrickTurn && (led === null || suit === led || !hasLedSuit);
+    const card = document.createElement('div');
+    card.className = 'center-hand-card';
+    card.style.color = red ? '#c0392b' : '#1a1a1a';
+    card.style.cursor = legal ? 'pointer' : 'default';
+    card.style.opacity = myTrickTurn && !legal ? '.4' : '1';
+    card.textContent = cardLabel(cardIdx);
+    if (legal) card.onclick = () => room.send('play_trick_card', { cardIdx });
+    cardsWrap.appendChild(card);
+  });
+  handBox.appendChild(cardsWrap);
+
+  if (!myTrickTurn) {
+    const waitMsg = document.createElement('div');
+    waitMsg.className = 'msg';
+    waitMsg.style.marginTop = '6px';
+    waitMsg.style.width = '100%';
+    waitMsg.style.textAlign = 'center';
+    waitMsg.textContent = GAME.trick ? `Waiting for ${nameOf(GAME.trick.order[GAME.trick.turnIdx])}…` : '';
+    handBox.appendChild(waitMsg);
+  }
+}
+
 // Client-local (not synced) scratch state for the pit assignment UI —
 // which number the winner has tentatively clicked for each other
 // player, kept across re-renders (e.g. a chat message triggering a
@@ -3225,7 +3343,9 @@ function pitAssignKey(pit) {
 // Lets the pit's winner assign the other cards' numbers to the other
 // participants by clicking a number for each — only numbers still
 // available in the pool are ever offered as buttons, so an illegal or
-// duplicate assignment isn't something the UI can even produce.
+// duplicate assignment isn't something the UI can even produce. The
+// "Confirm Assignment" button at the bottom is the confirmation of
+// movement — nothing moves until it's pressed and accepted by the host.
 function renderPitAssignUI(container) {
   const pit = GAME.pit;
   const key = pitAssignKey(pit);
@@ -3244,19 +3364,17 @@ function renderPitAssignUI(container) {
   const distinctValues = [...new Set(pit.remainingValues)].sort((a, b) => a - b);
 
   const wrap = document.createElement('div');
-  wrap.style.width = '100%';
+  wrap.className = 'center-assign-wrap';
   const poolMsg = document.createElement('div');
   poolMsg.className = 'msg';
-  poolMsg.style.marginBottom = '8px';
   poolMsg.textContent = `Click a number for each player to give out: ${pit.remainingValues.join(', ')}`;
   wrap.appendChild(poolMsg);
 
   pit.otherIds.forEach(id => {
     const row = document.createElement('div');
-    row.style.marginBottom = '8px';
     const label = document.createElement('div');
     label.style.fontWeight = '700';
-    label.style.fontSize = '13px';
+    label.style.fontSize = '1.3vmin';
     label.style.marginBottom = '4px';
     label.textContent = labelFor(id) + ':';
     row.appendChild(label);
@@ -3272,7 +3390,7 @@ function renderPitAssignUI(container) {
     } else {
       const btnRow = document.createElement('div');
       btnRow.className = 'row';
-      btnRow.style.justifyContent = 'flex-start';
+      btnRow.style.justifyContent = 'center';
       distinctValues.forEach(v => {
         if ((availCount[v] || 0) <= 0) return;
         const btn = document.createElement('button');
