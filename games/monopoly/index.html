@@ -2068,6 +2068,29 @@ function migratePlayerId(oldId, newId) {
     if (GAME.auction.highestBidderId === oldId) GAME.auction.highestBidderId = newId;
   }
   if (ROOM.names && oldId in ROOM.names) { ROOM.names[newId] = ROOM.names[oldId]; delete ROOM.names[oldId]; }
+
+  // Cards mode (see CARDS MODE section above): hands, the trick in
+  // progress, a pit-assignment in progress, and the movement queue are
+  // all keyed by player id too — migratePlayerId used to skip these
+  // entirely, so a player who claimed a disconnected seat mid-game
+  // ended up with an empty hand (GAME.hands[newId] never existed) and
+  // could get stranded mid-trick/mid-assignment.
+  if (GAME.hands && oldId in GAME.hands) { GAME.hands[newId] = GAME.hands[oldId]; delete GAME.hands[oldId]; }
+  if (GAME.trick) {
+    GAME.trick.order = GAME.trick.order.map(id => (id === oldId ? newId : id));
+    if (oldId in GAME.trick.plays) { GAME.trick.plays[newId] = GAME.trick.plays[oldId]; delete GAME.trick.plays[oldId]; }
+  }
+  if (GAME.pit) {
+    if (GAME.pit.winnerId === oldId) GAME.pit.winnerId = newId;
+    GAME.pit.otherIds = GAME.pit.otherIds.map(id => (id === oldId ? newId : id));
+    if (oldId in GAME.pit.plays) { GAME.pit.plays[newId] = GAME.pit.plays[oldId]; delete GAME.pit.plays[oldId]; }
+    if (oldId in GAME.pit.assigned) { GAME.pit.assigned[newId] = GAME.pit.assigned[oldId]; delete GAME.pit.assigned[oldId]; }
+  }
+  if (GAME.pitQueue) {
+    GAME.pitQueue.forEach(entry => { if (entry.playerId === oldId) entry.playerId = newId; });
+  }
+  if (GAME.lastTrickWinner === oldId) GAME.lastTrickWinner = newId;
+
   delete disconnectSince[oldId];
 }
 
@@ -2286,7 +2309,8 @@ async function setupRoom() {
   // seat that's CURRENTLY disconnected — never an active player's seat.
   // Rewrites every player-keyed field in GAME/ROOM from oldId to newId
   // so the reconnected player resumes exactly where they left off
-  // (same cash, position, properties, jail status, pending trades).
+  // (same cash, position, properties, jail status, pending trades,
+  // and — in Cards mode — their hand and any in-progress trick/pit).
   room.on('claim_seat', (payload) => {
     if (!isHost() || !ROOM || !ROOM.started || !GAME) return;
     const oldId = payload.oldId, newId = payload.senderId;
@@ -2627,6 +2651,14 @@ async function setupRoom() {
     const allYes = Object.values(votes).every(v => v === true);
     if (allYes) {
       GAME = freshGame(ROOM.seats);
+      // Cards mode needs a fresh deal + a first trick started right
+      // away, same as start_game does — restart used to skip this
+      // entirely, leaving GAME.hands empty and the game stuck in the
+      // dice-mode 'roll' phase, which Cards mode never resolves.
+      if (ROOM.movementMode === 'cards') {
+        dealNewHand(GAME);
+        startNewTrick(GAME, GAME.order[0]);
+      }
       ROOM = { ...ROOM, restartVote: null };
     }
     broadcastSync();
