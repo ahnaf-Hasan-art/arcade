@@ -59,6 +59,9 @@
     color:#3a3a3a;
     letter-spacing:.3px;
   }
+  .price.price-rent{
+    color:#0d6b3a;
+  }
   .name{
     flex:1;
     display:flex;
@@ -4003,9 +4006,31 @@ function applyPriceDisplay() {
     const cellEl = document.querySelector(`#board [data-idx="${space.idx}"]`);
     if (!cellEl) return;
     const priceEl = cellEl.querySelector('.price');
+    if (!priceEl) return;
     const mortgaged = !!GAME?.mortgaged?.[space.idx];
-    if (priceEl) priceEl.textContent = mortgaged ? 'MORTGAGED' : 'Tk' + priceOf(space.idx);
     cellEl.classList.toggle('mortgaged-cell', mortgaged);
+    if (mortgaged) {
+      priceEl.textContent = 'MORTGAGED';
+      priceEl.classList.remove('price-rent');
+      return;
+    }
+    const owner = GAME?.owner?.[space.idx];
+    if (owner === undefined) {
+      // Unowned — still for sale, show the purchase price.
+      priceEl.textContent = 'Tk' + priceOf(space.idx);
+      priceEl.classList.remove('price-rent');
+      return;
+    }
+    // Owned — show what landing here actually costs right now, so
+    // houses/hotels (and completed monopolies) are reflected live
+    // instead of the tile forever showing the original buy price.
+    priceEl.classList.add('price-rent');
+    if (space.type === 'util') {
+      const count = UTIL_IDXS.filter(i => GAME.owner[i] === owner).length;
+      priceEl.textContent = count >= 2 ? '10x dice' : '4x dice';
+    } else {
+      priceEl.textContent = 'Tk' + computeRent(GAME, space.idx, owner, 0);
+    }
   });
 }
 
