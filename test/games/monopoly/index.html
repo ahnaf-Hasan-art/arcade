@@ -642,8 +642,9 @@
   @keyframes toast-out { from { opacity: 1; } to { opacity: 0; transform: translateX(-50%) translateY(-10px); } }
 
   /* ---- expanded log/chat window ---- */
+  #activity-modal-overlay { z-index: 1000; pointer-events: auto; }
   #activity-modal-card {
-    width: min(760px, 94vw);
+    width: min(900px, 94vw);
     max-height: 86vh;
     display: flex;
     flex-direction: column;
@@ -660,13 +661,14 @@
     flex-direction: column;
     gap: 7px;
     padding: 4px;
-    font-size: 14px;
+    font-size: 18px;
+    line-height: 1.55;
     color: #3a3a2a;
   }
   #expanded-log-box .log-newest {
     font-weight: 700;
     background: rgba(201,162,39,.18);
-    padding: 6px 9px;
+    padding: 9px 12px;
     border-radius: var(--radius-sm);
     box-shadow: inset 3px 0 0 var(--gold);
   }
@@ -690,7 +692,7 @@
 
   /* ---- chat panel ---- */
   #chat-panel {
-    position: fixed; right: 16px; bottom: 16px; z-index: 90;
+    position: fixed; right: 16px; bottom: 16px; z-index: 950; pointer-events: auto;
     font-family: 'Times New Roman', Times, serif;
   }
   #chat-toggle {
@@ -2289,8 +2291,8 @@ function closeActivityModal() {
   document.getElementById('activity-modal-overlay').classList.add('hidden');
 }
 
-document.getElementById('btn-open-log').onclick = () => openActivityModal('log');
-document.getElementById('chat-toggle').onclick = () => openActivityModal('chat');
+document.getElementById('btn-open-log').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); openActivityModal('log'); });
+document.getElementById('chat-toggle').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); openActivityModal('chat'); });
 document.getElementById('btn-close-activity').onclick = closeActivityModal;
 document.getElementById('activity-modal-overlay').addEventListener('click', (e) => {
   if (e.target.id === 'activity-modal-overlay') closeActivityModal();
@@ -2826,7 +2828,9 @@ function copyShareLink() {
 // =========================================================
 function renderFromState() {
   if (!ROOM) return;
+  // Log/Chat are available to every player, including the host.
   document.getElementById('chat-panel').classList.remove('hidden');
+  document.getElementById('btn-open-log').disabled = false;
   renderChat();
   checkAnnouncement();
   if (!document.getElementById('settings-modal-overlay').classList.contains('hidden')) renderSettingsList();
