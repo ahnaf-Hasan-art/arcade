@@ -684,9 +684,10 @@
     border-radius: var(--radius-sm);
     background: rgba(255,255,255,.42);
   }
-  #expanded-chat-messages .chat-msg { font-size: 14px; max-width: 88%; }
+  #expanded-chat-messages .chat-msg { font-size: 16px; line-height: 1.5; max-width: 88%; padding: 8px 11px; }
+  #expanded-chat-messages .chat-msg .who { font-size: 16px; }
   #expanded-chat-input-row { display:flex; margin-top:10px; border:2px solid var(--hairline); border-radius:var(--radius-sm); overflow:hidden; }
-  #expanded-chat-input-row input { flex:1; border:0; border-radius:0; font-size:14px; padding:12px; background:rgba(255,255,255,.75); }
+  #expanded-chat-input-row input { flex:1; border:0; border-radius:0; font-size:16px; padding:12px; background:rgba(255,255,255,.75); }
   #expanded-chat-input-row button { border:0; border-radius:0; padding:12px 18px; }
   .activity-modal-hint { font-size:12px; color:#5c5642; margin-top:8px; }
 
@@ -696,12 +697,21 @@
     font-family: 'Times New Roman', Times, serif;
   }
   #chat-toggle {
+    position: relative;
     padding: 11px 18px; border-radius: 999px; font-size: 14px;
     background: linear-gradient(160deg,var(--gold-light),var(--gold));
     border-color: var(--gold-dark);
     box-shadow: 0 8px 20px rgba(0,0,0,.4);
   }
   #chat-toggle:hover:not(:disabled) { background: linear-gradient(160deg,#f5ecc0,#dcb93a); }
+  #chat-unread-badge {
+    position: absolute; top: -7px; right: -7px; min-width: 20px; height: 20px;
+    padding: 0 5px; border-radius: 999px; background: #d33; color: #fff;
+    border: 2px solid var(--panel-bg); font: 900 12px/16px Arial, sans-serif;
+    display: inline-flex; align-items: center; justify-content: center;
+    box-sizing: border-box;
+  }
+  #chat-unread-badge.hidden { display:none; }
   #chat-body {
     position: absolute; right: 0; bottom: 58px;
     width: 290px; max-width: 80vw;
@@ -1101,7 +1111,7 @@
 
 <!-- CHAT PANEL -->
 <div id="chat-panel" class="hidden">
-  <button id="chat-toggle">💬 Chat</button>
+  <button id="chat-toggle">💬 Chat<span id="chat-unread-badge" class="hidden" aria-label="Unread messages"></span></button>
 </div>
 
 <!-- EXPANDED LOG / CHAT WINDOW -->
@@ -2087,6 +2097,9 @@ let GAME = null;
 let room = null;
 let connectedIds = [];      // live presence list, updated by onPresence
 let disconnectSince = {};   // playerId -> timestamp they were first noticed missing (host-local bookkeeping)
+let unreadChatCount = 0;
+let lastKnownChatTs = null;
+let chatHasInitialized = false;
 
 const SUPABASE_CONFIGURED = SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL';
 
@@ -2272,6 +2285,42 @@ document.getElementById('btn-reset-settings').onclick = () => {
 // ---- expanded log / chat panel ----
 let activityModalMode = null;
 
+function updateChatUnreadBadge() {
+  const badge = document.getElementById('chat-unread-badge');
+  if (!badge) return;
+  if (unreadChatCount > 0) {
+    badge.textContent = unreadChatCount > 99 ? '99+' : String(unreadChatCount);
+    badge.classList.remove('hidden');
+  } else {
+    badge.textContent = '';
+    badge.classList.add('hidden');
+  }
+}
+
+function clearUnreadChat() {
+  unreadChatCount = 0;
+  const latest = (ROOM?.chat || []).at(-1);
+  lastKnownChatTs = latest?.ts ?? lastKnownChatTs;
+  updateChatUnreadBadge();
+}
+
+function processChatUpdates(nextRoom) {
+  const messages = nextRoom?.chat || [];
+  const latestTs = messages.length ? Number(messages[messages.length - 1].ts || 0) : null;
+  if (!chatHasInitialized) {
+    chatHasInitialized = true;
+    lastKnownChatTs = latestTs;
+    updateChatUnreadBadge();
+    return;
+  }
+  if (latestTs != null && (lastKnownChatTs == null || latestTs > lastKnownChatTs)) {
+    const incoming = messages.filter(m => Number(m.ts || 0) > Number(lastKnownChatTs || 0) && m.senderId !== myId);
+    if (activityModalMode !== 'chat') unreadChatCount += incoming.length;
+    lastKnownChatTs = latestTs;
+    updateChatUnreadBadge();
+  }
+}
+
 function openActivityModal(mode) {
   activityModalMode = mode;
   const overlay = document.getElementById('activity-modal-overlay');
@@ -2283,7 +2332,7 @@ function openActivityModal(mode) {
   chat.classList.toggle('hidden', mode !== 'chat');
   overlay.classList.remove('hidden');
   if (mode === 'log') renderExpandedLog();
-  else { renderChat(); setTimeout(() => document.getElementById('expanded-chat-input')?.focus(), 0); }
+  else { clearUnreadChat(); renderChat(); setTimeout(() => document.getElementById('expanded-chat-input')?.focus(), 0); }
 }
 
 function closeActivityModal() {
@@ -2789,6 +2838,7 @@ async function setupRoom() {
   room.on('request_sync', () => { if (isHost()) broadcastSync(); });
 
   room.on('sync', (payload) => {
+    processChatUpdates(payload.room);
     ROOM = payload.room;
     GAME = payload.game;
     renderFromState();
