@@ -239,10 +239,21 @@
      ========================================================= */
   :root{
     --gold:#c9a227;
+    --gold-light:#e8d98a;
     --gold-dark:#8a6d16;
     --panel-bg: radial-gradient(circle at 50% 20%, #fffdf6 0%, var(--board-cream) 75%);
+    --panel-bg-flat: var(--board-cream);
     --panel-border: var(--border);
     --accent-red:#a01015;
+    --accent-green:#1f7a3f;
+    --hairline:#d8cfb0;
+    --radius-sm:4px;
+    --radius-md:8px;
+    --radius-lg:14px;
+    --shadow-card: 0 8px 22px rgba(0,0,0,.28), 0 1px 0 rgba(255,255,255,.5) inset;
+    --shadow-lift: 0 14px 32px rgba(0,0,0,.4);
+    --shadow-pop: 0 30px 80px rgba(0,0,0,.55);
+    --ease: cubic-bezier(.2,.7,.3,1);
   }
   html, body { overflow-x: hidden; }
   body {
@@ -254,11 +265,38 @@
   }
   .board { margin: 0 auto; }
 
-  .back-link {
-    display: inline-block; margin: 14px 0 0 16px; font-size: 13px;
-    color: var(--board-cream); text-decoration: none; letter-spacing:.5px;
+  /* subtle global scrollbar treatment so every scroll region in the
+     HUD/modals/chat shares one quiet, on-theme look instead of the
+     stock OS scrollbar clashing with the cream/gold panels */
+  .modal-card, #chat-messages, #log-box, .props-list, .prop-picker, .settings-list{
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold) transparent;
   }
-  .back-link:hover { text-decoration: underline; }
+  .modal-card::-webkit-scrollbar, #chat-messages::-webkit-scrollbar,
+  #log-box::-webkit-scrollbar, .props-list::-webkit-scrollbar, .prop-picker::-webkit-scrollbar{
+    width: 7px;
+  }
+  .modal-card::-webkit-scrollbar-thumb, #chat-messages::-webkit-scrollbar-thumb,
+  #log-box::-webkit-scrollbar-thumb, .props-list::-webkit-scrollbar-thumb, .prop-picker::-webkit-scrollbar-thumb{
+    background: var(--gold); border-radius: 10px;
+  }
+  .modal-card::-webkit-scrollbar-track, #chat-messages::-webkit-scrollbar-track,
+  #log-box::-webkit-scrollbar-track, .props-list::-webkit-scrollbar-track, .prop-picker::-webkit-scrollbar-track{
+    background: transparent;
+  }
+
+  :focus-visible{ outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  .back-link {
+    display: inline-flex; align-items:center; gap:6px;
+    margin: 14px 0 0 16px; padding: 6px 12px;
+    font-size: 13px; letter-spacing:.3px;
+    color: var(--board-cream); text-decoration: none;
+    border-radius: 999px; border:1px solid rgba(255,255,255,.18);
+    background: rgba(0,0,0,.18);
+    transition: background .18s var(--ease), border-color .18s var(--ease), transform .18s var(--ease);
+  }
+  .back-link:hover { text-decoration: none; background: rgba(0,0,0,.32); border-color: var(--gold); transform: translateX(-2px); }
 
   .screen {
     display: flex;
@@ -266,8 +304,10 @@
     align-items: center;
     gap: 14px;
     text-align: center;
-    padding: 40px 20px;
+    padding: 40px 20px 60px;
     color: var(--board-cream);
+    max-width: 520px;
+    margin: 0 auto;
   }
   .hidden { display: none !important; }
 
@@ -283,8 +323,9 @@
      on #hud, or inherit ink from body). Hardcoding a light color here
      used to make this text invisible everywhere it appeared inside the
      light-colored HUD/modal panels — letting it inherit fixes that. */
-  .msg { font-size:14px; max-width:480px; }
+  .msg { font-size:14px; max-width:480px; line-height:1.5; }
   .err { color: #ff8a8a; font-size:13px; min-height:16px; }
+  .err:not(:empty)::before { content:"⚠ "; }
   .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center; }
   a.link { color: var(--gold); }
 
@@ -294,29 +335,36 @@
     background: var(--panel-bg);
     border: 2px solid var(--panel-border);
     color: var(--ink);
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
+    transition: background .16s var(--ease), border-color .16s var(--ease), box-shadow .16s var(--ease), transform .12s var(--ease);
   }
-  button { cursor:pointer; font-weight:700; letter-spacing:.5px; }
-  button:hover { background: linear-gradient(160deg,#fffdf6,#eee7d4); }
-  button:disabled { opacity:.4; cursor:not-allowed; }
+  input:focus, select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,162,39,.25); }
+  button { cursor:pointer; font-weight:700; letter-spacing:.5px; box-shadow: 0 2px 0 rgba(0,0,0,.5); }
+  button:hover:not(:disabled) { background: linear-gradient(160deg,#fffdf6,#eee7d4); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,.3); }
+  button:active:not(:disabled) { transform: translateY(1px); box-shadow: 0 1px 0 rgba(0,0,0,.5); }
+  button:disabled { opacity:.4; cursor:not-allowed; box-shadow:none; }
 
   .code-badge {
     font-size:26px; letter-spacing:6px; color:var(--gold);
-    border:2px dashed var(--gold); padding:6px 18px; background: rgba(0,0,0,.15);
+    border:2px dashed var(--gold); padding:6px 18px; border-radius: var(--radius-sm);
+    background: rgba(0,0,0,.2);
+    box-shadow: 0 0 0 6px rgba(201,162,39,.06);
   }
 
   .seat-select { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-top:4px; }
-  .seat-btn { padding:8px 14px; }
-  .seat-btn.active { border-color: var(--gold); color: var(--gold-dark); background: var(--panel-bg); box-shadow: 0 0 0 1px var(--gold) inset; }
+  .seat-btn { padding:8px 14px; border-radius: 999px; }
+  .seat-btn.active { border-color: var(--gold); color: var(--gold-dark); background: var(--panel-bg); box-shadow: 0 0 0 1px var(--gold) inset, 0 2px 8px rgba(201,162,39,.35); }
   .seat-btn:disabled { opacity:.5; }
 
   .seat-list { display:flex; flex-direction:column; gap:6px; width:100%; max-width:360px; margin-top:8px; }
   .seat-row {
-    display:flex; align-items:center; gap:10px; padding:8px 12px;
-    border:1px solid #3a5a49; background: rgba(0,0,0,.2); font-size:13px; color:#cfe3d8;
+    display:flex; align-items:center; gap:10px; padding:9px 12px;
+    border:1px solid #3a5a49; border-radius: var(--radius-sm);
+    background: rgba(0,0,0,.22); font-size:13px; color:#cfe3d8;
+    transition: border-color .16s var(--ease), background .16s var(--ease);
   }
-  .seat-row.mine { border-color: var(--gold); }
-  .token-dot { width:16px; height:16px; border-radius:50%; border:2px solid #000; flex-shrink:0; }
+  .seat-row.mine { border-color: var(--gold); background: rgba(201,162,39,.12); }
+  .token-dot { width:16px; height:16px; border-radius:50%; border:2px solid #000; flex-shrink:0; box-shadow: 0 1px 2px rgba(0,0,0,.5); }
   .seat-row .who { flex:1; text-align:left; }
   .seat-row.filled .who { color: var(--board-cream); font-weight:700; }
 
@@ -340,9 +388,9 @@
     aspect-ratio: 1;
     border-radius: 50%;
     border: 2px solid #000;
-    box-shadow: 0 1px 3px rgba(0,0,0,.5);
+    box-shadow: 0 2px 5px rgba(0,0,0,.55), 0 0 0 2px rgba(255,255,255,.65);
     z-index: 5;
-    transition: left .3s ease, top .3s ease;
+    transition: left .3s var(--ease), top .3s var(--ease);
   }
 
   /* on-board ownership indicator: a colored border matching the
@@ -381,66 +429,101 @@
   .hud-box {
     border: 2px solid var(--panel-border);
     background: var(--panel-bg);
-    padding: 12px;
-    border-radius: 4px;
-    box-shadow: 0 6px 16px rgba(0,0,0,.35);
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+    transition: box-shadow .18s var(--ease);
   }
+  .hud-box:hover { box-shadow: var(--shadow-lift); }
   .hud-box h4 {
-    margin:0 0 8px; font-size:12px; letter-spacing:2px; color: var(--gold-dark);
-    text-transform:uppercase; border-bottom:1px solid #d8cfb0; padding-bottom:6px;
+    margin:0 0 10px; font-size:11.5px; letter-spacing:2px; color: var(--gold-dark);
+    text-transform:uppercase; border-bottom:2px solid var(--hairline); padding-bottom:7px;
+    display:flex; align-items:center; gap:6px;
+  }
+  .hud-box h4::before{
+    content:""; width:6px; height:6px; border-radius:50%;
+    background: var(--gold); box-shadow: 0 0 0 3px rgba(201,162,39,.18);
   }
 
-  .player-row { display:flex; align-items:center; gap:8px; padding:5px 0; font-size:13px; }
-  .player-row.turn { color: var(--accent-red); font-weight:900; }
+  .player-row { display:flex; align-items:center; gap:8px; padding:7px 6px; font-size:13px; border-radius: var(--radius-sm); transition: background .16s var(--ease); }
+  .player-row.turn {
+    color: var(--accent-red); font-weight:900;
+    background: rgba(160,16,21,.08);
+    box-shadow: inset 3px 0 0 var(--accent-red);
+    animation: turn-pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes turn-pulse {
+    0%, 100% { background: rgba(160,16,21,.06); }
+    50% { background: rgba(160,16,21,.14); }
+  }
   .player-row.bankrupt { opacity:.4; text-decoration: line-through; }
-  .player-row .cash { margin-left:auto; font-weight:700; }
+  .player-row .cash { margin-left:auto; font-weight:700; font-variant-numeric: tabular-nums; }
 
-  .dice-row { display:flex; gap:8px; justify-content:center; font-size:28px; margin-bottom:8px; flex-wrap:wrap; }
-  .pit-card { background:#fff; border:1px solid #999; border-radius:6px; width:52px; padding:4px 2px; text-align:center; box-shadow:1px 1px 3px rgba(0,0,0,.3); }
-  .pit-card.winner { border:2px solid #d4af37; box-shadow:0 0 6px #d4af37; }
+  .dice-row { display:flex; gap:10px; justify-content:center; font-size:28px; margin-bottom:10px; flex-wrap:wrap; }
+  .pit-card {
+    background: linear-gradient(160deg,#fff,#f3f0e6);
+    border:1px solid #999; border-radius:8px; width:52px; padding:6px 3px; text-align:center;
+    box-shadow: 0 3px 6px rgba(0,0,0,.3);
+    transition: transform .16s var(--ease);
+  }
+  .pit-card.winner { border:2px solid var(--gold); box-shadow:0 0 10px rgba(201,162,39,.7), 0 3px 6px rgba(0,0,0,.3); transform: translateY(-2px); }
   .pit-card-label { font-size:18px; font-weight:bold; }
   .pit-card-name { font-size:10.5px; color:#333; margin-top:2px; }
   .die {
-    width:40px; height:40px; display:flex; align-items:center; justify-content:center;
-    background:#fff; color:#000; border-radius:6px; border:2px solid #000; font-weight:900;
+    width:44px; height:44px; display:flex; align-items:center; justify-content:center;
+    background: linear-gradient(160deg,#ffffff,#e7e7e7);
+    color:#000; border-radius:9px; border:2px solid #000; font-weight:900;
+    box-shadow: 0 3px 0 rgba(0,0,0,.65), 0 5px 10px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.8);
   }
 
-  .action-row { display:flex; flex-wrap:wrap; gap:6px; }
-  .action-row button { flex:1 1 auto; font-size:12px; padding:8px 10px; }
+  .action-row { display:flex; flex-wrap:wrap; gap:7px; }
+  .action-row button { flex:1 1 auto; font-size:12px; padding:9px 10px; border-radius: var(--radius-sm); }
+  .action-row button:first-child:not(:only-child) {
+    background: linear-gradient(160deg,var(--gold-light),var(--gold));
+    border-color: var(--gold-dark);
+  }
+  .action-row button:first-child:not(:only-child):hover:not(:disabled) {
+    background: linear-gradient(160deg,#f5ecc0,#dcb93a);
+  }
 
   #log-box { max-height: 160px; overflow-y: auto; font-size: 13px; color:#3a3a2a; display:flex; flex-direction:column; gap:5px; }
-  #log-box .log-newest { font-weight: 700; background: rgba(201,162,39,.18); padding: 3px 6px; border-radius: 4px; }
+  #log-box .log-newest { font-weight: 700; background: rgba(201,162,39,.18); padding: 4px 7px; border-radius: var(--radius-sm); box-shadow: inset 2px 0 0 var(--gold); }
 
-  .props-list { max-height: 160px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; }
-  .prop-row { display:flex; align-items:center; gap:6px; font-size:12.5px; }
-  .prop-row .swatch { width:10px; height:10px; flex-shrink:0; border:1px solid #000; }
-  .prop-row button { font-size:10px; padding:3px 6px; margin-left:auto; }
+  .props-list { max-height: 170px; overflow-y:auto; display:flex; flex-direction:column; gap:5px; }
+  .prop-row { display:flex; align-items:center; gap:6px; font-size:12.5px; padding: 2px 0; }
+  .prop-row .swatch { width:11px; height:11px; flex-shrink:0; border:1px solid #000; border-radius:2px; }
+  .prop-row button { font-size:10px; padding:4px 8px; margin-left:auto; border-radius: var(--radius-sm); }
 
   /* ---- pending trade offers (in the HUD) ---- */
-  .trade-offer-row { font-size: 13px; border: 1px solid #d8cfb0; background: rgba(255,255,255,.4); border-radius: 4px; padding: 10px; margin-bottom: 8px; text-align: left; line-height: 1.4; }
+  .trade-offer-row { font-size: 13px; border: 1px solid var(--hairline); background: rgba(255,255,255,.5); border-radius: var(--radius-sm); padding: 10px; margin-bottom: 8px; text-align: left; line-height: 1.4; box-shadow: 0 2px 6px rgba(0,0,0,.1); }
   .trade-offer-row .row { margin-top: 8px; }
   .trade-offer-row button { font-size: 12px; padding: 6px 12px; }
 
   /* ---- trade modal ---- */
   .modal-overlay {
     position: fixed; inset: 0; z-index: 100;
-    background: rgba(10, 15, 10, .6);
+    background: rgba(10, 15, 10, .62);
+    backdrop-filter: blur(2px);
     display: flex; align-items: center; justify-content: center;
     padding: 20px;
+    animation: overlay-in .15s var(--ease);
   }
+  @keyframes overlay-in { from { opacity: 0; } to { opacity: 1; } }
   .modal-card {
     width: min(600px, 100%);
     max-height: 88vh;
     overflow-y: auto;
     background: var(--panel-bg);
     border: 3px solid var(--panel-border);
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     padding: 24px;
-    box-shadow: 0 25px 70px rgba(0,0,0,.55);
+    box-shadow: var(--shadow-pop);
+    animation: modal-in .2s var(--ease);
   }
-  .modal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom: 16px; }
+  @keyframes modal-in { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  .modal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--hairline); }
   .modal-head h3 { margin: 0; font-size: 22px; color: var(--gold-dark); letter-spacing: 1px; }
-  .modal-x { font-size: 16px; padding: 6px 10px; line-height: 1; }
+  .modal-x { font-size: 16px; padding: 6px 10px; line-height: 1; border-radius: 999px; }
 
   .modal-label { display:block; font-size: 14px; font-weight: 700; margin-bottom: 14px; }
   .modal-select { display:block; width:100%; margin-top:6px; font-size: 15px; padding: 10px; }
@@ -449,37 +532,64 @@
   .trade-col { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
   .trade-col-head {
     font-size: 15px; font-weight: 900; text-align: center;
-    padding: 6px; background: rgba(0,0,0,.06); border-radius: 4px; letter-spacing: .5px;
+    padding: 7px; background: rgba(0,0,0,.06); border-radius: var(--radius-sm); letter-spacing: .5px;
   }
   .trade-arrow { align-self: center; font-size: 22px; color: var(--gold-dark); }
 
   .prop-picker {
     display: flex; flex-direction: column; gap: 6px;
     max-height: 220px; overflow-y: auto;
-    border: 1px solid #d8cfb0; border-radius: 4px; padding: 6px;
-    background: rgba(255,255,255,.5);
+    border: 1px solid var(--hairline); border-radius: var(--radius-sm); padding: 6px;
+    background: rgba(255,255,255,.55);
   }
   .prop-picker .prop-option {
     display: flex; align-items: center; gap: 8px;
-    font-size: 13px; padding: 7px 8px; border-radius: 4px;
+    font-size: 13px; padding: 7px 8px; border-radius: var(--radius-sm);
     cursor: pointer; border: 1px solid transparent;
+    transition: background .14s var(--ease), border-color .14s var(--ease);
   }
-  .prop-picker .prop-option:hover { background: rgba(0,0,0,.05); }
-  .prop-picker .prop-option.checked { border-color: var(--gold); background: rgba(201,162,39,.15); font-weight: 700; }
+  .prop-picker .prop-option:hover { background: rgba(0,0,0,.06); }
+  .prop-picker .prop-option.checked { border-color: var(--gold); background: rgba(201,162,39,.16); font-weight: 700; }
   .prop-picker .prop-option .swatch { width: 12px; height: 12px; flex-shrink:0; border: 1px solid #000; border-radius: 2px; }
   .prop-picker .prop-option input { width: 15px; height: 15px; flex-shrink: 0; }
   .prop-picker .empty-msg { font-size: 12px; color: #5c5642; font-style: italic; padding: 8px; text-align: center; }
 
   .cash-row { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; }
-  .cash-row input { flex: 1; font-size: 15px; padding: 8px; }
+  .cash-row input { flex: 1; font-size: 15px; padding: 9px; }
 
   .jail-check { display: flex; align-items: center; gap: 8px; font-size: 13px; }
   .jail-check input { width: 15px; height: 15px; }
 
   .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
-  .modal-actions button { flex: 1; font-size: 15px; padding: 12px; }
-  .modal-primary { background: linear-gradient(160deg,#e8d98a,var(--gold)); border-color: var(--gold-dark); }
-  .modal-primary:hover { background: linear-gradient(160deg,#f5ecc0,#dcb93a); }
+  .modal-actions button { flex: 1; font-size: 15px; padding: 12px; border-radius: var(--radius-sm); }
+  .modal-primary { background: linear-gradient(160deg,var(--gold-light),var(--gold)); border-color: var(--gold-dark); }
+  .modal-primary:hover:not(:disabled) { background: linear-gradient(160deg,#f5ecc0,#dcb93a); }
+
+  /* ---- auction modal (pops up centered, same overlay/card system
+     as the trade/settings modals, sized up a bit and non-dismissable) ---- */
+  .auction-modal-card { width: min(460px, 100%); text-align: center; }
+  .auction-modal-card .modal-head { justify-content: center; }
+  .auction-modal-card .modal-head h3 { letter-spacing: 2px; text-transform: uppercase; font-size: 20px; }
+  #auction-modal-status { font-size: 15px; font-weight: 700; }
+  #auction-modal-order { color: #5c5642; }
+  .auction-timer {
+    font-size: 40px; font-weight: 900; font-variant-numeric: tabular-nums;
+    color: var(--ink); margin: 14px auto 4px; width: 84px; height: 84px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; border: 4px solid var(--gold);
+    background: radial-gradient(circle at 50% 30%, #fffdf6 0%, var(--panel-bg-flat) 75%);
+    box-shadow: 0 6px 16px rgba(0,0,0,.25);
+    transition: border-color .2s var(--ease), color .2s var(--ease);
+  }
+  .auction-timer.low { border-color: var(--accent-red); color: var(--accent-red); animation: turn-pulse 1s ease-in-out infinite; }
+  .auction-modal-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+  .auction-modal-actions .raise-btn {
+    font-size: 15px; padding: 12px; border-radius: var(--radius-sm);
+    background: linear-gradient(160deg,var(--gold-light),var(--gold)); border-color: var(--gold-dark);
+  }
+  .auction-modal-actions .raise-btn:hover:not(:disabled) { background: linear-gradient(160deg,#f5ecc0,#dcb93a); }
+  .auction-modal-actions .pass-btn { font-size: 15px; padding: 12px; border-radius: var(--radius-sm); background: var(--panel-bg); }
+  .auction-modal-waiting { font-size: 13px; color: #5c5642; font-style: italic; margin-top: 16px; }
 
   @media (max-width: 560px) {
     .trade-columns { flex-direction: column; }
@@ -487,16 +597,22 @@
   }
 
   /* ---- settings modal ---- */
-  .settings-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 4px; }
+  .settings-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 4px; max-height: 60vh; overflow-y: auto; }
   .settings-group h4 {
     margin: 0 0 6px; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase;
-    color: var(--gold-dark); border-bottom: 1px solid #d8cfb0; padding-bottom: 4px;
+    color: var(--gold-dark); border-bottom: 1px solid var(--hairline); padding-bottom: 4px;
   }
-  .settings-row { display: flex; align-items: center; gap: 8px; padding: 5px 2px; font-size: 13px; }
+  .settings-row { display: flex; align-items: center; gap: 8px; padding: 6px 4px; font-size: 13px; border-radius: var(--radius-sm); transition: background .14s var(--ease); }
+  .settings-row:hover { background: rgba(0,0,0,.03); }
   .settings-row .swatch { width: 12px; height: 12px; flex-shrink: 0; border: 1px solid #000; border-radius: 2px; }
   .settings-row .sname { flex: 1; }
   .settings-row input { width: 90px; font-size: 13px; padding: 6px 8px; }
   .settings-row input:disabled { opacity: .6; }
+  .settings-row .save-tick {
+    font-size: 11px; color: var(--accent-green); opacity: 0; transition: opacity .2s var(--ease);
+    width: 14px; text-align: center; flex-shrink: 0;
+  }
+  .settings-row .save-tick.show { opacity: 1; }
 
   /* ---- announcement toast (card draws, jail) ---- */
   #announcement-toast {
@@ -507,12 +623,12 @@
     max-width: min(520px, 90vw);
     background: var(--panel-bg);
     border: 3px solid var(--panel-border);
-    border-radius: 8px;
-    padding: 14px 20px;
-    box-shadow: 0 15px 40px rgba(0,0,0,.5);
+    border-radius: var(--radius-md);
+    padding: 14px 22px;
+    box-shadow: var(--shadow-pop);
     font-family: 'Times New Roman', Times, serif;
     text-align: center;
-    animation: toast-in .25s ease-out;
+    animation: toast-in .25s var(--ease);
   }
   #announcement-toast.toast-card { border-color: #e8580f; }
   #announcement-toast.toast-jail { border-color: #e0740a; background: radial-gradient(circle at 50% 20%, #fff2df 0%, var(--board-cream) 75%); }
@@ -531,35 +647,118 @@
     font-family: 'Times New Roman', Times, serif;
   }
   #chat-toggle {
-    padding: 10px 16px; border-radius: 20px; font-size: 14px;
-    box-shadow: 0 6px 16px rgba(0,0,0,.4);
+    padding: 11px 18px; border-radius: 999px; font-size: 14px;
+    background: linear-gradient(160deg,var(--gold-light),var(--gold));
+    border-color: var(--gold-dark);
+    box-shadow: 0 8px 20px rgba(0,0,0,.4);
   }
+  #chat-toggle:hover:not(:disabled) { background: linear-gradient(160deg,#f5ecc0,#dcb93a); }
   #chat-body {
-    position: absolute; right: 0; bottom: 52px;
-    width: 280px; max-width: 80vw;
-    background: var(--panel-bg); border: 2px solid var(--panel-border); border-radius: 8px;
-    box-shadow: 0 20px 50px rgba(0,0,0,.45);
+    position: absolute; right: 0; bottom: 58px;
+    width: 290px; max-width: 80vw;
+    background: var(--panel-bg); border: 2px solid var(--panel-border); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-pop);
     display: flex; flex-direction: column;
     overflow: hidden;
+    animation: modal-in .18s var(--ease);
   }
   #chat-messages {
     max-height: 260px; overflow-y: auto; padding: 10px;
-    display: flex; flex-direction: column; gap: 6px;
+    display: flex; flex-direction: column; gap: 7px;
   }
-  .chat-msg { font-size: 13px; line-height: 1.4; }
+  .chat-msg {
+    font-size: 13px; line-height: 1.4;
+    background: rgba(0,0,0,.045); border-radius: var(--radius-sm);
+    padding: 6px 9px; align-self: flex-start; max-width: 92%;
+  }
+  .chat-msg.mine { align-self: flex-end; background: rgba(201,162,39,.16); }
   .chat-msg .who { font-weight: 900; color: var(--gold-dark); }
   .chat-msg.mine .who { color: var(--accent-red); }
-  .chat-input-row { display: flex; border-top: 1px solid #d8cfb0; }
+  .chat-input-row { display: flex; border-top: 2px solid var(--hairline); }
   .chat-input-row input {
-    flex: 1; border: none; border-radius: 0; font-size: 13px; padding: 10px;
-    background: rgba(255,255,255,.6);
+    flex: 1; border: none; border-radius: 0; font-size: 13px; padding: 11px;
+    background: rgba(255,255,255,.65);
   }
-  .chat-input-row button { border: none; border-radius: 0; font-size: 12px; padding: 10px 14px; }
+  .chat-input-row button { border: none; border-radius: 0; font-size: 12px; padding: 11px 14px; box-shadow: none; }
 
   @media (max-width: 900px) {
     #game-shell { flex-direction: column; align-items: center; }
     #hud { width: 100%; max-width: 480px; flex-basis: auto; }
   }
+
+  /* =========================================================
+     CENTER-BOARD CARDS-MODE UI — replaces the decorative
+     MONOPOLY logo / Chance / Chest stacks with two live regions
+     while movement mode is "cards", instead of duplicating the
+     trick + hand + assignment UI down in the sidebar/HUD (which
+     is what used to happen, and pushed the important controls
+     off-screen on mobile). Red-bordered box on top = the trick
+     currently being played (one card per player). Black-bordered
+     box below = your hand to play from, or the movement
+     assignment/confirmation UI once a trick is won.
+     ========================================================= */
+  #center-card-ui{
+    position:absolute;
+    inset:5%;
+    z-index:3;
+    display:flex;
+    flex-direction:column;
+    gap:1.6vmin;
+  }
+  #center-trick-box, #center-hand-box{
+    background: rgba(247,243,233,.94);
+    border-radius: 10px;
+    box-shadow: 0 6px 16px rgba(0,0,0,.28);
+    display:flex; flex-direction:column; align-items:center;
+    padding: 1.4vmin 1.6vmin;
+  }
+  #center-trick-box{
+    flex: 0 0 32%;
+    border: 3px solid #d21017;
+    justify-content:center;
+  }
+  #center-hand-box{
+    flex: 1 1 auto;
+    border: 3px solid #000;
+    justify-content:flex-start;
+    overflow:auto;
+  }
+  .center-box-label{
+    font-size:1.5vmin; letter-spacing:2px; text-transform:uppercase; font-weight:900;
+    color: var(--gold-dark); margin-bottom: 1vmin; text-align:center;
+  }
+  #center-trick-cards, #center-hand-cards{
+    display:flex; flex-wrap:wrap; gap:1vmin; justify-content:center; align-items:flex-start; width:100%;
+  }
+  .center-trick-slot{ display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .center-trick-slot .ct-card{
+    width:9vmin; max-width:70px; aspect-ratio:0.7;
+    background: linear-gradient(160deg,#fff,#f3f0e6);
+    border:2px solid #000; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:2.3vmin; font-weight:900;
+    box-shadow: 0 3px 6px rgba(0,0,0,.3);
+  }
+  .center-trick-slot .ct-card.empty{ opacity:.35; font-weight:400; font-size:2vmin; }
+  .center-trick-slot.active-turn .ct-card{ border-color:var(--gold); box-shadow:0 0 10px rgba(201,162,39,.7); }
+  .center-trick-slot.winner .ct-card{ border-color:var(--gold); box-shadow:0 0 10px rgba(201,162,39,.8); transform:translateY(-2px); }
+  .center-trick-slot .ct-name{ font-size:1.15vmin; color:#333; text-align:center; }
+  .center-hand-card{
+    width:8vmin; max-width:60px; aspect-ratio:0.7;
+    background: linear-gradient(160deg,#fff,#f3f0e6);
+    border:2px solid #000; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:2vmin; font-weight:900;
+    box-shadow: 0 3px 6px rgba(0,0,0,.3);
+    transition: transform .12s var(--ease);
+  }
+  .center-hand-card:hover{ transform:translateY(-3px); }
+  #center-hand-box .msg{ font-size:1.35vmin; line-height:1.4; }
+  #center-hand-box .center-assign-wrap{ width:100%; }
+  #center-hand-box .center-assign-wrap .msg{ margin-bottom:1vmin; }
+  #center-hand-box .center-assign-wrap > div{ margin-bottom:1vmin; }
+  #center-hand-box .center-assign-wrap .row{ justify-content:center; }
+  #center-hand-box .center-assign-wrap button{ font-size:1.3vmin; padding:0.8vmin 1.2vmin; }
 </style>
 </head>
 <body>
@@ -606,7 +805,6 @@
   <div class="eyebrow" style="margin-top:8px;">Your Name <span style="text-transform:none; letter-spacing:0; font-size:11px;">(optional — defaults to "Player 1", "Player 2", etc.)</span></div>
   <div class="row">
     <input id="name-input" maxlength="20" placeholder="e.g. Alex" style="width:200px;">
-    <button id="btn-save-name">Save</button>
   </div>
 
   <div class="eyebrow" style="margin-top:8px;">Player count <span id="host-tag" class="hidden">(you're host — pick below)</span></div>
@@ -666,6 +864,21 @@
         <div class="card-stack chance-stack"><div class="card-face"><div class="card-icon">❓</div><div class="card-label">CHANCE</div></div></div>
         <div class="card-stack chest-stack"><div class="card-face"><div class="card-icon">🎁</div><div class="card-label">COMMUNITY<br>CHEST</div></div></div>
         <div class="logo">MONOPOLY</div>
+
+        <!-- CARDS-MODE center UI: replaces the logo/stacks above while
+             movement mode is "cards" and the game is running (toggled
+             from JS). Red box = current trick; black box = your hand
+             / movement assignment + confirmation. -->
+        <div id="center-card-ui" class="hidden">
+          <div id="center-trick-box">
+            <div class="center-box-label">Current Trick</div>
+            <div id="center-trick-cards"></div>
+          </div>
+          <div id="center-hand-box">
+            <div class="center-box-label" id="center-hand-label">Your Hand</div>
+            <div id="center-hand-cards"></div>
+          </div>
+        </div>
       </div>
 
       <div class="cell side-right" style="grid-column:11/12;grid-row:2/3;" data-idx="31"><div class="color-bar green"></div><div class="name">Delhi</div><div class="price">Tk300</div></div>
@@ -731,14 +944,6 @@
     <div class="hud-box" id="jail-hud-box" style="display:none;">
       <h4>Jail</h4>
       <div id="jail-box"></div>
-    </div>
-    <div class="hud-box" id="hand-hud-box" style="display:none;">
-      <h4>Your Hand</h4>
-      <div class="dice-row" id="hand-row" style="justify-content:flex-start;"></div>
-    </div>
-    <div class="hud-box" id="auction-hud-box" style="display:none;">
-      <h4>Auction</h4>
-      <div id="auction-box"></div>
     </div>
     <div class="hud-box" id="tax-choice-hud-box" style="display:none;">
       <h4>Income Tax</h4>
@@ -818,9 +1023,24 @@
     </div>
     <div id="settings-list" class="settings-list"></div>
     <div class="modal-actions">
-      <button id="btn-save-settings" class="modal-primary">Save</button>
       <button id="btn-reset-settings">Reset to Defaults</button>
     </div>
+  </div>
+</div>
+
+<!-- AUCTION MODAL — pops up centered for everyone once an auction starts.
+     No close (X) button: an auction can't be dismissed by anyone, it
+     resolves on its own via bids/passes/timeout. -->
+<div id="auction-modal-overlay" class="modal-overlay hidden">
+  <div class="modal-card auction-modal-card">
+    <div class="modal-head">
+      <h3 id="auction-modal-title">Auction</h3>
+    </div>
+    <div class="msg" id="auction-modal-status"></div>
+    <div class="msg" id="auction-modal-order" style="font-size:11px; margin-top:6px;"></div>
+    <div id="auction-modal-timer" class="auction-timer"></div>
+    <div id="auction-modal-turnmsg" class="msg" style="font-weight:700; margin-top:2px;"></div>
+    <div class="auction-modal-actions" id="auction-modal-actions"></div>
   </div>
 </div>
 
@@ -1617,20 +1837,18 @@ function landOn(g, playerId, spaceIdx, diceSum, opts = {}) {
 // non-bankrupt players (including the one who declined). Bidding
 // goes turn-by-turn around the table (starting with whoever's turn
 // it currently is, i.e. the decliner); each player gets exactly one
-// action on their turn — raise by a fixed step, or pass — within a
-// time limit, no free-for-all typing of arbitrary amounts. Passing
-// is permanent for that auction. When only one non-passed
-// participant remains, they win at their standing bid (or, if
-// nobody ever bid, the property simply stays unowned).
+// action on their turn — raise by one of three fixed steps above the
+// current (present) bid, or pass — within a time limit, no free-for-all
+// typing of arbitrary amounts. Passing is permanent for that auction.
+// When only one non-passed participant remains, they win at their
+// standing bid (or, if nobody ever bid, the property simply stays
+// unowned).
 const AUCTION_TURN_MS = 5000;
 
-// Fixed raise step, scaled to the property's price so cheap and
-// expensive properties both take a sane number of turns to settle —
-// never a free-form amount, always this one discrete number.
-function auctionIncrement(spaceIdx) {
-  const price = priceOf(spaceIdx);
-  return Math.max(10, Math.ceil((price * 0.1) / 10) * 10);
-}
+// The three raise buttons always add one of these flat amounts on top
+// of the current bid — same three steps regardless of property price,
+// so "present value + 20/40/60" is always what's on the buttons.
+const AUCTION_RAISE_STEPS = [20, 40, 60];
 
 function startAuction(g, spaceIdx) {
   g.pendingBuySpace = null;
@@ -1646,7 +1864,7 @@ function startAuction(g, spaceIdx) {
     deadline: Date.now() + AUCTION_TURN_MS,
   };
   g.phase = 'auction';
-  pushLog(g, `${SPACES[spaceIdx].name} goes to auction — Tk${auctionIncrement(spaceIdx)} per raise, ${AUCTION_TURN_MS / 1000}s per turn.`);
+  pushLog(g, `${SPACES[spaceIdx].name} goes to auction — raise by Tk20/40/60 or pass, ${AUCTION_TURN_MS / 1000}s per turn.`);
 }
 
 function auctionActivePlayers(g) {
@@ -1853,6 +2071,29 @@ function migratePlayerId(oldId, newId) {
     if (GAME.auction.highestBidderId === oldId) GAME.auction.highestBidderId = newId;
   }
   if (ROOM.names && oldId in ROOM.names) { ROOM.names[newId] = ROOM.names[oldId]; delete ROOM.names[oldId]; }
+
+  // Cards mode (see CARDS MODE section above): hands, the trick in
+  // progress, a pit-assignment in progress, and the movement queue are
+  // all keyed by player id too — migratePlayerId used to skip these
+  // entirely, so a player who claimed a disconnected seat mid-game
+  // ended up with an empty hand (GAME.hands[newId] never existed) and
+  // could get stranded mid-trick/mid-assignment.
+  if (GAME.hands && oldId in GAME.hands) { GAME.hands[newId] = GAME.hands[oldId]; delete GAME.hands[oldId]; }
+  if (GAME.trick) {
+    GAME.trick.order = GAME.trick.order.map(id => (id === oldId ? newId : id));
+    if (oldId in GAME.trick.plays) { GAME.trick.plays[newId] = GAME.trick.plays[oldId]; delete GAME.trick.plays[oldId]; }
+  }
+  if (GAME.pit) {
+    if (GAME.pit.winnerId === oldId) GAME.pit.winnerId = newId;
+    GAME.pit.otherIds = GAME.pit.otherIds.map(id => (id === oldId ? newId : id));
+    if (oldId in GAME.pit.plays) { GAME.pit.plays[newId] = GAME.pit.plays[oldId]; delete GAME.pit.plays[oldId]; }
+    if (oldId in GAME.pit.assigned) { GAME.pit.assigned[newId] = GAME.pit.assigned[oldId]; delete GAME.pit.assigned[oldId]; }
+  }
+  if (GAME.pitQueue) {
+    GAME.pitQueue.forEach(entry => { if (entry.playerId === oldId) entry.playerId = newId; });
+  }
+  if (GAME.lastTrickWinner === oldId) GAME.lastTrickWinner = newId;
+
   delete disconnectSince[oldId];
 }
 
@@ -1868,13 +2109,23 @@ document.getElementById('btn-join').onclick = () => joinRoom(document.getElement
 document.getElementById('btn-copy-link').onclick = copyShareLink;
 document.getElementById('btn-join-seat').onclick = () => room?.send('join_seat', {});
 document.getElementById('btn-start').onclick = () => room?.send('start_game', {});
-document.getElementById('btn-save-name').onclick = saveMyName;
-document.getElementById('name-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveMyName(); });
+
+// Name field auto-saves as you type (debounced) — no separate Save
+// button. blur/Enter also flushes immediately so it's never left
+// hanging right before you navigate away.
+let nameSaveTimer = null;
 function saveMyName() {
+  clearTimeout(nameSaveTimer);
   const input = document.getElementById('name-input');
   const name = input.value.trim().slice(0, 20);
   room?.send('set_name', { name });
 }
+document.getElementById('name-input').addEventListener('input', () => {
+  clearTimeout(nameSaveTimer);
+  nameSaveTimer = setTimeout(saveMyName, 500);
+});
+document.getElementById('name-input').addEventListener('blur', saveMyName);
+document.getElementById('name-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveMyName(); });
 
 const seatSelectEl = document.getElementById('seat-count-select');
 [2,3,4,5,6].forEach(n => {
@@ -1928,15 +2179,25 @@ document.getElementById('btn-close-settings').onclick = closeSettingsModal;
 document.getElementById('settings-modal-overlay').addEventListener('click', (e) => {
   if (e.target.id === 'settings-modal-overlay') closeSettingsModal();
 });
-document.getElementById('btn-save-settings').onclick = () => {
-  if (!isHost()) return;
-  const prices = {};
-  document.querySelectorAll('#settings-list input[data-idx]').forEach(inp => {
-    prices[inp.dataset.idx] = Number(inp.value) || 0;
-  });
-  room.send('update_prices', { prices });
-  closeSettingsModal();
-};
+
+// Each price field auto-saves itself (debounced) as soon as it
+// changes — no batch Save button. See buildSettingsRow() below,
+// which wires the 'input' listener per-field via scheduleAutoSavePrice.
+let priceAutoSaveTimers = {};
+function scheduleAutoSavePrice(idx, inputEl, tickEl) {
+  clearTimeout(priceAutoSaveTimers[idx]);
+  priceAutoSaveTimers[idx] = setTimeout(() => {
+    if (!isHost() || !ROOM || ROOM.started) return;
+    const p = Math.max(0, Math.min(9999, Number(inputEl.value) || 0));
+    room.send('update_prices', { prices: { [idx]: p } });
+    if (tickEl) {
+      tickEl.classList.add('show');
+      clearTimeout(tickEl._hideTimer);
+      tickEl._hideTimer = setTimeout(() => tickEl.classList.remove('show'), 1200);
+    }
+  }, 500);
+}
+
 document.getElementById('btn-reset-settings').onclick = () => {
   if (!isHost()) return;
   room.send('reset_prices', {});
@@ -2071,7 +2332,8 @@ async function setupRoom() {
   // seat that's CURRENTLY disconnected — never an active player's seat.
   // Rewrites every player-keyed field in GAME/ROOM from oldId to newId
   // so the reconnected player resumes exactly where they left off
-  // (same cash, position, properties, jail status, pending trades).
+  // (same cash, position, properties, jail status, pending trades,
+  // and — in Cards mode — their hand and any in-progress trick/pit).
   room.on('claim_seat', (payload) => {
     if (!isHost() || !ROOM || !ROOM.started || !GAME) return;
     const oldId = payload.oldId, newId = payload.senderId;
@@ -2146,7 +2408,9 @@ async function setupRoom() {
     const bidderId = payload.senderId;
     if (GAME.auction.order[GAME.auction.turnIdx] !== bidderId) return; // not their turn
     if (GAME.auction.passed[bidderId]) return;
-    const newBid = GAME.auction.bid + auctionIncrement(GAME.auction.spaceIdx);
+    const step = payload.amount;
+    if (!AUCTION_RAISE_STEPS.includes(step)) return; // only the three fixed buttons are valid
+    const newBid = GAME.auction.bid + step;
     if (newBid > GAME.cash[bidderId]) return; // can't afford this raise
     GAME.auction.bid = newBid;
     GAME.auction.highestBidderId = bidderId;
@@ -2268,11 +2532,23 @@ async function setupRoom() {
     const groupMax = Math.max(...GROUPS[space.group].map(i => GAME.houses[i] || 0));
     if (current < groupMax) return;
     if (!canSellOneDown(GAME, current)) return; // not enough houses in the bank to break a hotel back down
-    applySellToBank(GAME, current);
-    const refund = houseSaleValueOf(space.group);
-    GAME.houses[idx] = current - 1;
-    GAME.cash[payload.senderId] += refund;
-    pushLog(GAME, `${nameOf(payload.senderId)} sold a house on ${space.name} for Tk${refund}.`);
+    if (current === 5) {
+      // Monopoly hotel-sale rule: return the hotel to the Bank and
+      // replace it with four houses. The hotel is sold for half its
+      // purchase price. Four houses must be available in the Bank.
+      GAME.hotelBank += 1;
+      GAME.houseBank -= 4;
+      GAME.houses[idx] = 4;
+      const refund = houseSaleValueOf(space.group);
+      GAME.cash[payload.senderId] += refund;
+      pushLog(GAME, `${nameOf(payload.senderId)} sold the hotel on ${space.name} for Tk${refund} and replaced it with 4 houses.`);
+    } else {
+      applySellToBank(GAME, current);
+      const refund = houseSaleValueOf(space.group);
+      GAME.houses[idx] = current - 1;
+      GAME.cash[payload.senderId] += refund;
+      pushLog(GAME, `${nameOf(payload.senderId)} sold a house on ${space.name} for Tk${refund}.`);
+    }
     broadcastSync();
   });
 
@@ -2410,6 +2686,14 @@ async function setupRoom() {
     const allYes = Object.values(votes).every(v => v === true);
     if (allYes) {
       GAME = freshGame(ROOM.seats);
+      // Cards mode needs a fresh deal + a first trick started right
+      // away, same as start_game does — restart used to skip this
+      // entirely, leaving GAME.hands empty and the game stuck in the
+      // dice-mode 'roll' phase, which Cards mode never resolves.
+      if (ROOM.movementMode === 'cards') {
+        dealNewHand(GAME);
+        startNewTrick(GAME, GAME.order[0]);
+      }
       ROOM = { ...ROOM, restartVote: null };
     }
     broadcastSync();
@@ -2525,79 +2809,72 @@ function renderLobby() {
     + ` Disconnected-player auto-skip: ${timeoutLabel}.`;
 }
 
+// Auction UI is a centered modal, shown to every player the moment an
+// auction starts (not just whoever's turn it is) — everyone can see the
+// live bid, order, and countdown; only the active bidder gets live
+// (non-disabled) buttons. Present bid = GAME.auction.bid; each raise
+// button adds one of the three fixed AUCTION_RAISE_STEPS on top of it.
 function renderAuctionUI() {
-  const wrap = document.getElementById('auction-hud-box');
-  const box = document.getElementById('auction-box');
-  if (GAME.phase !== 'auction' || !GAME.auction) { wrap.style.display = 'none'; return; }
-  wrap.style.display = '';
-  box.innerHTML = '';
+  const overlay = document.getElementById('auction-modal-overlay');
+  if (GAME.phase !== 'auction' || !GAME.auction) { overlay.classList.add('hidden'); return; }
+  overlay.classList.remove('hidden');
 
   const { spaceIdx, bid, highestBidderId, order, passed, turnIdx, deadline } = GAME.auction;
   const space = SPACES[spaceIdx];
-  const increment = auctionIncrement(spaceIdx);
   const turnPlayerId = order[turnIdx];
   const secondsLeft = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
 
-  const title = document.createElement('div');
-  title.className = 'msg';
-  title.style.fontWeight = '700';
-  title.textContent = `${space.name} — up for auction`;
-  box.appendChild(title);
+  document.getElementById('auction-modal-title').textContent = `${space.name} — Auction`;
 
-  const status = document.createElement('div');
-  status.className = 'msg';
-  status.style.fontSize = '12px';
-  status.textContent = highestBidderId
-    ? `Current bid: Tk${bid} by ${nameOf(highestBidderId)}`
-    : 'No bids yet.';
-  box.appendChild(status);
+  const statusEl = document.getElementById('auction-modal-status');
+  statusEl.textContent = highestBidderId
+    ? `Present bid: Tk${bid} by ${nameOf(highestBidderId)}`
+    : 'No bids yet — starting bid Tk0.';
 
   // Turn order, with the active player highlighted and passed
   // players struck through — makes the rotation visible at a glance.
-  const orderLine = document.createElement('div');
-  orderLine.className = 'msg';
-  orderLine.style.fontSize = '11px';
-  orderLine.innerHTML = 'Order: ' + order.map(id => {
+  const orderEl = document.getElementById('auction-modal-order');
+  orderEl.innerHTML = 'Order: ' + order.map(id => {
     const label = nameOf(id) + (id === myId ? ' (you)' : '');
     if (passed[id]) return `<span style="text-decoration:line-through; opacity:.5;">${label}</span>`;
     if (id === turnPlayerId) return `<strong>${label}</strong>`;
     return label;
   }).join(' → ');
-  box.appendChild(orderLine);
 
-  const turnMsgEl = document.createElement('div');
-  turnMsgEl.className = 'msg';
-  turnMsgEl.style.fontSize = '13px';
-  turnMsgEl.style.marginTop = '6px';
-  turnMsgEl.style.fontWeight = '700';
-  turnMsgEl.textContent = turnPlayerId === myId
-    ? `Your turn — ${secondsLeft}s left`
-    : `Waiting for ${nameOf(turnPlayerId)}... ${secondsLeft}s left`;
-  box.appendChild(turnMsgEl);
+  const timerEl = document.getElementById('auction-modal-timer');
+  timerEl.textContent = secondsLeft;
+  timerEl.classList.toggle('low', secondsLeft <= 2);
 
-  if (turnPlayerId !== myId) return; // not my turn — nothing to act on
+  const turnMsgEl = document.getElementById('auction-modal-turnmsg');
+  turnMsgEl.textContent = turnPlayerId === myId ? 'Your turn to act' : `Waiting for ${nameOf(turnPlayerId)}…`;
 
-  const nextBid = bid + increment;
-  const canAfford = nextBid <= GAME.cash[myId];
-  const row = document.createElement('div');
-  row.className = 'row';
-  row.style.marginTop = '6px';
-  const raiseBtn = document.createElement('button');
-  raiseBtn.textContent = `Raise to Tk${nextBid}`;
-  raiseBtn.disabled = !canAfford;
-  raiseBtn.onclick = () => room.send('auction_raise', {});
+  const actions = document.getElementById('auction-modal-actions');
+  actions.innerHTML = '';
+
+  if (turnPlayerId !== myId) {
+    const waiting = document.createElement('div');
+    waiting.className = 'auction-modal-waiting';
+    waiting.textContent = `Only ${nameOf(turnPlayerId)} can act right now.`;
+    actions.appendChild(waiting);
+    return;
+  }
+
+  AUCTION_RAISE_STEPS.forEach(step => {
+    const nextBid = bid + step;
+    const canAfford = nextBid <= GAME.cash[myId];
+    const btn = document.createElement('button');
+    btn.className = 'raise-btn';
+    btn.textContent = `Raise to Tk${nextBid} (+${step})`;
+    btn.disabled = !canAfford;
+    btn.onclick = () => room.send('auction_raise', { amount: step });
+    actions.appendChild(btn);
+  });
+
   const passBtn = document.createElement('button');
+  passBtn.className = 'pass-btn';
   passBtn.textContent = 'Pass';
   passBtn.onclick = () => room.send('auction_pass', {});
-  row.appendChild(raiseBtn); row.appendChild(passBtn);
-  box.appendChild(row);
-  if (!canAfford) {
-    const note = document.createElement('div');
-    note.className = 'msg';
-    note.style.fontSize = '11px';
-    note.textContent = `Raising to Tk${nextBid} would exceed your Tk${GAME.cash[myId]} cash.`;
-    box.appendChild(note);
-  }
+  actions.appendChild(passBtn);
 }
 
 function renderTaxChoiceUI() {
@@ -2803,33 +3080,17 @@ function renderGame() {
     playersBox.appendChild(row);
   });
 
-  // dice / trick display
+  // dice / trick display — the card-mode trick/hand UI has moved onto
+  // the board itself (see renderCenterCardUI), so the HUD's dice-row
+  // only ever shows the classic two dice, and only in Dice mode.
   const cardsMode = ROOM.movementMode === 'cards';
   const diceRow = document.getElementById('dice-row');
   if (!cardsMode) {
+    diceRow.style.display = '';
     diceRow.innerHTML = `<div class="die">${GAME.lastRoll[0]}</div><div class="die">${GAME.lastRoll[1]}</div>`;
-  } else if (GAME.trick) {
-    diceRow.innerHTML = GAME.trick.order.map(id => {
-      const cardIdx = GAME.trick.plays[id];
-      const name = labelFor(id);
-      if (cardIdx === undefined) {
-        return `<div class="pit-card" style="opacity:.4;"><div class="pit-card-label">?</div><div class="pit-card-name">${name}</div></div>`;
-      }
-      const suit = cardSuit(cardIdx);
-      const red = suit === 1 || suit === 2;
-      return `<div class="pit-card" style="color:${red ? '#c0392b' : '#1a1a1a'}"><div class="pit-card-label">${cardLabel(cardIdx)}</div><div class="pit-card-name">${name}</div></div>`;
-    }).join('');
-  } else if (GAME.pit) {
-    diceRow.innerHTML = Object.keys(GAME.pit.plays).map(id => {
-      const cardIdx = GAME.pit.plays[id];
-      const isWinner = id === GAME.pit.winnerId;
-      const suit = cardSuit(cardIdx);
-      const red = suit === 1 || suit === 2;
-      const name = labelFor(id);
-      return `<div class="pit-card${isWinner ? ' winner' : ''}" style="color:${red ? '#c0392b' : '#1a1a1a'}"><div class="pit-card-label">${cardLabel(cardIdx)}</div><div class="pit-card-name">${name}</div></div>`;
-    }).join('');
   } else {
-    diceRow.innerHTML = `<div class="die" style="font-size:16px;">🃏</div>`;
+    diceRow.style.display = 'none';
+    diceRow.innerHTML = '';
   }
 
   // jail box — in cards mode, pay/use-card is available any time (no
@@ -2848,34 +3109,6 @@ function renderGame() {
     if ((GAME.jailCardsHeld[myId] || []).length > 0) addBtn(jailBox, 'Use Jail card', () => room.send('use_jail_card', {}));
   } else {
     jailWrap.style.display = 'none';
-  }
-
-  // hand box — cards mode only, always shows your current hand; cards
-  // become clickable exactly when it's your turn within the trick.
-  const handWrap = document.getElementById('hand-hud-box');
-  if (cardsMode && GAME.hands && GAME.hands[myId] && GAME.phase !== 'gameover') {
-    handWrap.style.display = '';
-    const handRow = document.getElementById('hand-row');
-    handRow.innerHTML = '';
-    const myTrickTurn = GAME.trick && GAME.trick.order[GAME.trick.turnIdx] === myId;
-    const led = GAME.trick ? GAME.trick.ledSuit : null;
-    const hand = GAME.hands[myId].slice().sort((a, b) => cardSuit(a) - cardSuit(b) || cardValue(a) - cardValue(b));
-    const hasLedSuit = led !== null && hand.some(c => cardSuit(c) === led);
-    hand.forEach(cardIdx => {
-      const suit = cardSuit(cardIdx);
-      const red = suit === 1 || suit === 2;
-      const legal = myTrickTurn && (led === null || suit === led || !hasLedSuit);
-      const card = document.createElement('div');
-      card.className = 'pit-card';
-      card.style.color = red ? '#c0392b' : '#1a1a1a';
-      card.style.cursor = legal ? 'pointer' : 'default';
-      card.style.opacity = myTrickTurn && !legal ? '.4' : '1';
-      card.innerHTML = `<div class="pit-card-label">${cardLabel(cardIdx)}</div>`;
-      if (legal) card.onclick = () => room.send('play_trick_card', { cardIdx });
-      handRow.appendChild(card);
-    });
-  } else {
-    handWrap.style.display = 'none';
   }
 
   // turn message + actions
@@ -2910,8 +3143,7 @@ function renderGame() {
   } else if (GAME.phase === 'card_pit_assign' && GAME.pit) {
     const winnerId = GAME.pit.winnerId;
     if (winnerId === myId) {
-      turnMsg.textContent = `You won the trick with ${cardLabel(GAME.pit.plays[winnerId])} (move ${GAME.pit.winnerVal}${GAME.jail[myId].in ? ' — but you\'re in Jail, so you stay put' : ''}). Assign ${GAME.pit.remainingValues.join(', ')} to the others.`;
-      renderPitAssignUI(actionRow);
+      turnMsg.textContent = `You won the trick with ${cardLabel(GAME.pit.plays[winnerId])} (move ${GAME.pit.winnerVal}${GAME.jail[myId].in ? ' — but you\'re in Jail, so you stay put' : ''}). Assign ${GAME.pit.remainingValues.join(', ')} to the others below.`;
     } else {
       turnMsg.textContent = `${nameOf(winnerId)} won the trick and is assigning movement numbers...`;
     }
@@ -2983,7 +3215,7 @@ function renderGame() {
         houses >= Math.max(...GROUPS[space.group].map(i => GAME.houses[i] || 0))) {
       const refund = houseSaleValueOf(space.group);
       const btn = document.createElement('button');
-      btn.textContent = `Sell house (+Tk${refund})`;
+      btn.textContent = houses === 5 ? `Sell Hotel (+Tk${refund})` : `Sell house (+Tk${refund})`;
       btn.disabled = !canSellOneDown(GAME, houses);
       btn.onclick = () => room.send('sell_house', { spaceIdx: idx });
       row.appendChild(btn);
@@ -3010,6 +3242,7 @@ function renderGame() {
   renderAuctionUI();
   renderTaxChoiceUI();
   renderTrades();
+  renderCenterCardUI(cardsMode);
   document.getElementById('btn-open-trade').disabled = GAME.phase === 'gameover';
 
   // log — natural chronological order (oldest to newest), auto-scrolled
@@ -3030,6 +3263,140 @@ function renderGame() {
   }
 }
 
+// =========================================================
+// CENTER-BOARD CARDS-MODE UI
+// Replaces the decorative MONOPOLY logo + Chance/Chest stacks
+// with two live regions while movement mode is "cards":
+//   - #center-trick-box (red border): the trick currently being
+//     played, one card slot per participant.
+//   - #center-hand-box (black border): your hand to play from,
+//     or — once a trick is won — the movement-assignment UI
+//     (including the "Confirm Assignment" button, i.e. the
+//     confirmation of movement).
+// This used to live down in the HUD sidebar (dice-row / a
+// dedicated hand box / the action-row), which pushed the actual
+// controls off-screen on mobile; now it sits on the board itself.
+// =========================================================
+function renderCenterCardUI(cardsMode) {
+  const cardUiEl = document.getElementById('center-card-ui');
+  const logoEl = document.querySelector('.center .logo');
+  const chanceStackEl = document.querySelector('.center .chance-stack');
+  const chestStackEl = document.querySelector('.center .chest-stack');
+
+  if (!cardsMode || GAME.phase === 'gameover') {
+    cardUiEl.classList.add('hidden');
+    if (logoEl) logoEl.style.display = '';
+    if (chanceStackEl) chanceStackEl.style.display = '';
+    if (chestStackEl) chestStackEl.style.display = '';
+    return;
+  }
+  cardUiEl.classList.remove('hidden');
+  if (logoEl) logoEl.style.display = 'none';
+  if (chanceStackEl) chanceStackEl.style.display = 'none';
+  if (chestStackEl) chestStackEl.style.display = 'none';
+
+  const trickBox = document.getElementById('center-trick-cards');
+  const handBox = document.getElementById('center-hand-cards');
+  const handLabel = document.getElementById('center-hand-label');
+  trickBox.innerHTML = '';
+  handBox.innerHTML = '';
+
+  // --- red box: the trick currently in progress (or just resolved) ---
+  if (GAME.trick) {
+    GAME.trick.order.forEach(id => {
+      const cardIdx = GAME.trick.plays[id];
+      const slot = document.createElement('div');
+      slot.className = 'center-trick-slot';
+      const isActive = id === GAME.trick.order[GAME.trick.turnIdx] && cardIdx === undefined;
+      if (isActive) slot.classList.add('active-turn');
+      if (cardIdx === undefined) {
+        slot.innerHTML = `<div class="ct-card empty">?</div><div class="ct-name">${labelFor(id)}</div>`;
+      } else {
+        const suit = cardSuit(cardIdx); const red = suit === 1 || suit === 2;
+        slot.innerHTML = `<div class="ct-card" style="color:${red ? '#c0392b' : '#1a1a1a'}">${cardLabel(cardIdx)}</div><div class="ct-name">${labelFor(id)}</div>`;
+      }
+      trickBox.appendChild(slot);
+    });
+  } else if (GAME.pit) {
+    Object.keys(GAME.pit.plays).forEach(id => {
+      const cardIdx = GAME.pit.plays[id];
+      const suit = cardSuit(cardIdx); const red = suit === 1 || suit === 2;
+      const isWinner = id === GAME.pit.winnerId;
+      const slot = document.createElement('div');
+      slot.className = 'center-trick-slot' + (isWinner ? ' winner' : '');
+      slot.innerHTML = `<div class="ct-card" style="color:${red ? '#c0392b' : '#1a1a1a'}">${cardLabel(cardIdx)}</div><div class="ct-name">${labelFor(id)}</div>`;
+      trickBox.appendChild(slot);
+    });
+  } else {
+    trickBox.innerHTML = '<div class="msg">Waiting for the next trick…</div>';
+  }
+
+  // --- black box: your hand to play from, or the movement-assignment
+  //     UI (with its confirmation button) once a trick is won ---
+  if (GAME.phase === 'card_pit_assign' && GAME.pit) {
+    handLabel.textContent = 'Assign Movement';
+    if (GAME.pit.winnerId === myId) {
+      renderPitAssignUI(handBox);
+    } else {
+      const msg = document.createElement('div');
+      msg.className = 'msg';
+      msg.textContent = `${nameOf(GAME.pit.winnerId)} is assigning movement…`;
+      handBox.appendChild(msg);
+    }
+    return;
+  }
+
+  handLabel.textContent = 'Your Hand';
+  if (!GAME.hands || !GAME.hands[myId]) {
+    handBox.innerHTML = '<div class="msg">Spectating.</div>';
+    return;
+  }
+
+  const myTrickTurn = GAME.trick && GAME.trick.order[GAME.trick.turnIdx] === myId;
+  const led = GAME.trick ? GAME.trick.ledSuit : null;
+  const hand = GAME.hands[myId].slice().sort((a, b) => cardSuit(a) - cardSuit(b) || cardValue(a) - cardValue(b));
+  const hasLedSuit = led !== null && hand.some(c => cardSuit(c) === led);
+
+  if (GAME.jail[myId] && GAME.jail[myId].in) {
+    const note = document.createElement('div');
+    note.className = 'msg';
+    note.style.marginBottom = '4px';
+    note.textContent = "You're in Jail — you still play, but won't move.";
+    handBox.appendChild(note);
+  }
+
+  const cardsWrap = document.createElement('div');
+  cardsWrap.id = 'center-hand-cards-inner';
+  cardsWrap.style.display = 'flex';
+  cardsWrap.style.flexWrap = 'wrap';
+  cardsWrap.style.gap = '1vmin';
+  cardsWrap.style.justifyContent = 'center';
+  cardsWrap.style.width = '100%';
+  hand.forEach(cardIdx => {
+    const suit = cardSuit(cardIdx); const red = suit === 1 || suit === 2;
+    const legal = myTrickTurn && (led === null || suit === led || !hasLedSuit);
+    const card = document.createElement('div');
+    card.className = 'center-hand-card';
+    card.style.color = red ? '#c0392b' : '#1a1a1a';
+    card.style.cursor = legal ? 'pointer' : 'default';
+    card.style.opacity = myTrickTurn && !legal ? '.4' : '1';
+    card.textContent = cardLabel(cardIdx);
+    if (legal) card.onclick = () => room.send('play_trick_card', { cardIdx });
+    cardsWrap.appendChild(card);
+  });
+  handBox.appendChild(cardsWrap);
+
+  if (!myTrickTurn) {
+    const waitMsg = document.createElement('div');
+    waitMsg.className = 'msg';
+    waitMsg.style.marginTop = '6px';
+    waitMsg.style.width = '100%';
+    waitMsg.style.textAlign = 'center';
+    waitMsg.textContent = GAME.trick ? `Waiting for ${nameOf(GAME.trick.order[GAME.trick.turnIdx])}…` : '';
+    handBox.appendChild(waitMsg);
+  }
+}
+
 // Client-local (not synced) scratch state for the pit assignment UI —
 // which number the winner has tentatively clicked for each other
 // player, kept across re-renders (e.g. a chat message triggering a
@@ -3043,7 +3410,9 @@ function pitAssignKey(pit) {
 // Lets the pit's winner assign the other cards' numbers to the other
 // participants by clicking a number for each — only numbers still
 // available in the pool are ever offered as buttons, so an illegal or
-// duplicate assignment isn't something the UI can even produce.
+// duplicate assignment isn't something the UI can even produce. The
+// "Confirm Assignment" button at the bottom is the confirmation of
+// movement — nothing moves until it's pressed and accepted by the host.
 function renderPitAssignUI(container) {
   const pit = GAME.pit;
   const key = pitAssignKey(pit);
@@ -3062,19 +3431,17 @@ function renderPitAssignUI(container) {
   const distinctValues = [...new Set(pit.remainingValues)].sort((a, b) => a - b);
 
   const wrap = document.createElement('div');
-  wrap.style.width = '100%';
+  wrap.className = 'center-assign-wrap';
   const poolMsg = document.createElement('div');
   poolMsg.className = 'msg';
-  poolMsg.style.marginBottom = '8px';
   poolMsg.textContent = `Click a number for each player to give out: ${pit.remainingValues.join(', ')}`;
   wrap.appendChild(poolMsg);
 
   pit.otherIds.forEach(id => {
     const row = document.createElement('div');
-    row.style.marginBottom = '8px';
     const label = document.createElement('div');
     label.style.fontWeight = '700';
-    label.style.fontSize = '13px';
+    label.style.fontSize = '1.3vmin';
     label.style.marginBottom = '4px';
     label.textContent = labelFor(id) + ':';
     row.appendChild(label);
@@ -3090,7 +3457,7 @@ function renderPitAssignUI(container) {
     } else {
       const btnRow = document.createElement('div');
       btnRow.className = 'row';
-      btnRow.style.justifyContent = 'flex-start';
+      btnRow.style.justifyContent = 'center';
       distinctValues.forEach(v => {
         if ((availCount[v] || 0) <= 0) return;
         const btn = document.createElement('button');
@@ -3284,12 +3651,11 @@ function renderSettingsList() {
   UTIL_IDXS.forEach(idx => utilDiv.appendChild(buildSettingsRow(idx)));
   listEl.appendChild(utilDiv);
 
-  document.getElementById('btn-save-settings').classList.toggle('hidden', !editable);
   document.getElementById('btn-reset-settings').classList.toggle('hidden', !editable);
   document.getElementById('settings-hint').textContent = ROOM.started
     ? 'Prices are locked in for this game (settings can only be changed before launch).'
     : (editable
-      ? 'Purchase prices only — rent still follows the classic table for each space.'
+      ? 'Purchase prices only — rent still follows the classic table for each space. Changes save automatically.'
       : 'Only the host can change prices. Purchase prices only — rent still follows the classic table.');
 
   function buildSettingsRow(idx) {
@@ -3309,7 +3675,13 @@ function renderSettingsList() {
     input.dataset.idx = idx;
     input.value = priceOf(idx);
     input.disabled = !editable;
-    row.appendChild(swatch); row.appendChild(name); row.appendChild(input);
+    const tick = document.createElement('span');
+    tick.className = 'save-tick';
+    tick.textContent = '✓';
+    if (editable) {
+      input.addEventListener('input', () => scheduleAutoSavePrice(idx, input, tick));
+    }
+    row.appendChild(swatch); row.appendChild(name); row.appendChild(input); row.appendChild(tick);
     return row;
   }
 }
