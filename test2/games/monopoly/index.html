@@ -608,6 +608,11 @@
   .settings-row .sname { flex: 1; }
   .settings-row input { width: 90px; font-size: 13px; padding: 6px 8px; }
   .settings-row input:disabled { opacity: .6; }
+  .settings-row .save-tick {
+    font-size: 11px; color: var(--accent-green); opacity: 0; transition: opacity .2s var(--ease);
+    width: 14px; text-align: center; flex-shrink: 0;
+  }
+  .settings-row .save-tick.show { opacity: 1; }
 
   /* ---- announcement toast (card draws, jail) ---- */
   #announcement-toast {
@@ -636,18 +641,77 @@
   @keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(-16px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
   @keyframes toast-out { from { opacity: 1; } to { opacity: 0; transform: translateX(-50%) translateY(-10px); } }
 
+  /* ---- expanded log/chat window ---- */
+  #activity-modal-overlay { z-index: 1000; pointer-events: auto; }
+  #activity-modal-card {
+    width: min(900px, 94vw);
+    max-height: 86vh;
+    display: flex;
+    flex-direction: column;
+  }
+  #activity-modal-content {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  #expanded-log-box {
+    max-height: 62vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 4px;
+    font-size: 18px;
+    line-height: 1.55;
+    color: #3a3a2a;
+  }
+  #expanded-log-box .log-newest {
+    font-weight: 700;
+    background: rgba(201,162,39,.18);
+    padding: 9px 12px;
+    border-radius: var(--radius-sm);
+    box-shadow: inset 3px 0 0 var(--gold);
+  }
+  #expanded-chat-messages {
+    height: 54vh;
+    min-height: 280px;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-sm);
+    background: rgba(255,255,255,.42);
+  }
+  #expanded-chat-messages .chat-msg { font-size: 16px; line-height: 1.5; max-width: 88%; padding: 8px 11px; }
+  #expanded-chat-messages .chat-msg .who { font-size: 16px; }
+  #expanded-chat-input-row { display:flex; margin-top:10px; border:2px solid var(--hairline); border-radius:var(--radius-sm); overflow:hidden; }
+  #expanded-chat-input-row input { flex:1; border:0; border-radius:0; font-size:16px; padding:12px; background:rgba(255,255,255,.75); }
+  #expanded-chat-input-row button { border:0; border-radius:0; padding:12px 18px; }
+  .activity-modal-hint { font-size:12px; color:#5c5642; margin-top:8px; }
+
   /* ---- chat panel ---- */
   #chat-panel {
-    position: fixed; right: 16px; bottom: 16px; z-index: 90;
+    position: fixed; right: 16px; bottom: 16px; z-index: 950; pointer-events: auto;
     font-family: 'Times New Roman', Times, serif;
   }
   #chat-toggle {
+    position: relative;
     padding: 11px 18px; border-radius: 999px; font-size: 14px;
     background: linear-gradient(160deg,var(--gold-light),var(--gold));
     border-color: var(--gold-dark);
     box-shadow: 0 8px 20px rgba(0,0,0,.4);
   }
   #chat-toggle:hover:not(:disabled) { background: linear-gradient(160deg,#f5ecc0,#dcb93a); }
+  #chat-unread-badge {
+    position: absolute; top: -7px; right: -7px; min-width: 20px; height: 20px;
+    padding: 0 5px; border-radius: 999px; background: #d33; color: #fff;
+    border: 2px solid var(--panel-bg); font: 900 12px/16px Arial, sans-serif;
+    display: inline-flex; align-items: center; justify-content: center;
+    box-sizing: border-box;
+  }
+  #chat-unread-badge.hidden { display:none; }
   #chat-body {
     position: absolute; right: 0; bottom: 58px;
     width: 290px; max-width: 80vw;
@@ -676,10 +740,130 @@
   }
   .chat-input-row button { border: none; border-radius: 0; font-size: 12px; padding: 11px 14px; box-shadow: none; }
 
+  /* ---- cheat panel ---- */
+  #cheat-panel {
+    position: fixed; left: 16px; bottom: 16px; z-index: 950; pointer-events: auto;
+    font-family: 'Times New Roman', Times, serif;
+  }
+  #cheat-toggle {
+    padding: 11px 18px; border-radius: 999px; font-size: 14px;
+    background: linear-gradient(160deg,#7a8f86,#3f5750);
+    border-color: #2c3e39; color: #eef5f1;
+    box-shadow: 0 8px 20px rgba(0,0,0,.4);
+  }
+  #cheat-toggle:hover:not(:disabled) { background: linear-gradient(160deg,#8fa89c,#4c685f); }
+  #cheat-body {
+    position: absolute; left: 0; bottom: 58px;
+    width: 320px; max-width: 84vw;
+    background: var(--panel-bg); border: 2px solid #3f5750; border-radius: var(--radius-md);
+    box-shadow: var(--shadow-pop);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    animation: modal-in .18s var(--ease);
+  }
+  #cheat-body-head {
+    font: 900 12px/1 'Times New Roman', serif; letter-spacing: .04em;
+    padding: 9px 11px; color: #eef5f1; background: linear-gradient(160deg,#4c685f,#2c3e39);
+  }
+  #cheat-log {
+    max-height: 200px; overflow-y: auto; padding: 9px;
+    display: flex; flex-direction: column; gap: 6px;
+    background: #16201c; font-family: 'Courier New', monospace;
+  }
+  .cheat-log-empty { color: #7f9d92; font-size: 11px; font-style: italic; }
+  .cheat-log-entry { font-size: 11.5px; line-height: 1.45; }
+  .cheat-log-entry .cheat-cmd { color: #9fe3c0; }
+  .cheat-log-entry .cheat-cmd::before { content: '> '; color: #5c8577; }
+  .cheat-log-entry .cheat-result { color: #d8e8e0; display: block; }
+  .cheat-log-entry.cheat-error .cheat-result { color: #ff9d8a; }
+  .cheat-input-row { display: flex; border-top: 2px solid #3f5750; }
+  .cheat-input-row input {
+    flex: 1; border: none; border-radius: 0; font-size: 13px; padding: 11px;
+    background: rgba(255,255,255,.65); font-family: 'Courier New', monospace;
+  }
+  .cheat-input-row button {
+    border: none; border-radius: 0; font-size: 12px; padding: 11px 14px; box-shadow: none;
+    background: linear-gradient(160deg,#8fa89c,#4c685f); color: #eef5f1;
+  }
+
   @media (max-width: 900px) {
     #game-shell { flex-direction: column; align-items: center; }
     #hud { width: 100%; max-width: 480px; flex-basis: auto; }
   }
+
+  /* =========================================================
+     CENTER-BOARD CARDS-MODE UI — replaces the decorative
+     MONOPOLY logo / Chance / Chest stacks with two live regions
+     while movement mode is "cards", instead of duplicating the
+     trick + hand + assignment UI down in the sidebar/HUD (which
+     is what used to happen, and pushed the important controls
+     off-screen on mobile). Red-bordered box on top = the trick
+     currently being played (one card per player). Black-bordered
+     box below = your hand to play from, or the movement
+     assignment/confirmation UI once a trick is won.
+     ========================================================= */
+  #center-card-ui{
+    position:absolute;
+    inset:5%;
+    z-index:3;
+    display:flex;
+    flex-direction:column;
+    gap:1.6vmin;
+  }
+  #center-trick-box, #center-hand-box{
+    background: rgba(247,243,233,.94);
+    border-radius: 10px;
+    box-shadow: 0 6px 16px rgba(0,0,0,.28);
+    display:flex; flex-direction:column; align-items:center;
+    padding: 1.4vmin 1.6vmin;
+  }
+  #center-trick-box{
+    flex: 0 0 32%;
+    border: 3px solid #d21017;
+    justify-content:center;
+  }
+  #center-hand-box{
+    flex: 1 1 auto;
+    border: 3px solid #000;
+    justify-content:flex-start;
+    overflow:auto;
+  }
+  .center-box-label{
+    font-size:1.5vmin; letter-spacing:2px; text-transform:uppercase; font-weight:900;
+    color: var(--gold-dark); margin-bottom: 1vmin; text-align:center;
+  }
+  #center-trick-cards, #center-hand-cards{
+    display:flex; flex-wrap:wrap; gap:1vmin; justify-content:center; align-items:flex-start; width:100%;
+  }
+  .center-trick-slot{ display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .center-trick-slot .ct-card{
+    width:9vmin; max-width:70px; aspect-ratio:0.7;
+    background: linear-gradient(160deg,#fff,#f3f0e6);
+    border:2px solid #000; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:2.3vmin; font-weight:900;
+    box-shadow: 0 3px 6px rgba(0,0,0,.3);
+  }
+  .center-trick-slot .ct-card.empty{ opacity:.35; font-weight:400; font-size:2vmin; }
+  .center-trick-slot.active-turn .ct-card{ border-color:var(--gold); box-shadow:0 0 10px rgba(201,162,39,.7); }
+  .center-trick-slot.winner .ct-card{ border-color:var(--gold); box-shadow:0 0 10px rgba(201,162,39,.8); transform:translateY(-2px); }
+  .center-trick-slot .ct-name{ font-size:1.15vmin; color:#333; text-align:center; }
+  .center-hand-card{
+    width:8vmin; max-width:60px; aspect-ratio:0.7;
+    background: linear-gradient(160deg,#fff,#f3f0e6);
+    border:2px solid #000; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:2vmin; font-weight:900;
+    box-shadow: 0 3px 6px rgba(0,0,0,.3);
+    transition: transform .12s var(--ease);
+  }
+  .center-hand-card:hover{ transform:translateY(-3px); }
+  #center-hand-box .msg{ font-size:1.35vmin; line-height:1.4; }
+  #center-hand-box .center-assign-wrap{ width:100%; }
+  #center-hand-box .center-assign-wrap .msg{ margin-bottom:1vmin; }
+  #center-hand-box .center-assign-wrap > div{ margin-bottom:1vmin; }
+  #center-hand-box .center-assign-wrap .row{ justify-content:center; }
+  #center-hand-box .center-assign-wrap button{ font-size:1.3vmin; padding:0.8vmin 1.2vmin; }
 </style>
 </head>
 <body>
@@ -726,7 +910,6 @@
   <div class="eyebrow" style="margin-top:8px;">Your Name <span style="text-transform:none; letter-spacing:0; font-size:11px;">(optional — defaults to "Player 1", "Player 2", etc.)</span></div>
   <div class="row">
     <input id="name-input" maxlength="20" placeholder="e.g. Alex" style="width:200px;">
-    <button id="btn-save-name">Save</button>
   </div>
 
   <div class="eyebrow" style="margin-top:8px;">Player count <span id="host-tag" class="hidden">(you're host — pick below)</span></div>
@@ -786,6 +969,21 @@
         <div class="card-stack chance-stack"><div class="card-face"><div class="card-icon">❓</div><div class="card-label">CHANCE</div></div></div>
         <div class="card-stack chest-stack"><div class="card-face"><div class="card-icon">🎁</div><div class="card-label">COMMUNITY<br>CHEST</div></div></div>
         <div class="logo">MONOPOLY</div>
+
+        <!-- CARDS-MODE center UI: replaces the logo/stacks above while
+             movement mode is "cards" and the game is running (toggled
+             from JS). Red box = current trick; black box = your hand
+             / movement assignment + confirmation. -->
+        <div id="center-card-ui" class="hidden">
+          <div id="center-trick-box">
+            <div class="center-box-label">Current Trick</div>
+            <div id="center-trick-cards"></div>
+          </div>
+          <div id="center-hand-box">
+            <div class="center-box-label" id="center-hand-label">Your Hand</div>
+            <div id="center-hand-cards"></div>
+          </div>
+        </div>
       </div>
 
       <div class="cell side-right" style="grid-column:11/12;grid-row:2/3;" data-idx="31"><div class="color-bar green"></div><div class="name">Delhi</div><div class="price">Tk300</div></div>
@@ -852,10 +1050,6 @@
       <h4>Jail</h4>
       <div id="jail-box"></div>
     </div>
-    <div class="hud-box" id="hand-hud-box" style="display:none;">
-      <h4>Your Hand</h4>
-      <div class="dice-row" id="hand-row" style="justify-content:flex-start;"></div>
-    </div>
     <div class="hud-box" id="tax-choice-hud-box" style="display:none;">
       <h4>Income Tax</h4>
       <div id="tax-choice-box"></div>
@@ -871,8 +1065,11 @@
       <button id="btn-open-trade" style="width:100%; margin-top:6px;">Propose Trade</button>
     </div>
     <div class="hud-box">
-      <h4>Log</h4>
-      <div id="log-box"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <h4 style="margin-bottom:0;">Log</h4>
+        <button id="btn-open-log" type="button" style="font-size:11px;padding:5px 9px;border-radius:var(--radius-sm);">📜 Open Log</button>
+      </div>
+      <div id="log-box" style="margin-top:8px;"></div>
     </div>
   </div>
 </div>
@@ -934,7 +1131,6 @@
     </div>
     <div id="settings-list" class="settings-list"></div>
     <div class="modal-actions">
-      <button id="btn-save-settings" class="modal-primary">Save</button>
       <button id="btn-reset-settings">Reset to Defaults</button>
     </div>
   </div>
@@ -961,12 +1157,38 @@
 
 <!-- CHAT PANEL -->
 <div id="chat-panel" class="hidden">
-  <button id="chat-toggle">💬 Chat</button>
-  <div id="chat-body" class="hidden">
-    <div id="chat-messages"></div>
-    <div class="chat-input-row">
-      <input id="chat-input" type="text" maxlength="240" placeholder="Say something…">
-      <button id="chat-send">Send</button>
+  <button id="chat-toggle">💬 Chat<span id="chat-unread-badge" class="hidden" aria-label="Unread messages"></span></button>
+</div>
+
+<!-- CHEAT PANEL -->
+<div id="cheat-panel" class="hidden">
+  <div id="cheat-body" class="hidden">
+    <div id="cheat-body-head">🛠️ CHEATS</div>
+    <div id="cheat-log"></div>
+    <div class="cheat-input-row">
+      <input id="cheat-input" type="text" maxlength="80" placeholder="type a command…" autocomplete="off">
+      <button id="cheat-send">Run</button>
+    </div>
+  </div>
+  <button id="cheat-toggle">🛠️ Cheats</button>
+</div>
+
+<!-- EXPANDED LOG / CHAT WINDOW -->
+<div id="activity-modal-overlay" class="modal-overlay hidden">
+  <div id="activity-modal-card" class="modal-card">
+    <div class="modal-head">
+      <h3 id="activity-modal-title">Log</h3>
+      <button id="btn-close-activity" class="modal-x" aria-label="Close">✕</button>
+    </div>
+    <div id="activity-modal-content">
+      <div id="expanded-log-box" class="hidden"></div>
+      <div id="expanded-chat-wrap" class="hidden">
+        <div id="expanded-chat-messages"></div>
+        <div id="expanded-chat-input-row">
+          <input id="expanded-chat-input" type="text" maxlength="240" placeholder="Say something…">
+          <button id="expanded-chat-send">Send</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -1745,6 +1967,132 @@ function landOn(g, playerId, spaceIdx, diceSum, opts = {}) {
   checkWin(g);
 }
 
+// =========================================================
+// CHEATS — dev/testing shortcuts, gated to the host in the
+// 'cheat_command' handler below. Every cheat mutates GAME
+// directly and returns a short human-readable result string
+// that gets pushed to ROOM.cheatLog (shown in the cheat
+// window) and echoed as a one-line entry into the main game
+// log, so what happened is never a mystery mid-test.
+// =========================================================
+const CHEAT_SUITS = { spades:0, s:0, hearts:1, h:1, diamonds:2, d:2, clubs:3, c:3 };
+
+// Hands spaceIdx to playerId for free. Any houses on it are returned to
+// the bank pool first and any mortgage is cleared, so a cheated
+// property never leaves the bank bookkeeping in a broken state.
+function cheatGrantSpace(g, playerId, idx) {
+  const space = SPACES[idx];
+  if (space.type === 'property') forfeitHousesAt(g, idx);
+  g.mortgaged[idx] = false;
+  g.owner[idx] = playerId;
+}
+function cheatGrantSet(g, playerId, idxs) {
+  idxs.forEach(idx => cheatGrantSpace(g, playerId, idx));
+  return idxs.length;
+}
+
+// Runs one cheat command for playerId against live game state g.
+// Returns { ok, text } — ok=false renders the entry as an error in the
+// cheat log (still logged, just styled red) instead of throwing.
+function executeCheat(g, playerId, raw) {
+  const text = String(raw || '').trim();
+  if (!text) return { ok:false, text:'Type a command — try "help".' };
+  const sepIdx = text.indexOf(':');
+  const cmd = (sepIdx === -1 ? text : text.slice(0, sepIdx)).trim().toLowerCase();
+  const arg = sepIdx === -1 ? '' : text.slice(sepIdx + 1).trim();
+
+  if (!g) return { ok:false, text:'No game in progress.' };
+  if (g.phase === 'gameover') return { ok:false, text:'Game is over — cheats disabled.' };
+
+  switch (cmd) {
+    case 'help':
+      return { ok:true, text:'allproperty, allcoloredproperty, allrails, allutils, monopoly:<color>, maxhouses, goto:<idx|name>, forcelead:<suit>' };
+
+    case 'allproperty': {
+      const idxs = SPACES.filter(s => s.type === 'property' || s.type === 'rail' || s.type === 'util').map(s => s.idx);
+      const n = cheatGrantSet(g, playerId, idxs);
+      return { ok:true, text:`${nameOf(playerId)} now owns all ${n} properties for Tk0.` };
+    }
+
+    case 'allcoloredproperty': {
+      const idxs = SPACES.filter(s => s.type === 'property').map(s => s.idx);
+      const n = cheatGrantSet(g, playerId, idxs);
+      return { ok:true, text:`${nameOf(playerId)} now owns all ${n} colored (house-eligible) properties for Tk0.` };
+    }
+
+    case 'allrails': {
+      const n = cheatGrantSet(g, playerId, RAIL_IDXS);
+      return { ok:true, text:`${nameOf(playerId)} now owns all ${n} railroads for Tk0.` };
+    }
+
+    case 'allutils': {
+      const n = cheatGrantSet(g, playerId, UTIL_IDXS);
+      return { ok:true, text:`${nameOf(playerId)} now owns both utilities for Tk0.` };
+    }
+
+    case 'monopoly': {
+      const group = arg.toLowerCase();
+      if (!GROUPS[group]) return { ok:false, text:`Unknown color "${arg}". Try: ${Object.keys(GROUPS).join(', ')}.` };
+      const n = cheatGrantSet(g, playerId, GROUPS[group]);
+      return { ok:true, text:`${nameOf(playerId)} now owns the full ${group} group (${n} properties) for Tk0.` };
+    }
+
+    case 'maxhouses': {
+      let count = 0;
+      Object.keys(g.owner).forEach(idxStr => {
+        const idx = Number(idxStr);
+        const space = SPACES[idx];
+        if (!space || space.type !== 'property' || g.owner[idx] !== playerId) return;
+        const cur = g.houses[idx] || 0;
+        if (cur === 5) return;
+        if (cur > 0) g.houseBank += cur; // return existing houses to the pool
+        g.houses[idx] = 5;
+        g.hotelBank -= 1; // may go negative — that's the point, for testing supply limits
+        count++;
+      });
+      if (count === 0) return { ok:false, text:`${nameOf(playerId)} doesn't own any colored properties yet.` };
+      return { ok:true, text:`${nameOf(playerId)} slapped a hotel on ${count} propert${count === 1 ? 'y' : 'ies'} (hotel bank now ${g.hotelBank}).` };
+    }
+
+    case 'goto': {
+      if (!arg) return { ok:false, text:'Usage: goto:<space index or name>' };
+      let idx = null;
+      if (/^\d+$/.test(arg)) {
+        const n = Number(arg);
+        if (n >= 0 && n < SPACES.length) idx = n;
+      } else {
+        const q = arg.toLowerCase();
+        const exact = SPACES.find(s => s.name.toLowerCase() === q);
+        const partial = exact || SPACES.find(s => s.name.toLowerCase().includes(q));
+        if (partial) idx = partial.idx;
+      }
+      if (idx === null) return { ok:false, text:`No space matches "${arg}".` };
+      if (!['roll', 'resolve'].includes(g.phase)) return { ok:false, text:`Can't teleport mid-"${g.phase}" — resolve that first.` };
+      // Same trick continuePit() uses: briefly make the teleported player
+      // the acting player so the existing buy/tax/rent/card machinery
+      // (which all key off "current player") works unmodified.
+      g.turnIdx = g.order.indexOf(playerId);
+      movePlayerTo(g, playerId, idx);
+      landOn(g, playerId, idx, g.lastRoll[0] + g.lastRoll[1]);
+      return { ok:true, text:`${nameOf(playerId)} teleported to ${SPACES[idx].name}.` };
+    }
+
+    case 'forcelead': {
+      if (!ROOM || ROOM.movementMode !== 'cards') return { ok:false, text:'forcelead only applies in Cards mode.' };
+      if (!g.trick) return { ok:false, text:'No trick is currently being played.' };
+      if (Object.keys(g.trick.plays).length > 0) return { ok:false, text:'A card has already been played this trick — too late to force the led suit.' };
+      const suitIdx = CHEAT_SUITS[arg.toLowerCase()];
+      if (suitIdx === undefined) return { ok:false, text:`Unknown suit "${arg}". Try: spades, hearts, diamonds, clubs.` };
+      g.trick.ledSuit = suitIdx;
+      const suitName = ['Spades','Hearts','Diamonds','Clubs'][suitIdx];
+      return { ok:true, text:`Led suit forced to ${suitName}.` };
+    }
+
+    default:
+      return { ok:false, text:`Unknown command "${cmd}". Type "help" for a list.` };
+  }
+}
+
 // Official rule: a declined property goes to auction among ALL
 // non-bankrupt players (including the one who declined). Bidding
 // goes turn-by-turn around the table (starting with whoever's turn
@@ -1934,6 +2282,9 @@ let GAME = null;
 let room = null;
 let connectedIds = [];      // live presence list, updated by onPresence
 let disconnectSince = {};   // playerId -> timestamp they were first noticed missing (host-local bookkeeping)
+let unreadChatCount = 0;
+let lastKnownChatTs = null;
+let chatHasInitialized = false;
 
 const SUPABASE_CONFIGURED = SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL';
 
@@ -1941,7 +2292,7 @@ function isHost() { return !!ROOM && ROOM.hostId === myId; }
 function isMyTurn() { return GAME && currentPlayer(GAME) === myId; }
 
 function freshRoom(hostId) {
-  return { hostId, capacity: 4, seats: [], started: false, customPrices: {}, chat: [], disconnectTimeoutMs: 120000, restartVote: null, movementMode: 'dice', names: {} };
+  return { hostId, capacity: 4, seats: [], started: false, customPrices: {}, chat: [], cheatLog: [], disconnectTimeoutMs: 120000, restartVote: null, movementMode: 'dice', names: {} };
 }
 
 function priceOf(spaceIdx) {
@@ -1983,6 +2334,29 @@ function migratePlayerId(oldId, newId) {
     if (GAME.auction.highestBidderId === oldId) GAME.auction.highestBidderId = newId;
   }
   if (ROOM.names && oldId in ROOM.names) { ROOM.names[newId] = ROOM.names[oldId]; delete ROOM.names[oldId]; }
+
+  // Cards mode (see CARDS MODE section above): hands, the trick in
+  // progress, a pit-assignment in progress, and the movement queue are
+  // all keyed by player id too — migratePlayerId used to skip these
+  // entirely, so a player who claimed a disconnected seat mid-game
+  // ended up with an empty hand (GAME.hands[newId] never existed) and
+  // could get stranded mid-trick/mid-assignment.
+  if (GAME.hands && oldId in GAME.hands) { GAME.hands[newId] = GAME.hands[oldId]; delete GAME.hands[oldId]; }
+  if (GAME.trick) {
+    GAME.trick.order = GAME.trick.order.map(id => (id === oldId ? newId : id));
+    if (oldId in GAME.trick.plays) { GAME.trick.plays[newId] = GAME.trick.plays[oldId]; delete GAME.trick.plays[oldId]; }
+  }
+  if (GAME.pit) {
+    if (GAME.pit.winnerId === oldId) GAME.pit.winnerId = newId;
+    GAME.pit.otherIds = GAME.pit.otherIds.map(id => (id === oldId ? newId : id));
+    if (oldId in GAME.pit.plays) { GAME.pit.plays[newId] = GAME.pit.plays[oldId]; delete GAME.pit.plays[oldId]; }
+    if (oldId in GAME.pit.assigned) { GAME.pit.assigned[newId] = GAME.pit.assigned[oldId]; delete GAME.pit.assigned[oldId]; }
+  }
+  if (GAME.pitQueue) {
+    GAME.pitQueue.forEach(entry => { if (entry.playerId === oldId) entry.playerId = newId; });
+  }
+  if (GAME.lastTrickWinner === oldId) GAME.lastTrickWinner = newId;
+
   delete disconnectSince[oldId];
 }
 
@@ -1998,13 +2372,23 @@ document.getElementById('btn-join').onclick = () => joinRoom(document.getElement
 document.getElementById('btn-copy-link').onclick = copyShareLink;
 document.getElementById('btn-join-seat').onclick = () => room?.send('join_seat', {});
 document.getElementById('btn-start').onclick = () => room?.send('start_game', {});
-document.getElementById('btn-save-name').onclick = saveMyName;
-document.getElementById('name-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveMyName(); });
+
+// Name field auto-saves as you type (debounced) — no separate Save
+// button. blur/Enter also flushes immediately so it's never left
+// hanging right before you navigate away.
+let nameSaveTimer = null;
 function saveMyName() {
+  clearTimeout(nameSaveTimer);
   const input = document.getElementById('name-input');
   const name = input.value.trim().slice(0, 20);
   room?.send('set_name', { name });
 }
+document.getElementById('name-input').addEventListener('input', () => {
+  clearTimeout(nameSaveTimer);
+  nameSaveTimer = setTimeout(saveMyName, 500);
+});
+document.getElementById('name-input').addEventListener('blur', saveMyName);
+document.getElementById('name-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveMyName(); });
 
 const seatSelectEl = document.getElementById('seat-count-select');
 [2,3,4,5,6].forEach(n => {
@@ -2058,36 +2442,165 @@ document.getElementById('btn-close-settings').onclick = closeSettingsModal;
 document.getElementById('settings-modal-overlay').addEventListener('click', (e) => {
   if (e.target.id === 'settings-modal-overlay') closeSettingsModal();
 });
-document.getElementById('btn-save-settings').onclick = () => {
-  if (!isHost()) return;
-  const prices = {};
-  document.querySelectorAll('#settings-list input[data-idx]').forEach(inp => {
-    prices[inp.dataset.idx] = Number(inp.value) || 0;
-  });
-  room.send('update_prices', { prices });
-  closeSettingsModal();
-};
+
+// Each price field auto-saves itself (debounced) as soon as it
+// changes — no batch Save button. See buildSettingsRow() below,
+// which wires the 'input' listener per-field via scheduleAutoSavePrice.
+let priceAutoSaveTimers = {};
+function scheduleAutoSavePrice(idx, inputEl, tickEl) {
+  clearTimeout(priceAutoSaveTimers[idx]);
+  priceAutoSaveTimers[idx] = setTimeout(() => {
+    if (!isHost() || !ROOM || ROOM.started) return;
+    const p = Math.max(0, Math.min(9999, Number(inputEl.value) || 0));
+    room.send('update_prices', { prices: { [idx]: p } });
+    if (tickEl) {
+      tickEl.classList.add('show');
+      clearTimeout(tickEl._hideTimer);
+      tickEl._hideTimer = setTimeout(() => tickEl.classList.remove('show'), 1200);
+    }
+  }, 500);
+}
+
 document.getElementById('btn-reset-settings').onclick = () => {
   if (!isHost()) return;
   room.send('reset_prices', {});
   renderSettingsList();
 };
 
-// ---- chat panel ----
-document.getElementById('chat-toggle').onclick = () => {
-  document.getElementById('chat-body').classList.toggle('hidden');
-};
-document.getElementById('chat-send').onclick = sendChatMessage;
-document.getElementById('chat-input').addEventListener('keydown', (e) => {
+// ---- expanded log / chat panel ----
+let activityModalMode = null;
+
+function updateChatUnreadBadge() {
+  const badge = document.getElementById('chat-unread-badge');
+  if (!badge) return;
+  if (unreadChatCount > 0) {
+    badge.textContent = unreadChatCount > 99 ? '99+' : String(unreadChatCount);
+    badge.classList.remove('hidden');
+  } else {
+    badge.textContent = '';
+    badge.classList.add('hidden');
+  }
+}
+
+function clearUnreadChat() {
+  unreadChatCount = 0;
+  const latest = (ROOM?.chat || []).at(-1);
+  lastKnownChatTs = latest?.ts ?? lastKnownChatTs;
+  updateChatUnreadBadge();
+}
+
+function processChatUpdates(nextRoom) {
+  const messages = nextRoom?.chat || [];
+  const latestTs = messages.length ? Number(messages[messages.length - 1].ts || 0) : null;
+  if (!chatHasInitialized) {
+    chatHasInitialized = true;
+    lastKnownChatTs = latestTs;
+    updateChatUnreadBadge();
+    return;
+  }
+  if (latestTs != null && (lastKnownChatTs == null || latestTs > lastKnownChatTs)) {
+    const incoming = messages.filter(m => Number(m.ts || 0) > Number(lastKnownChatTs || 0) && m.senderId !== myId);
+    if (activityModalMode !== 'chat') unreadChatCount += incoming.length;
+    lastKnownChatTs = latestTs;
+    updateChatUnreadBadge();
+  }
+}
+
+function openActivityModal(mode) {
+  activityModalMode = mode;
+  const overlay = document.getElementById('activity-modal-overlay');
+  const title = document.getElementById('activity-modal-title');
+  const log = document.getElementById('expanded-log-box');
+  const chat = document.getElementById('expanded-chat-wrap');
+  title.textContent = mode === 'chat' ? 'Chat' : 'Game Log';
+  log.classList.toggle('hidden', mode !== 'log');
+  chat.classList.toggle('hidden', mode !== 'chat');
+  overlay.classList.remove('hidden');
+  if (mode === 'log') renderExpandedLog();
+  else { clearUnreadChat(); renderChat(); setTimeout(() => document.getElementById('expanded-chat-input')?.focus(), 0); }
+}
+
+function closeActivityModal() {
+  activityModalMode = null;
+  document.getElementById('activity-modal-overlay').classList.add('hidden');
+}
+
+document.getElementById('btn-open-log').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); openActivityModal('log'); });
+document.getElementById('chat-toggle').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); openActivityModal('chat'); });
+document.getElementById('btn-close-activity').onclick = closeActivityModal;
+document.getElementById('activity-modal-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'activity-modal-overlay') closeActivityModal();
+});
+document.getElementById('expanded-chat-send').onclick = sendChatMessage;
+document.getElementById('expanded-chat-input').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendChatMessage();
 });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && activityModalMode) closeActivityModal();
+});
+
 function sendChatMessage() {
-  const input = document.getElementById('chat-input');
+  const input = document.getElementById('expanded-chat-input');
   const text = input.value.trim();
   if (!text || !room) return;
   room.send('send_chat', { text });
   input.value = '';
 }
+
+// ---- cheat panel: its own small anchored window, separate from the
+// chat/log modal, with its own log feed (ROOM.cheatLog). ----
+let cheatPanelOpen = false;
+function toggleCheatPanel(forceOpen) {
+  cheatPanelOpen = typeof forceOpen === 'boolean' ? forceOpen : !cheatPanelOpen;
+  document.getElementById('cheat-body').classList.toggle('hidden', !cheatPanelOpen);
+  if (cheatPanelOpen) {
+    renderCheatLog();
+    setTimeout(() => document.getElementById('cheat-input')?.focus(), 0);
+  }
+}
+function sendCheatCommand() {
+  const input = document.getElementById('cheat-input');
+  const text = input.value.trim();
+  if (!text || !room) return;
+  room.send('cheat_command', { command: text });
+  input.value = '';
+}
+function renderCheatLog() {
+  const box = document.getElementById('cheat-log');
+  if (!box) return;
+  const entries = ROOM?.cheatLog || [];
+  if (entries.length === 0) {
+    box.innerHTML = '<div class="cheat-log-empty">No cheats run yet. Try "help".</div>';
+    return;
+  }
+  box.innerHTML = '';
+  entries.forEach(e => {
+    const div = document.createElement('div');
+    div.className = 'cheat-log-entry' + (e.ok === false ? ' cheat-error' : '');
+    const cmd = document.createElement('span');
+    cmd.className = 'cheat-cmd';
+    cmd.textContent = `${labelFor(e.senderId)}: ${e.command}`;
+    const result = document.createElement('span');
+    result.className = 'cheat-result';
+    result.textContent = e.result;
+    div.appendChild(cmd);
+    div.appendChild(result);
+    box.appendChild(div);
+  });
+  box.scrollTop = box.scrollHeight;
+}
+document.getElementById('cheat-toggle').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); toggleCheatPanel(); });
+document.getElementById('cheat-send').onclick = sendCheatCommand;
+document.getElementById('cheat-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendCheatCommand();
+});
+document.addEventListener('click', (e) => {
+  if (!cheatPanelOpen) return;
+  if (!document.getElementById('cheat-panel').contains(e.target)) toggleCheatPanel(false);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && cheatPanelOpen) toggleCheatPanel(false);
+});
 
 function showHomeOrLobby(id) {
   screenHome.classList.add('hidden');
@@ -2180,6 +2693,16 @@ async function setupRoom() {
     broadcastSync();
   });
 
+  room.on('cheat_command', (payload) => {
+    if (!isHost() || !ROOM || !GAME) return;
+    const command = String(payload.command || '').slice(0, 80).trim();
+    if (!command) return;
+    const { ok, text } = executeCheat(GAME, payload.senderId, command);
+    ROOM = { ...ROOM, cheatLog: [...(ROOM.cheatLog || []), { senderId: payload.senderId, command, result: text, ok, ts: Date.now() }].slice(-40) };
+    if (ok) pushLog(GAME, `[CHEAT] ${nameOf(payload.senderId)}: ${text}`);
+    broadcastSync();
+  });
+
   room.on('join_seat', (payload) => {
     if (!isHost() || ROOM.started) return;
     if (ROOM.seats.includes(payload.senderId)) return;
@@ -2201,7 +2724,8 @@ async function setupRoom() {
   // seat that's CURRENTLY disconnected — never an active player's seat.
   // Rewrites every player-keyed field in GAME/ROOM from oldId to newId
   // so the reconnected player resumes exactly where they left off
-  // (same cash, position, properties, jail status, pending trades).
+  // (same cash, position, properties, jail status, pending trades,
+  // and — in Cards mode — their hand and any in-progress trick/pit).
   room.on('claim_seat', (payload) => {
     if (!isHost() || !ROOM || !ROOM.started || !GAME) return;
     const oldId = payload.oldId, newId = payload.senderId;
@@ -2542,6 +3066,14 @@ async function setupRoom() {
     const allYes = Object.values(votes).every(v => v === true);
     if (allYes) {
       GAME = freshGame(ROOM.seats);
+      // Cards mode needs a fresh deal + a first trick started right
+      // away, same as start_game does — restart used to skip this
+      // entirely, leaving GAME.hands empty and the game stuck in the
+      // dice-mode 'roll' phase, which Cards mode never resolves.
+      if (ROOM.movementMode === 'cards') {
+        dealNewHand(GAME);
+        startNewTrick(GAME, GAME.order[0]);
+      }
       ROOM = { ...ROOM, restartVote: null };
     }
     broadcastSync();
@@ -2556,6 +3088,7 @@ async function setupRoom() {
   room.on('request_sync', () => { if (isHost()) broadcastSync(); });
 
   room.on('sync', (payload) => {
+    processChatUpdates(payload.room);
     ROOM = payload.room;
     GAME = payload.game;
     renderFromState();
@@ -2595,8 +3128,12 @@ function copyShareLink() {
 // =========================================================
 function renderFromState() {
   if (!ROOM) return;
+  // Log/Chat/Cheats are available to every player, including the host.
   document.getElementById('chat-panel').classList.remove('hidden');
+  document.getElementById('cheat-panel').classList.remove('hidden');
+  document.getElementById('btn-open-log').disabled = false;
   renderChat();
+  renderCheatLog();
   checkAnnouncement();
   if (!document.getElementById('settings-modal-overlay').classList.contains('hidden')) renderSettingsList();
   if (!ROOM.started) { showHomeOrLobby('screen-lobby'); renderLobby(); }
@@ -2928,33 +3465,17 @@ function renderGame() {
     playersBox.appendChild(row);
   });
 
-  // dice / trick display
+  // dice / trick display — the card-mode trick/hand UI has moved onto
+  // the board itself (see renderCenterCardUI), so the HUD's dice-row
+  // only ever shows the classic two dice, and only in Dice mode.
   const cardsMode = ROOM.movementMode === 'cards';
   const diceRow = document.getElementById('dice-row');
   if (!cardsMode) {
+    diceRow.style.display = '';
     diceRow.innerHTML = `<div class="die">${GAME.lastRoll[0]}</div><div class="die">${GAME.lastRoll[1]}</div>`;
-  } else if (GAME.trick) {
-    diceRow.innerHTML = GAME.trick.order.map(id => {
-      const cardIdx = GAME.trick.plays[id];
-      const name = labelFor(id);
-      if (cardIdx === undefined) {
-        return `<div class="pit-card" style="opacity:.4;"><div class="pit-card-label">?</div><div class="pit-card-name">${name}</div></div>`;
-      }
-      const suit = cardSuit(cardIdx);
-      const red = suit === 1 || suit === 2;
-      return `<div class="pit-card" style="color:${red ? '#c0392b' : '#1a1a1a'}"><div class="pit-card-label">${cardLabel(cardIdx)}</div><div class="pit-card-name">${name}</div></div>`;
-    }).join('');
-  } else if (GAME.pit) {
-    diceRow.innerHTML = Object.keys(GAME.pit.plays).map(id => {
-      const cardIdx = GAME.pit.plays[id];
-      const isWinner = id === GAME.pit.winnerId;
-      const suit = cardSuit(cardIdx);
-      const red = suit === 1 || suit === 2;
-      const name = labelFor(id);
-      return `<div class="pit-card${isWinner ? ' winner' : ''}" style="color:${red ? '#c0392b' : '#1a1a1a'}"><div class="pit-card-label">${cardLabel(cardIdx)}</div><div class="pit-card-name">${name}</div></div>`;
-    }).join('');
   } else {
-    diceRow.innerHTML = `<div class="die" style="font-size:16px;">🃏</div>`;
+    diceRow.style.display = 'none';
+    diceRow.innerHTML = '';
   }
 
   // jail box — in cards mode, pay/use-card is available any time (no
@@ -2973,34 +3494,6 @@ function renderGame() {
     if ((GAME.jailCardsHeld[myId] || []).length > 0) addBtn(jailBox, 'Use Jail card', () => room.send('use_jail_card', {}));
   } else {
     jailWrap.style.display = 'none';
-  }
-
-  // hand box — cards mode only, always shows your current hand; cards
-  // become clickable exactly when it's your turn within the trick.
-  const handWrap = document.getElementById('hand-hud-box');
-  if (cardsMode && GAME.hands && GAME.hands[myId] && GAME.phase !== 'gameover') {
-    handWrap.style.display = '';
-    const handRow = document.getElementById('hand-row');
-    handRow.innerHTML = '';
-    const myTrickTurn = GAME.trick && GAME.trick.order[GAME.trick.turnIdx] === myId;
-    const led = GAME.trick ? GAME.trick.ledSuit : null;
-    const hand = GAME.hands[myId].slice().sort((a, b) => cardSuit(a) - cardSuit(b) || cardValue(a) - cardValue(b));
-    const hasLedSuit = led !== null && hand.some(c => cardSuit(c) === led);
-    hand.forEach(cardIdx => {
-      const suit = cardSuit(cardIdx);
-      const red = suit === 1 || suit === 2;
-      const legal = myTrickTurn && (led === null || suit === led || !hasLedSuit);
-      const card = document.createElement('div');
-      card.className = 'pit-card';
-      card.style.color = red ? '#c0392b' : '#1a1a1a';
-      card.style.cursor = legal ? 'pointer' : 'default';
-      card.style.opacity = myTrickTurn && !legal ? '.4' : '1';
-      card.innerHTML = `<div class="pit-card-label">${cardLabel(cardIdx)}</div>`;
-      if (legal) card.onclick = () => room.send('play_trick_card', { cardIdx });
-      handRow.appendChild(card);
-    });
-  } else {
-    handWrap.style.display = 'none';
   }
 
   // turn message + actions
@@ -3035,8 +3528,7 @@ function renderGame() {
   } else if (GAME.phase === 'card_pit_assign' && GAME.pit) {
     const winnerId = GAME.pit.winnerId;
     if (winnerId === myId) {
-      turnMsg.textContent = `You won the trick with ${cardLabel(GAME.pit.plays[winnerId])} (move ${GAME.pit.winnerVal}${GAME.jail[myId].in ? ' — but you\'re in Jail, so you stay put' : ''}). Assign ${GAME.pit.remainingValues.join(', ')} to the others.`;
-      renderPitAssignUI(actionRow);
+      turnMsg.textContent = `You won the trick with ${cardLabel(GAME.pit.plays[winnerId])} (move ${GAME.pit.winnerVal}${GAME.jail[myId].in ? ' — but you\'re in Jail, so you stay put' : ''}). Assign ${GAME.pit.remainingValues.join(', ')} to the others below.`;
     } else {
       turnMsg.textContent = `${nameOf(winnerId)} won the trick and is assigning movement numbers...`;
     }
@@ -3108,7 +3600,7 @@ function renderGame() {
         houses >= Math.max(...GROUPS[space.group].map(i => GAME.houses[i] || 0))) {
       const refund = houseSaleValueOf(space.group);
       const btn = document.createElement('button');
-      btn.textContent = `Sell house (+Tk${refund})`;
+      btn.textContent = houses >= 5 ? `Sell Hotel (+Tk${refund})` : `Sell house (+Tk${refund})`;
       btn.disabled = !canSellOneDown(GAME, houses);
       btn.onclick = () => room.send('sell_house', { spaceIdx: idx });
       row.appendChild(btn);
@@ -3135,6 +3627,7 @@ function renderGame() {
   renderAuctionUI();
   renderTaxChoiceUI();
   renderTrades();
+  renderCenterCardUI(cardsMode);
   document.getElementById('btn-open-trade').disabled = GAME.phase === 'gameover';
 
   // log — natural chronological order (oldest to newest), auto-scrolled
@@ -3153,6 +3646,142 @@ function renderGame() {
     logBox.scrollTop = logBox.scrollHeight;
     logBox.dataset.everScrolled = 'true';
   }
+  if (activityModalMode === 'log') renderExpandedLog();
+  if (activityModalMode === 'chat') renderChat();
+}
+
+// =========================================================
+// CENTER-BOARD CARDS-MODE UI
+// Replaces the decorative MONOPOLY logo + Chance/Chest stacks
+// with two live regions while movement mode is "cards":
+//   - #center-trick-box (red border): the trick currently being
+//     played, one card slot per participant.
+//   - #center-hand-box (black border): your hand to play from,
+//     or — once a trick is won — the movement-assignment UI
+//     (including the "Confirm Assignment" button, i.e. the
+//     confirmation of movement).
+// This used to live down in the HUD sidebar (dice-row / a
+// dedicated hand box / the action-row), which pushed the actual
+// controls off-screen on mobile; now it sits on the board itself.
+// =========================================================
+function renderCenterCardUI(cardsMode) {
+  const cardUiEl = document.getElementById('center-card-ui');
+  const logoEl = document.querySelector('.center .logo');
+  const chanceStackEl = document.querySelector('.center .chance-stack');
+  const chestStackEl = document.querySelector('.center .chest-stack');
+
+  if (!cardsMode || GAME.phase === 'gameover') {
+    cardUiEl.classList.add('hidden');
+    if (logoEl) logoEl.style.display = '';
+    if (chanceStackEl) chanceStackEl.style.display = '';
+    if (chestStackEl) chestStackEl.style.display = '';
+    return;
+  }
+  cardUiEl.classList.remove('hidden');
+  if (logoEl) logoEl.style.display = 'none';
+  if (chanceStackEl) chanceStackEl.style.display = 'none';
+  if (chestStackEl) chestStackEl.style.display = 'none';
+
+  const trickBox = document.getElementById('center-trick-cards');
+  const handBox = document.getElementById('center-hand-cards');
+  const handLabel = document.getElementById('center-hand-label');
+  trickBox.innerHTML = '';
+  handBox.innerHTML = '';
+
+  // --- red box: the trick currently in progress (or just resolved) ---
+  if (GAME.trick) {
+    GAME.trick.order.forEach(id => {
+      const cardIdx = GAME.trick.plays[id];
+      const slot = document.createElement('div');
+      slot.className = 'center-trick-slot';
+      const isActive = id === GAME.trick.order[GAME.trick.turnIdx] && cardIdx === undefined;
+      if (isActive) slot.classList.add('active-turn');
+      if (cardIdx === undefined) {
+        slot.innerHTML = `<div class="ct-card empty">?</div><div class="ct-name">${labelFor(id)}</div>`;
+      } else {
+        const suit = cardSuit(cardIdx); const red = suit === 1 || suit === 2;
+        slot.innerHTML = `<div class="ct-card" style="color:${red ? '#c0392b' : '#1a1a1a'}">${cardLabel(cardIdx)}</div><div class="ct-name">${labelFor(id)}</div>`;
+      }
+      trickBox.appendChild(slot);
+    });
+  } else if (GAME.pit) {
+    Object.keys(GAME.pit.plays).forEach(id => {
+      const cardIdx = GAME.pit.plays[id];
+      const suit = cardSuit(cardIdx); const red = suit === 1 || suit === 2;
+      const isWinner = id === GAME.pit.winnerId;
+      const slot = document.createElement('div');
+      slot.className = 'center-trick-slot' + (isWinner ? ' winner' : '');
+      slot.innerHTML = `<div class="ct-card" style="color:${red ? '#c0392b' : '#1a1a1a'}">${cardLabel(cardIdx)}</div><div class="ct-name">${labelFor(id)}</div>`;
+      trickBox.appendChild(slot);
+    });
+  } else {
+    trickBox.innerHTML = '<div class="msg">Waiting for the next trick…</div>';
+  }
+
+  // --- black box: your hand to play from, or the movement-assignment
+  //     UI (with its confirmation button) once a trick is won ---
+  if (GAME.phase === 'card_pit_assign' && GAME.pit) {
+    handLabel.textContent = 'Assign Movement';
+    if (GAME.pit.winnerId === myId) {
+      renderPitAssignUI(handBox);
+    } else {
+      const msg = document.createElement('div');
+      msg.className = 'msg';
+      msg.textContent = `${nameOf(GAME.pit.winnerId)} is assigning movement…`;
+      handBox.appendChild(msg);
+    }
+    return;
+  }
+
+  handLabel.textContent = 'Your Hand';
+  if (!GAME.hands || !GAME.hands[myId]) {
+    handBox.innerHTML = '<div class="msg">Spectating.</div>';
+    return;
+  }
+
+  const myTrickTurn = GAME.trick && GAME.trick.order[GAME.trick.turnIdx] === myId;
+  const led = GAME.trick ? GAME.trick.ledSuit : null;
+  const hand = GAME.hands[myId].slice().sort((a, b) => cardSuit(a) - cardSuit(b) || cardValue(a) - cardValue(b));
+  const hasLedSuit = led !== null && hand.some(c => cardSuit(c) === led);
+
+  if (GAME.jail[myId] && GAME.jail[myId].in) {
+    const note = document.createElement('div');
+    note.className = 'msg';
+    note.style.marginBottom = '4px';
+    note.textContent = "You're in Jail — you still play, but won't move.";
+    handBox.appendChild(note);
+  }
+
+  const cardsWrap = document.createElement('div');
+  cardsWrap.id = 'center-hand-cards-inner';
+  cardsWrap.style.display = 'flex';
+  cardsWrap.style.flexWrap = 'wrap';
+  cardsWrap.style.gap = '1vmin';
+  cardsWrap.style.justifyContent = 'center';
+  cardsWrap.style.width = '100%';
+  hand.forEach(cardIdx => {
+    const suit = cardSuit(cardIdx); const red = suit === 1 || suit === 2;
+    const legal = myTrickTurn && (led === null || suit === led || !hasLedSuit);
+    const card = document.createElement('div');
+    card.className = 'center-hand-card';
+    card.style.color = red ? '#c0392b' : '#1a1a1a';
+    card.style.cursor = legal ? 'pointer' : 'default';
+    card.style.opacity = myTrickTurn && !legal ? '.4' : '1';
+    card.textContent = cardLabel(cardIdx);
+    if (legal) card.onclick = () => room.send('play_trick_card', { cardIdx });
+    cardsWrap.appendChild(card);
+  });
+  handBox.appendChild(cardsWrap);
+
+  if (!myTrickTurn) {
+    const waitMsg = document.createElement('div');
+    waitMsg.className = 'msg';
+    waitMsg.style.marginTop = '6px';
+    waitMsg.style.width = '100%';
+    waitMsg.style.textAlign = 'center';
+    waitMsg.textContent = GAME.trick ? `Waiting for ${nameOf(GAME.trick.order[GAME.trick.turnIdx])}…` : '';
+    handBox.appendChild(waitMsg);
+  }
 }
 
 // Client-local (not synced) scratch state for the pit assignment UI —
@@ -3168,7 +3797,9 @@ function pitAssignKey(pit) {
 // Lets the pit's winner assign the other cards' numbers to the other
 // participants by clicking a number for each — only numbers still
 // available in the pool are ever offered as buttons, so an illegal or
-// duplicate assignment isn't something the UI can even produce.
+// duplicate assignment isn't something the UI can even produce. The
+// "Confirm Assignment" button at the bottom is the confirmation of
+// movement — nothing moves until it's pressed and accepted by the host.
 function renderPitAssignUI(container) {
   const pit = GAME.pit;
   const key = pitAssignKey(pit);
@@ -3187,19 +3818,17 @@ function renderPitAssignUI(container) {
   const distinctValues = [...new Set(pit.remainingValues)].sort((a, b) => a - b);
 
   const wrap = document.createElement('div');
-  wrap.style.width = '100%';
+  wrap.className = 'center-assign-wrap';
   const poolMsg = document.createElement('div');
   poolMsg.className = 'msg';
-  poolMsg.style.marginBottom = '8px';
   poolMsg.textContent = `Click a number for each player to give out: ${pit.remainingValues.join(', ')}`;
   wrap.appendChild(poolMsg);
 
   pit.otherIds.forEach(id => {
     const row = document.createElement('div');
-    row.style.marginBottom = '8px';
     const label = document.createElement('div');
     label.style.fontWeight = '700';
-    label.style.fontSize = '13px';
+    label.style.fontSize = '1.3vmin';
     label.style.marginBottom = '4px';
     label.textContent = labelFor(id) + ':';
     row.appendChild(label);
@@ -3215,7 +3844,7 @@ function renderPitAssignUI(container) {
     } else {
       const btnRow = document.createElement('div');
       btnRow.className = 'row';
-      btnRow.style.justifyContent = 'flex-start';
+      btnRow.style.justifyContent = 'center';
       distinctValues.forEach(v => {
         if ((availCount[v] || 0) <= 0) return;
         const btn = document.createElement('button');
@@ -3409,12 +4038,11 @@ function renderSettingsList() {
   UTIL_IDXS.forEach(idx => utilDiv.appendChild(buildSettingsRow(idx)));
   listEl.appendChild(utilDiv);
 
-  document.getElementById('btn-save-settings').classList.toggle('hidden', !editable);
   document.getElementById('btn-reset-settings').classList.toggle('hidden', !editable);
   document.getElementById('settings-hint').textContent = ROOM.started
     ? 'Prices are locked in for this game (settings can only be changed before launch).'
     : (editable
-      ? 'Purchase prices only — rent still follows the classic table for each space.'
+      ? 'Purchase prices only — rent still follows the classic table for each space. Changes save automatically.'
       : 'Only the host can change prices. Purchase prices only — rent still follows the classic table.');
 
   function buildSettingsRow(idx) {
@@ -3434,7 +4062,13 @@ function renderSettingsList() {
     input.dataset.idx = idx;
     input.value = priceOf(idx);
     input.disabled = !editable;
-    row.appendChild(swatch); row.appendChild(name); row.appendChild(input);
+    const tick = document.createElement('span');
+    tick.className = 'save-tick';
+    tick.textContent = '✓';
+    if (editable) {
+      input.addEventListener('input', () => scheduleAutoSavePrice(idx, input, tick));
+    }
+    row.appendChild(swatch); row.appendChild(name); row.appendChild(input); row.appendChild(tick);
     return row;
   }
 }
@@ -3442,20 +4076,44 @@ function renderSettingsList() {
 // =========================================================
 // CHAT
 // =========================================================
+function renderExpandedLog() {
+  const box = document.getElementById('expanded-log-box');
+  if (!box || !GAME) return;
+  const wasNearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 30;
+  box.innerHTML = '';
+  (GAME.log || []).forEach((line, i) => {
+    const d = document.createElement('div');
+    d.textContent = line;
+    if (i === GAME.log.length - 1) d.className = 'log-newest';
+    box.appendChild(d);
+  });
+  if (wasNearBottom || box.dataset.everScrolled !== 'true') {
+    box.scrollTop = box.scrollHeight;
+    box.dataset.everScrolled = 'true';
+  }
+}
+
 function renderChat() {
-  const box = document.getElementById('chat-messages');
+  const box = document.getElementById('expanded-chat-messages');
+  if (!box) return;
   const wasNearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 30;
   box.innerHTML = '';
   (ROOM.chat || []).forEach(m => {
     const div = document.createElement('div');
     div.className = 'chat-msg' + (m.senderId === myId ? ' mine' : '');
-    const who = labelFor(m.senderId);
-    div.innerHTML = `<span class="who">${who}:</span> `;
-    div.appendChild(document.createTextNode(m.text));
+    const who = document.createElement('span');
+    who.className = 'who';
+    who.textContent = labelFor(m.senderId) + ':';
+    div.appendChild(who);
+    div.appendChild(document.createTextNode(' ' + m.text));
     box.appendChild(div);
   });
-  if (wasNearBottom) box.scrollTop = box.scrollHeight;
+  if (wasNearBottom || box.dataset.everScrolled !== 'true') {
+    box.scrollTop = box.scrollHeight;
+    box.dataset.everScrolled = 'true';
+  }
 }
+
 
 // =========================================================
 // ANNOUNCEMENT TOAST — card draws and jail sends, shown to
