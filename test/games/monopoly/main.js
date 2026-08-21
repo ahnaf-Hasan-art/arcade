@@ -10,10 +10,11 @@ import {
   setROOM, setGAME, setRoomCode,
 } from './state.js';
 import { setupRoom } from './network.js';
+import { SPACES } from './board-data.js';
 import {
   renderLobby, renderGame, renderRestartUI, renderTradeSides, sendTradeOffer,
   renderSettingsList, renderExpandedLog, renderChat, renderAuctionUI, renderCheatLog,
-  populateTradeTargets,
+  populateTradeTargets, openPropertyInfoModal,
 } from './render.js';
 
 export const screenHome = document.getElementById('screen-home');
@@ -147,6 +148,30 @@ document.getElementById('btn-reset-settings').onclick = () => {
   room.send('reset_prices', {});
   renderSettingsList();
 };
+
+// ---- property info modal (click a board cell) ----
+// Wired once at load, since the board cells are static markup (not
+// re-created per render). Colored properties, stations, and utilities
+// get a click handler; GO/Chance/Chest/tax/corner cells stay inert.
+document.querySelectorAll('#board .cell[data-idx]').forEach(cellEl => {
+  const idx = Number(cellEl.dataset.idx);
+  const space = SPACES[idx];
+  if (!space || (space.type !== 'property' && space.type !== 'rail' && space.type !== 'util')) return;
+  cellEl.classList.add('clickable-cell');
+  cellEl.addEventListener('click', () => openPropertyInfoModal(idx));
+});
+
+export function closePropertyInfoModal() {
+  document.getElementById('property-info-modal-overlay').classList.add('hidden');
+}
+document.getElementById('btn-close-property-info').onclick = closePropertyInfoModal;
+document.getElementById('property-info-modal-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'property-info-modal-overlay') closePropertyInfoModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (!document.getElementById('property-info-modal-overlay').classList.contains('hidden')) closePropertyInfoModal();
+});
 
 // ---- expanded log / chat panel ----
 
