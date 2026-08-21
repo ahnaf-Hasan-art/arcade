@@ -616,6 +616,30 @@
   }
   .settings-row .save-tick.show { opacity: 1; }
 
+  /* ---- property info modal (click a board cell) ---- */
+  .property-info-modal-card { width: min(720px, 100%); }
+  .clickable-cell { cursor: pointer; }
+  .clickable-cell:hover { filter: brightness(1.06); outline: 2px solid var(--gold); outline-offset: -2px; }
+  .prop-info-columns { display: flex; gap: 14px; flex-wrap: wrap; }
+  .prop-info-col {
+    flex: 1 1 160px; min-width: 150px;
+    border: 1px solid var(--hairline); border-radius: var(--radius-sm);
+    background: rgba(255,255,255,.55); padding: 12px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .prop-info-swatch { width: 100%; height: 14px; border: 1px solid #000; border-radius: 2px; }
+  .prop-info-name { font-size: 15px; font-weight: 900; letter-spacing: .3px; }
+  .prop-info-price { font-size: 13px; font-weight: 700; color: var(--gold-dark); }
+  .prop-info-housecost { font-size: 11px; color: #5c5642; margin-top: 2px; }
+  .rent-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
+  .rent-table td { padding: 4px 2px; border-bottom: 1px solid var(--hairline); }
+  .rent-table td:last-child { text-align: right; font-weight: 700; }
+  .rent-table tr:first-child td { font-weight: 900; }
+
+  @media (max-width: 560px) {
+    .prop-info-columns { flex-direction: column; }
+  }
+
   /* ---- announcement toast (card draws, jail) ---- */
   #announcement-toast {
     position: fixed;
