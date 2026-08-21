@@ -333,6 +333,20 @@
   </div>
 </div>
 
+<!-- PROPERTY INFO MODAL — opened by clicking a property/station/utility
+     cell on the board. For a colored property, shows all properties in
+     that color group side by side; for a station or utility, shows
+     just that one space. -->
+<div id="property-info-modal-overlay" class="modal-overlay hidden">
+  <div id="property-info-modal-card" class="modal-card property-info-modal-card">
+    <div class="modal-head">
+      <h3 id="property-info-modal-title">Property Info</h3>
+      <button id="btn-close-property-info" class="modal-x" aria-label="Close">✕</button>
+    </div>
+    <div id="property-info-content"></div>
+  </div>
+</div>
+
 <script type="module" src="main.js"></script>
 </body>
 </html>
