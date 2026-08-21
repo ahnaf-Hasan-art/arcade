@@ -15,7 +15,10 @@ import {
   canBuildOneMore, canSellOneDown, mortgageValueOf, unmortgageCostOf, houseSaleValueOf,
   isTradeable, tradeSummary, cardSuit, cardValue, cardLabel, AUCTION_RAISE_STEPS,
 } from './game-engine.js';
-import { activityModalMode, showingRestartConfirm, seatSelectEl } from './main.js';
+import {
+  activityModalMode, showingRestartConfirm, seatSelectEl, showHomeOrLobby,
+  gameShell, screenHome, screenLobby, closeTradeModal, scheduleAutoSavePrice,
+} from './main.js';
 
 // =========================================================
 // RENDER
