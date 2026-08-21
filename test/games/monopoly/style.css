@@ -1,0 +1,868 @@
+/* =========================================================
+   BOARD STYLES — do not restyle spaces/colors/corners here;
+   anything new (HUD, lobby, tokens) is in the section below.
+   ========================================================= */
+  /* =========================================================
+     BOARD STYLES — copied exactly from the provided board file.
+     Do not restyle spaces/colors/corners here; anything new
+     (HUD, lobby, tokens) lives in the second <style> block below.
+     ========================================================= */
+  :root{
+    --board-green:#c5e4d1;
+    --board-cream:#f7f3e9;
+    --border:#1a1a1a;
+    --ink:#20221f;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:radial-gradient(circle at 50% 40%, #24493a 0%, #12261d 75%, #0c1a13 100%);
+    font-family:'Times New Roman', Times, serif;
+  }
+  .board{
+    width:min(94vmin,1000px);
+    height:min(94vmin,1000px);
+    background:var(--board-cream);
+    display:grid;
+    grid-template-columns:repeat(11,1fr);
+    grid-template-rows:repeat(11,1fr);
+    border:5px solid var(--border);
+    border-radius:6px;
+    position:relative;
+    box-shadow:
+      0 25px 60px -15px rgba(0,0,0,.65),
+      0 0 0 10px #0e2419,
+      0 0 0 11px rgba(255,255,255,.06);
+  }
+  .cell{
+    border:1px solid rgba(0,0,0,.55);
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    background:var(--board-cream);
+    overflow:hidden;
+    color:var(--ink);
+  }
+  .side-bottom, .side-top{ justify-content:flex-end; }
+  .price{
+    font-size:1.7vmin;
+    text-align:center;
+    padding:2px 0;
+    font-weight:bold;
+    color:#3a3a3a;
+    letter-spacing:.3px;
+  }
+  .price.price-rent{
+    color:#0d6b3a;
+  }
+  .name{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    font-size:1.1vmin;
+    font-weight:700;
+    text-transform:uppercase;
+    padding:2px 3px;
+    line-height:1.15;
+    letter-spacing:.3px;
+  }
+  .color-bar{
+    height:15%;
+    width:100%;
+    border-bottom:1px solid rgba(0,0,0,.6);
+    background-image:linear-gradient(180deg, rgba(255,255,255,.35), rgba(0,0,0,.12));
+    box-shadow:inset 0 -2px 3px rgba(0,0,0,.18);
+    position:relative;
+  }
+  .side-top .color-bar{
+    order:3;
+    border-bottom:none;
+    border-top:1px solid rgba(0,0,0,.6);
+    background-image:linear-gradient(0deg, rgba(255,255,255,.35), rgba(0,0,0,.12));
+  }
+  .side-top .name{ order:2; }
+  .side-top .price{ order:1; }
+  .side-left, .side-right{ writing-mode:vertical-rl; }
+  .side-left .name{ transform:rotate(180deg); }
+  .side-left .price{ transform:rotate(180deg); }
+  .side-left .color-bar{ order:0; }
+  .side-right{ writing-mode:vertical-lr; }
+  .side-right .color-bar{ order:2; }
+  .side-right .name{ order:1; transform:rotate(180deg); }
+  .side-right .price{ order:0; transform:rotate(180deg);}
+
+  .corner{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:900;
+    text-align:center;
+    font-size:1.5vmin;
+    padding:4px;
+    background:radial-gradient(circle at 50% 30%, #fffdf6 0%, var(--board-cream) 70%);
+    letter-spacing:.4px;
+  }
+  .corner .big{
+    font-size:2.6vmin;
+    line-height:1;
+    filter:drop-shadow(0 2px 2px rgba(0,0,0,.25));
+  }
+
+  .center{
+    grid-column:2/11;
+    grid-row:2/11;
+    background:
+      repeating-linear-gradient(135deg, rgba(255,255,255,.05) 0 2px, transparent 2px 18px),
+      radial-gradient(circle at 30% 25%, #d9efe2 0%, var(--board-green) 60%, #a9d3ba 100%);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    box-shadow:inset 0 0 0 2px rgba(0,0,0,.15);
+  }
+  .logo{
+    font-size:7vmin;
+    font-weight:900;
+    color:#e3141b;
+    transform:rotate(-33deg);
+    text-shadow:
+      2px 2px 0 #000,
+      -2px -2px 0 #000,
+      2px -2px 0 #000,
+      -2px 2px 0 #000,
+      4px 4px 6px rgba(0,0,0,.35);
+    letter-spacing:2px;
+    font-family:Georgia, 'Times New Roman', serif;
+    -webkit-text-stroke:1px #000;
+  }
+
+  .card-stack{ position:absolute; width:15%; aspect-ratio:0.68; z-index:1; }
+  .chance-stack{ top:9%; left:10%; transform:rotate(-10deg); }
+  .chest-stack{ bottom:9%; right:10%; transform:rotate(9deg); }
+  .card-face{
+    position:relative;
+    width:100%;
+    height:100%;
+    background:var(--board-cream);
+    border:2px solid #000;
+    border-radius:8%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    font-weight:900;
+    text-align:center;
+    box-shadow:0 3px 6px rgba(0,0,0,.3);
+  }
+  .card-face::before, .card-face::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    border:2px solid #000;
+    border-radius:8%;
+    background:var(--board-cream);
+    z-index:-1;
+  }
+  .card-face::before{ transform:translate(5%,5%); }
+  .card-face::after{ transform:translate(10%,10%); z-index:-2; }
+  .chance-stack .card-face{ color:#e8580f; }
+  .chest-stack .card-face{ color:#1a73c9; }
+  .card-icon{ font-size:2.6vmin; filter:drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
+  .card-label{ font-size:1vmin; letter-spacing:.5px; margin-top:4px; line-height:1.2; }
+
+  /* colors — compound with .color-bar so these reliably beat the
+     .side-top/.side-left/.side-right .color-bar rules above, which
+     were otherwise silently winning on specificity (2 classes) over
+     a bare .red/.yellow (1 class) and washing out the top row. */
+  .color-bar.brown{background:linear-gradient(160deg,#a2694a,#7a4128);}
+  .color-bar.lightblue{background:linear-gradient(160deg,#c3ecff,#8fd2f5);}
+  .color-bar.pink{background:linear-gradient(160deg,#e85cad,#c22384);}
+  .color-bar.orange{background:linear-gradient(160deg,#ffa63d,#e87f0f);}
+  .color-bar.red{background:linear-gradient(160deg,#f2434a,#d21017);}
+  .color-bar.yellow{background:linear-gradient(160deg,#fff65c,#f0d800);}
+  .color-bar.green{background:linear-gradient(160deg,#3ec97c,#149249);}
+  .color-bar.blue{background:linear-gradient(160deg,#2a8fd1,#00568f);}
+
+  .chest, .chance, .tax, .rail, .util{
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+  }
+  .rail .name{ font-size:0.85vmin; letter-spacing:0; padding:2px 2px; word-break:break-word; }
+  .icon{
+    font-size:2.6vmin; flex:1; display:flex; align-items:center; justify-content:center;
+    filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));
+  }
+  .side-left .icon, .side-right .icon{ writing-mode:horizontal-tb; }
+
+  .go-corner{ background:radial-gradient(circle at 50% 30%, #fffdf6 0%, var(--board-cream) 70%); }
+  .go-arrow{ color:#e3141b; font-size:1.9vmin; margin-top:2px; filter:drop-shadow(0 1px 1px rgba(0,0,0,.2)); }
+
+  .jail-corner{
+    background:radial-gradient(circle at 50% 30%, #fffdf6 0%, var(--board-cream) 70%);
+    display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; padding:0;
+  }
+  .jail-label{
+    grid-column:1/2; grid-row:2/3;
+    display:flex; align-items:flex-end; justify-content:flex-start;
+    font-size:1.05vmin; font-weight:900; padding:4px;
+  }
+  .jail-visiting{
+    grid-column:1/2; grid-row:1/2;
+    font-size:.75vmin; padding:4px; writing-mode: vertical-rl; transform:rotate(180deg);
+    display:flex; align-items:flex-start; justify-content:flex-end;
+    color:#555;
+  }
+  .jail-cell{
+    grid-column:2/3; grid-row:1/3;
+    background:radial-gradient(circle at 35% 30%, #ffb347 0%, #ff8c1a 55%, #e0740a 100%);
+    border:2px solid #000;
+    display:flex; align-items:center; justify-content:center;
+    font-size:2.6vmin; color:#fff;
+    box-shadow:inset 0 2px 4px rgba(255,255,255,.4), inset 0 -3px 6px rgba(0,0,0,.35);
+  }
+  .park-corner{ color:#e3141b; }
+  .goto-jail-corner{ color:#0072bb; }
+
+/* =========================================================
+   HUD / LOBBY / MODALS — everything else in the app.
+   ========================================================= */
+  /* =========================================================
+     EVERYTHING BELOW IS NEW — HUD, lobby, tokens, modals.
+     The board rules above are completely untouched, and this
+     page deliberately does NOT load shared/style.css — the
+     rest of the arcade uses a neon theme, but Monopoly gets
+     its own consistent world: cream, gold, serif, matching
+     the board itself rather than bolting a second look onto it.
+     ========================================================= */
+  :root{
+    --gold:#c9a227;
+    --gold-light:#e8d98a;
+    --gold-dark:#8a6d16;
+    --panel-bg: radial-gradient(circle at 50% 20%, #fffdf6 0%, var(--board-cream) 75%);
+    --panel-bg-flat: var(--board-cream);
+    --panel-border: var(--border);
+    --accent-red:#a01015;
+    --accent-green:#1f7a3f;
+    --hairline:#d8cfb0;
+    --radius-sm:4px;
+    --radius-md:8px;
+    --radius-lg:14px;
+    --shadow-card: 0 8px 22px rgba(0,0,0,.28), 0 1px 0 rgba(255,255,255,.5) inset;
+    --shadow-lift: 0 14px 32px rgba(0,0,0,.4);
+    --shadow-pop: 0 30px 80px rgba(0,0,0,.55);
+    --ease: cubic-bezier(.2,.7,.3,1);
+  }
+  html, body { overflow-x: hidden; }
+  body {
+    display: block;
+    min-height: 100vh;
+    font-family:'Times New Roman', Times, serif;
+    color: var(--ink);
+    /* background gradient below is the board's own original — unchanged from the source file */
+  }
+  .board { margin: 0 auto; }
+
+  /* subtle global scrollbar treatment so every scroll region in the
+     HUD/modals/chat shares one quiet, on-theme look instead of the
+     stock OS scrollbar clashing with the cream/gold panels */
+  .modal-card, #chat-messages, #log-box, .props-list, .prop-picker, .settings-list{
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold) transparent;
+  }
+  .modal-card::-webkit-scrollbar, #chat-messages::-webkit-scrollbar,
+  #log-box::-webkit-scrollbar, .props-list::-webkit-scrollbar, .prop-picker::-webkit-scrollbar{
+    width: 7px;
+  }
+  .modal-card::-webkit-scrollbar-thumb, #chat-messages::-webkit-scrollbar-thumb,
+  #log-box::-webkit-scrollbar-thumb, .props-list::-webkit-scrollbar-thumb, .prop-picker::-webkit-scrollbar-thumb{
+    background: var(--gold); border-radius: 10px;
+  }
+  .modal-card::-webkit-scrollbar-track, #chat-messages::-webkit-scrollbar-track,
+  #log-box::-webkit-scrollbar-track, .props-list::-webkit-scrollbar-track, .prop-picker::-webkit-scrollbar-track{
+    background: transparent;
+  }
+
+  :focus-visible{ outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  .back-link {
+    display: inline-flex; align-items:center; gap:6px;
+    margin: 14px 0 0 16px; padding: 6px 12px;
+    font-size: 13px; letter-spacing:.3px;
+    color: var(--board-cream); text-decoration: none;
+    border-radius: 999px; border:1px solid rgba(255,255,255,.18);
+    background: rgba(0,0,0,.18);
+    transition: background .18s var(--ease), border-color .18s var(--ease), transform .18s var(--ease);
+  }
+  .back-link:hover { text-decoration: none; background: rgba(0,0,0,.32); border-color: var(--gold); transform: translateX(-2px); }
+
+  .screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    text-align: center;
+    padding: 40px 20px 60px;
+    color: var(--board-cream);
+    max-width: 520px;
+    margin: 0 auto;
+  }
+  .hidden { display: none !important; }
+
+  .eyebrow { letter-spacing:3px; font-size:11px; color:#cfe3d8; text-transform:uppercase; }
+  .title {
+    font-size:34px; font-weight:900; margin:0; color:var(--gold);
+    text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+    letter-spacing:2px;
+  }
+  /* Color intentionally NOT set here — this class is reused on both the
+     dark home/lobby screens (which set color:var(--board-cream) on
+     .screen) and the light HUD/modal panels (which set color:var(--ink)
+     on #hud, or inherit ink from body). Hardcoding a light color here
+     used to make this text invisible everywhere it appeared inside the
+     light-colored HUD/modal panels — letting it inherit fixes that. */
+  .msg { font-size:14px; max-width:480px; line-height:1.5; }
+  .err { color: #ff8a8a; font-size:13px; min-height:16px; }
+  .err:not(:empty)::before { content:"⚠ "; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center; }
+  a.link { color: var(--gold); }
+
+  input, select, button {
+    font-family:'Times New Roman', Times, serif;
+    font-size:14px; padding:9px 14px;
+    background: var(--panel-bg);
+    border: 2px solid var(--panel-border);
+    color: var(--ink);
+    border-radius: var(--radius-sm);
+    transition: background .16s var(--ease), border-color .16s var(--ease), box-shadow .16s var(--ease), transform .12s var(--ease);
+  }
+  input:focus, select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,162,39,.25); }
+  button { cursor:pointer; font-weight:700; letter-spacing:.5px; box-shadow: 0 2px 0 rgba(0,0,0,.5); }
+  button:hover:not(:disabled) { background: linear-gradient(160deg,#fffdf6,#eee7d4); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,.3); }
+  button:active:not(:disabled) { transform: translateY(1px); box-shadow: 0 1px 0 rgba(0,0,0,.5); }
+  button:disabled { opacity:.4; cursor:not-allowed; box-shadow:none; }
+
+  .code-badge {
+    font-size:26px; letter-spacing:6px; color:var(--gold);
+    border:2px dashed var(--gold); padding:6px 18px; border-radius: var(--radius-sm);
+    background: rgba(0,0,0,.2);
+    box-shadow: 0 0 0 6px rgba(201,162,39,.06);
+  }
+
+  .seat-select { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-top:4px; }
+  .seat-btn { padding:8px 14px; border-radius: 999px; }
+  .seat-btn.active { border-color: var(--gold); color: var(--gold-dark); background: var(--panel-bg); box-shadow: 0 0 0 1px var(--gold) inset, 0 2px 8px rgba(201,162,39,.35); }
+  .seat-btn:disabled { opacity:.5; }
+
+  .seat-list { display:flex; flex-direction:column; gap:6px; width:100%; max-width:360px; margin-top:8px; }
+  .seat-row {
+    display:flex; align-items:center; gap:10px; padding:9px 12px;
+    border:1px solid #3a5a49; border-radius: var(--radius-sm);
+    background: rgba(0,0,0,.22); font-size:13px; color:#cfe3d8;
+    transition: border-color .16s var(--ease), background .16s var(--ease);
+  }
+  .seat-row.mine { border-color: var(--gold); background: rgba(201,162,39,.12); }
+  .token-dot { width:16px; height:16px; border-radius:50%; border:2px solid #000; flex-shrink:0; box-shadow: 0 1px 2px rgba(0,0,0,.5); }
+  .seat-row .who { flex:1; text-align:left; }
+  .seat-row.filled .who { color: var(--board-cream); font-weight:700; }
+
+  /* ---- game layout ---- */
+  #game-shell {
+    display: none;
+    flex-direction: row;
+    gap: 20px;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 16px;
+    flex-wrap: wrap;
+  }
+  #game-shell.active { display: flex; }
+
+  #board-outer { position: relative; flex: 0 0 auto; }
+
+  .token {
+    position: absolute;
+    width: 3.6%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 2px solid #000;
+    box-shadow: 0 2px 5px rgba(0,0,0,.55), 0 0 0 2px rgba(255,255,255,.65);
+    z-index: 5;
+    transition: left .3s var(--ease), top .3s var(--ease);
+  }
+
+  /* on-board ownership indicator: a colored border matching the
+     owner's token color, applied directly to the property cell
+     (in addition to the token dots showing where players stand) */
+  .cell.owned {
+    box-shadow: inset 0 0 0 4px var(--owner-color, transparent);
+  }
+  .cell.mortgaged-cell {
+    box-shadow: inset 0 0 0 4px var(--owner-color, transparent), inset 0 0 0 1000px rgba(0,0,0,.35);
+  }
+  .cell.mortgaged-cell .price {
+    color: #b91c1c;
+    font-weight: 900;
+  }
+  .house-badge {
+    position: absolute;
+    bottom: 2px;
+    left: 0; right: 0;
+    text-align: center;
+    font-size: 1.6vmin;
+    line-height: 1;
+    pointer-events: none;
+    z-index: 4;
+    text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+  }
+
+  #hud {
+    width: 300px;
+    flex: 0 0 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    color: var(--ink);
+  }
+  .hud-box {
+    border: 2px solid var(--panel-border);
+    background: var(--panel-bg);
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+    transition: box-shadow .18s var(--ease);
+  }
+  .hud-box:hover { box-shadow: var(--shadow-lift); }
+  .hud-box h4 {
+    margin:0 0 10px; font-size:11.5px; letter-spacing:2px; color: var(--gold-dark);
+    text-transform:uppercase; border-bottom:2px solid var(--hairline); padding-bottom:7px;
+    display:flex; align-items:center; gap:6px;
+  }
+  .hud-box h4::before{
+    content:""; width:6px; height:6px; border-radius:50%;
+    background: var(--gold); box-shadow: 0 0 0 3px rgba(201,162,39,.18);
+  }
+
+  .player-row { display:flex; align-items:center; gap:8px; padding:7px 6px; font-size:13px; border-radius: var(--radius-sm); transition: background .16s var(--ease); }
+  .player-row.turn {
+    color: var(--accent-red); font-weight:900;
+    background: rgba(160,16,21,.08);
+    box-shadow: inset 3px 0 0 var(--accent-red);
+    animation: turn-pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes turn-pulse {
+    0%, 100% { background: rgba(160,16,21,.06); }
+    50% { background: rgba(160,16,21,.14); }
+  }
+  .player-row.bankrupt { opacity:.4; text-decoration: line-through; }
+  .player-row .cash { margin-left:auto; font-weight:700; font-variant-numeric: tabular-nums; }
+
+  .dice-row { display:flex; gap:10px; justify-content:center; font-size:28px; margin-bottom:10px; flex-wrap:wrap; }
+  .pit-card {
+    background: linear-gradient(160deg,#fff,#f3f0e6);
+    border:1px solid #999; border-radius:8px; width:52px; padding:6px 3px; text-align:center;
+    box-shadow: 0 3px 6px rgba(0,0,0,.3);
+    transition: transform .16s var(--ease);
+  }
+  .pit-card.winner { border:2px solid var(--gold); box-shadow:0 0 10px rgba(201,162,39,.7), 0 3px 6px rgba(0,0,0,.3); transform: translateY(-2px); }
+  .pit-card-label { font-size:18px; font-weight:bold; }
+  .pit-card-name { font-size:10.5px; color:#333; margin-top:2px; }
+  .die {
+    width:44px; height:44px; display:flex; align-items:center; justify-content:center;
+    background: linear-gradient(160deg,#ffffff,#e7e7e7);
+    color:#000; border-radius:9px; border:2px solid #000; font-weight:900;
+    box-shadow: 0 3px 0 rgba(0,0,0,.65), 0 5px 10px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.8);
+  }
+
+  .action-row { display:flex; flex-wrap:wrap; gap:7px; }
+  .action-row button { flex:1 1 auto; font-size:12px; padding:9px 10px; border-radius: var(--radius-sm); }
+  .action-row button:first-child:not(:only-child) {
+    background: linear-gradient(160deg,var(--gold-light),var(--gold));
+    border-color: var(--gold-dark);
+  }
+  .action-row button:first-child:not(:only-child):hover:not(:disabled) {
+    background: linear-gradient(160deg,#f5ecc0,#dcb93a);
+  }
+
+  #log-box { max-height: 160px; overflow-y: auto; font-size: 13px; color:#3a3a2a; display:flex; flex-direction:column; gap:5px; }
+  #log-box .log-newest { font-weight: 700; background: rgba(201,162,39,.18); padding: 4px 7px; border-radius: var(--radius-sm); box-shadow: inset 2px 0 0 var(--gold); }
+
+  .props-list { max-height: 170px; overflow-y:auto; display:flex; flex-direction:column; gap:5px; }
+  .prop-row { display:flex; align-items:center; gap:6px; font-size:12.5px; padding: 2px 0; }
+  .prop-row .swatch { width:11px; height:11px; flex-shrink:0; border:1px solid #000; border-radius:2px; }
+  .prop-row button { font-size:10px; padding:4px 8px; margin-left:auto; border-radius: var(--radius-sm); }
+
+  /* ---- pending trade offers (in the HUD) ---- */
+  .trade-offer-row { font-size: 13px; border: 1px solid var(--hairline); background: rgba(255,255,255,.5); border-radius: var(--radius-sm); padding: 10px; margin-bottom: 8px; text-align: left; line-height: 1.4; box-shadow: 0 2px 6px rgba(0,0,0,.1); }
+  .trade-offer-row .row { margin-top: 8px; }
+  .trade-offer-row button { font-size: 12px; padding: 6px 12px; }
+
+  /* ---- trade modal ---- */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(10, 15, 10, .62);
+    backdrop-filter: blur(2px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    animation: overlay-in .15s var(--ease);
+  }
+  @keyframes overlay-in { from { opacity: 0; } to { opacity: 1; } }
+  .modal-card {
+    width: min(600px, 100%);
+    max-height: 88vh;
+    overflow-y: auto;
+    background: var(--panel-bg);
+    border: 3px solid var(--panel-border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    box-shadow: var(--shadow-pop);
+    animation: modal-in .2s var(--ease);
+  }
+  @keyframes modal-in { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  .modal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--hairline); }
+  .modal-head h3 { margin: 0; font-size: 22px; color: var(--gold-dark); letter-spacing: 1px; }
+  .modal-x { font-size: 16px; padding: 6px 10px; line-height: 1; border-radius: 999px; }
+
+  .modal-label { display:block; font-size: 14px; font-weight: 700; margin-bottom: 14px; }
+  .modal-select { display:block; width:100%; margin-top:6px; font-size: 15px; padding: 10px; }
+
+  .trade-columns { display: flex; align-items: stretch; gap: 12px; }
+  .trade-col { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .trade-col-head {
+    font-size: 15px; font-weight: 900; text-align: center;
+    padding: 7px; background: rgba(0,0,0,.06); border-radius: var(--radius-sm); letter-spacing: .5px;
+  }
+  .trade-arrow { align-self: center; font-size: 22px; color: var(--gold-dark); }
+
+  .prop-picker {
+    display: flex; flex-direction: column; gap: 6px;
+    max-height: 220px; overflow-y: auto;
+    border: 1px solid var(--hairline); border-radius: var(--radius-sm); padding: 6px;
+    background: rgba(255,255,255,.55);
+  }
+  .prop-picker .prop-option {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; padding: 7px 8px; border-radius: var(--radius-sm);
+    cursor: pointer; border: 1px solid transparent;
+    transition: background .14s var(--ease), border-color .14s var(--ease);
+  }
+  .prop-picker .prop-option:hover { background: rgba(0,0,0,.06); }
+  .prop-picker .prop-option.checked { border-color: var(--gold); background: rgba(201,162,39,.16); font-weight: 700; }
+  .prop-picker .prop-option .swatch { width: 12px; height: 12px; flex-shrink:0; border: 1px solid #000; border-radius: 2px; }
+  .prop-picker .prop-option input { width: 15px; height: 15px; flex-shrink: 0; }
+  .prop-picker .empty-msg { font-size: 12px; color: #5c5642; font-style: italic; padding: 8px; text-align: center; }
+
+  .cash-row { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; }
+  .cash-row input { flex: 1; font-size: 15px; padding: 9px; }
+
+  .jail-check { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .jail-check input { width: 15px; height: 15px; }
+
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .modal-actions button { flex: 1; font-size: 15px; padding: 12px; border-radius: var(--radius-sm); }
+  .modal-primary { background: linear-gradient(160deg,var(--gold-light),var(--gold)); border-color: var(--gold-dark); }
+  .modal-primary:hover:not(:disabled) { background: linear-gradient(160deg,#f5ecc0,#dcb93a); }
+
+  /* ---- auction modal (pops up centered, same overlay/card system
+     as the trade/settings modals, sized up a bit and non-dismissable) ---- */
+  .auction-modal-card { width: min(460px, 100%); text-align: center; }
+  .auction-modal-card .modal-head { justify-content: center; }
+  .auction-modal-card .modal-head h3 { letter-spacing: 2px; text-transform: uppercase; font-size: 20px; }
+  #auction-modal-status { font-size: 15px; font-weight: 700; }
+  #auction-modal-order { color: #5c5642; }
+  .auction-timer {
+    font-size: 40px; font-weight: 900; font-variant-numeric: tabular-nums;
+    color: var(--ink); margin: 14px auto 4px; width: 84px; height: 84px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; border: 4px solid var(--gold);
+    background: radial-gradient(circle at 50% 30%, #fffdf6 0%, var(--panel-bg-flat) 75%);
+    box-shadow: 0 6px 16px rgba(0,0,0,.25);
+    transition: border-color .2s var(--ease), color .2s var(--ease);
+  }
+  .auction-timer.low { border-color: var(--accent-red); color: var(--accent-red); animation: turn-pulse 1s ease-in-out infinite; }
+  .auction-modal-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+  .auction-modal-actions .raise-btn {
+    font-size: 15px; padding: 12px; border-radius: var(--radius-sm);
+    background: linear-gradient(160deg,var(--gold-light),var(--gold)); border-color: var(--gold-dark);
+  }
+  .auction-modal-actions .raise-btn:hover:not(:disabled) { background: linear-gradient(160deg,#f5ecc0,#dcb93a); }
+  .auction-modal-actions .pass-btn { font-size: 15px; padding: 12px; border-radius: var(--radius-sm); background: var(--panel-bg); }
+  .auction-modal-waiting { font-size: 13px; color: #5c5642; font-style: italic; margin-top: 16px; }
+
+  @media (max-width: 560px) {
+    .trade-columns { flex-direction: column; }
+    .trade-arrow { transform: rotate(90deg); }
+  }
+
+  /* ---- settings modal ---- */
+  .settings-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 4px; max-height: 60vh; overflow-y: auto; }
+  .settings-group h4 {
+    margin: 0 0 6px; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--gold-dark); border-bottom: 1px solid var(--hairline); padding-bottom: 4px;
+  }
+  .settings-row { display: flex; align-items: center; gap: 8px; padding: 6px 4px; font-size: 13px; border-radius: var(--radius-sm); transition: background .14s var(--ease); }
+  .settings-row:hover { background: rgba(0,0,0,.03); }
+  .settings-row .swatch { width: 12px; height: 12px; flex-shrink: 0; border: 1px solid #000; border-radius: 2px; }
+  .settings-row .sname { flex: 1; }
+  .settings-row input { width: 90px; font-size: 13px; padding: 6px 8px; }
+  .settings-row input:disabled { opacity: .6; }
+  .settings-row .save-tick {
+    font-size: 11px; color: var(--accent-green); opacity: 0; transition: opacity .2s var(--ease);
+    width: 14px; text-align: center; flex-shrink: 0;
+  }
+  .settings-row .save-tick.show { opacity: 1; }
+
+  /* ---- announcement toast (card draws, jail) ---- */
+  #announcement-toast {
+    position: fixed;
+    top: 20px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 95;
+    max-width: min(520px, 90vw);
+    background: var(--panel-bg);
+    border: 3px solid var(--panel-border);
+    border-radius: var(--radius-md);
+    padding: 14px 22px;
+    box-shadow: var(--shadow-pop);
+    font-family: 'Times New Roman', Times, serif;
+    text-align: center;
+    animation: toast-in .25s var(--ease);
+  }
+  #announcement-toast.toast-card { border-color: #e8580f; }
+  #announcement-toast.toast-jail { border-color: #e0740a; background: radial-gradient(circle at 50% 20%, #fff2df 0%, var(--board-cream) 75%); }
+  #announcement-toast .toast-kind {
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--gold-dark); font-weight: 900; margin-bottom: 4px;
+  }
+  #announcement-toast .toast-text { font-size: 15px; color: var(--ink); line-height: 1.4; }
+  #announcement-toast.fading { animation: toast-out .5s ease-in forwards; }
+  @keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(-16px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+  @keyframes toast-out { from { opacity: 1; } to { opacity: 0; transform: translateX(-50%) translateY(-10px); } }
+
+  /* ---- expanded log/chat window ---- */
+  #activity-modal-overlay { z-index: 1000; pointer-events: auto; }
+  #activity-modal-card {
+    width: min(900px, 94vw);
+    max-height: 86vh;
+    display: flex;
+    flex-direction: column;
+  }
+  #activity-modal-content {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  #expanded-log-box {
+    max-height: 62vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 4px;
+    font-size: 18px;
+    line-height: 1.55;
+    color: #3a3a2a;
+  }
+  #expanded-log-box .log-newest {
+    font-weight: 700;
+    background: rgba(201,162,39,.18);
+    padding: 9px 12px;
+    border-radius: var(--radius-sm);
+    box-shadow: inset 3px 0 0 var(--gold);
+  }
+  #expanded-chat-messages {
+    height: 54vh;
+    min-height: 280px;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-sm);
+    background: rgba(255,255,255,.42);
+  }
+  #expanded-chat-messages .chat-msg { font-size: 16px; line-height: 1.5; max-width: 88%; padding: 8px 11px; }
+  #expanded-chat-messages .chat-msg .who { font-size: 16px; }
+  #expanded-chat-input-row { display:flex; margin-top:10px; border:2px solid var(--hairline); border-radius:var(--radius-sm); overflow:hidden; }
+  #expanded-chat-input-row input { flex:1; border:0; border-radius:0; font-size:16px; padding:12px; background:rgba(255,255,255,.75); }
+  #expanded-chat-input-row button { border:0; border-radius:0; padding:12px 18px; }
+  .activity-modal-hint { font-size:12px; color:#5c5642; margin-top:8px; }
+
+  /* ---- chat panel ---- */
+  #chat-panel {
+    position: fixed; right: 16px; bottom: 16px; z-index: 950; pointer-events: auto;
+    font-family: 'Times New Roman', Times, serif;
+  }
+  #chat-toggle {
+    position: relative;
+    padding: 11px 18px; border-radius: 999px; font-size: 14px;
+    background: linear-gradient(160deg,var(--gold-light),var(--gold));
+    border-color: var(--gold-dark);
+    box-shadow: 0 8px 20px rgba(0,0,0,.4);
+  }
+  #chat-toggle:hover:not(:disabled) { background: linear-gradient(160deg,#f5ecc0,#dcb93a); }
+  #chat-unread-badge {
+    position: absolute; top: -7px; right: -7px; min-width: 20px; height: 20px;
+    padding: 0 5px; border-radius: 999px; background: #d33; color: #fff;
+    border: 2px solid var(--panel-bg); font: 900 12px/16px Arial, sans-serif;
+    display: inline-flex; align-items: center; justify-content: center;
+    box-sizing: border-box;
+  }
+  #chat-unread-badge.hidden { display:none; }
+  #chat-body {
+    position: absolute; right: 0; bottom: 58px;
+    width: 290px; max-width: 80vw;
+    background: var(--panel-bg); border: 2px solid var(--panel-border); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-pop);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    animation: modal-in .18s var(--ease);
+  }
+  #chat-messages {
+    max-height: 260px; overflow-y: auto; padding: 10px;
+    display: flex; flex-direction: column; gap: 7px;
+  }
+  .chat-msg {
+    font-size: 13px; line-height: 1.4;
+    background: rgba(0,0,0,.045); border-radius: var(--radius-sm);
+    padding: 6px 9px; align-self: flex-start; max-width: 92%;
+  }
+  .chat-msg.mine { align-self: flex-end; background: rgba(201,162,39,.16); }
+  .chat-msg .who { font-weight: 900; color: var(--gold-dark); }
+  .chat-msg.mine .who { color: var(--accent-red); }
+  .chat-input-row { display: flex; border-top: 2px solid var(--hairline); }
+  .chat-input-row input {
+    flex: 1; border: none; border-radius: 0; font-size: 13px; padding: 11px;
+    background: rgba(255,255,255,.65);
+  }
+  .chat-input-row button { border: none; border-radius: 0; font-size: 12px; padding: 11px 14px; box-shadow: none; }
+
+  /* ---- cheat panel ---- */
+  #cheat-panel {
+    position: fixed; left: 16px; bottom: 16px; z-index: 950; pointer-events: auto;
+    font-family: 'Times New Roman', Times, serif;
+  }
+  #cheat-toggle {
+    padding: 11px 18px; border-radius: 999px; font-size: 14px;
+    background: linear-gradient(160deg,#7a8f86,#3f5750);
+    border-color: #2c3e39; color: #eef5f1;
+    box-shadow: 0 8px 20px rgba(0,0,0,.4);
+  }
+  #cheat-toggle:hover:not(:disabled) { background: linear-gradient(160deg,#8fa89c,#4c685f); }
+  #cheat-body {
+    position: absolute; left: 0; bottom: 58px;
+    width: 320px; max-width: 84vw;
+    background: var(--panel-bg); border: 2px solid #3f5750; border-radius: var(--radius-md);
+    box-shadow: var(--shadow-pop);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    animation: modal-in .18s var(--ease);
+  }
+  #cheat-body-head {
+    font: 900 12px/1 'Times New Roman', serif; letter-spacing: .04em;
+    padding: 9px 11px; color: #eef5f1; background: linear-gradient(160deg,#4c685f,#2c3e39);
+  }
+  #cheat-log {
+    max-height: 200px; overflow-y: auto; padding: 9px;
+    display: flex; flex-direction: column; gap: 6px;
+    background: #16201c; font-family: 'Courier New', monospace;
+  }
+  .cheat-log-empty { color: #7f9d92; font-size: 11px; font-style: italic; }
+  .cheat-log-entry { font-size: 11.5px; line-height: 1.45; }
+  .cheat-log-entry .cheat-cmd { color: #9fe3c0; }
+  .cheat-log-entry .cheat-cmd::before { content: '> '; color: #5c8577; }
+  .cheat-log-entry .cheat-result { color: #d8e8e0; display: block; }
+  .cheat-log-entry.cheat-error .cheat-result { color: #ff9d8a; }
+  .cheat-input-row { display: flex; border-top: 2px solid #3f5750; }
+  .cheat-input-row input {
+    flex: 1; border: none; border-radius: 0; font-size: 13px; padding: 11px;
+    background: rgba(255,255,255,.65); font-family: 'Courier New', monospace;
+  }
+  .cheat-input-row button {
+    border: none; border-radius: 0; font-size: 12px; padding: 11px 14px; box-shadow: none;
+    background: linear-gradient(160deg,#8fa89c,#4c685f); color: #eef5f1;
+  }
+
+  @media (max-width: 900px) {
+    #game-shell { flex-direction: column; align-items: center; }
+    #hud { width: 100%; max-width: 480px; flex-basis: auto; }
+  }
+
+  /* =========================================================
+     CENTER-BOARD CARDS-MODE UI — replaces the decorative
+     MONOPOLY logo / Chance / Chest stacks with two live regions
+     while movement mode is "cards", instead of duplicating the
+     trick + hand + assignment UI down in the sidebar/HUD (which
+     is what used to happen, and pushed the important controls
+     off-screen on mobile). Red-bordered box on top = the trick
+     currently being played (one card per player). Black-bordered
+     box below = your hand to play from, or the movement
+     assignment/confirmation UI once a trick is won.
+     ========================================================= */
+  #center-card-ui{
+    position:absolute;
+    inset:5%;
+    z-index:3;
+    display:flex;
+    flex-direction:column;
+    gap:1.6vmin;
+  }
+  #center-trick-box, #center-hand-box{
+    background: rgba(247,243,233,.94);
+    border-radius: 10px;
+    box-shadow: 0 6px 16px rgba(0,0,0,.28);
+    display:flex; flex-direction:column; align-items:center;
+    padding: 1.4vmin 1.6vmin;
+  }
+  #center-trick-box{
+    flex: 0 0 32%;
+    border: 3px solid #d21017;
+    justify-content:center;
+  }
+  #center-hand-box{
+    flex: 1 1 auto;
+    border: 3px solid #000;
+    justify-content:flex-start;
+    overflow:auto;
+  }
+  .center-box-label{
+    font-size:1.5vmin; letter-spacing:2px; text-transform:uppercase; font-weight:900;
+    color: var(--gold-dark); margin-bottom: 1vmin; text-align:center;
+  }
+  #center-trick-cards, #center-hand-cards{
+    display:flex; flex-wrap:wrap; gap:1vmin; justify-content:center; align-items:flex-start; width:100%;
+  }
+  .center-trick-slot{ display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .center-trick-slot .ct-card{
+    width:9vmin; max-width:70px; aspect-ratio:0.7;
+    background: linear-gradient(160deg,#fff,#f3f0e6);
+    border:2px solid #000; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:2.3vmin; font-weight:900;
+    box-shadow: 0 3px 6px rgba(0,0,0,.3);
+  }
+  .center-trick-slot .ct-card.empty{ opacity:.35; font-weight:400; font-size:2vmin; }
+  .center-trick-slot.active-turn .ct-card{ border-color:var(--gold); box-shadow:0 0 10px rgba(201,162,39,.7); }
+  .center-trick-slot.winner .ct-card{ border-color:var(--gold); box-shadow:0 0 10px rgba(201,162,39,.8); transform:translateY(-2px); }
+  .center-trick-slot .ct-name{ font-size:1.15vmin; color:#333; text-align:center; }
+  .center-hand-card{
+    width:8vmin; max-width:60px; aspect-ratio:0.7;
+    background: linear-gradient(160deg,#fff,#f3f0e6);
+    border:2px solid #000; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:2vmin; font-weight:900;
+    box-shadow: 0 3px 6px rgba(0,0,0,.3);
+    transition: transform .12s var(--ease);
+  }
+  .center-hand-card:hover{ transform:translateY(-3px); }
+  #center-hand-box .msg{ font-size:1.35vmin; line-height:1.4; }
+  #center-hand-box .center-assign-wrap{ width:100%; }
+  #center-hand-box .center-assign-wrap .msg{ margin-bottom:1vmin; }
+  #center-hand-box .center-assign-wrap > div{ margin-bottom:1vmin; }
+  #center-hand-box .center-assign-wrap .row{ justify-content:center; }
+  #center-hand-box .center-assign-wrap button{ font-size:1.3vmin; padding:0.8vmin 1.2vmin; }
