@@ -5,7 +5,7 @@
 // how the game LOOKS or what buttons/UI show up.
 // =========================================================
 import {
-  SPACES, GROUPS, RAIL_IDXS, UTIL_IDXS, GROUP_HOUSE_COST, TOKEN_COLORS, priceOf,
+  SPACES, GROUPS, RAIL_IDXS, UTIL_IDXS, RAIL_RENTS, GROUP_HOUSE_COST, TOKEN_COLORS, priceOf,
 } from './board-data.js';
 import {
   ROOM, GAME, myId, room, connectedIds, isHost, isMyTurn, nameOf, labelFor,
@@ -778,6 +778,139 @@ export function addBtn(container, label, onClick) {
 export function getComputedGroupColor(group) {
   const map = { brown:'#7a4128', lightblue:'#8fd2f5', pink:'#c22384', orange:'#e87f0f', red:'#d21017', yellow:'#f0d800', green:'#149249', blue:'#00568f' };
   return map[group] || '#888';
+}
+
+// =========================================================
+// PROPERTY INFO MODAL — clicking a board cell for a colored
+// property, station, or utility opens this with reference info
+// (purchase price + full rent table). Colored properties show
+// every property in that color group side by side; stations and
+// utilities show only the one clicked. Purely informational —
+// doesn't touch GAME state.
+// =========================================================
+export function openPropertyInfoModal(idx) {
+  const space = SPACES[idx];
+  if (!space || (space.type !== 'property' && space.type !== 'rail' && space.type !== 'util')) return;
+
+  const overlay = document.getElementById('property-info-modal-overlay');
+  const title = document.getElementById('property-info-modal-title');
+  const content = document.getElementById('property-info-content');
+  content.innerHTML = '';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'prop-info-columns';
+
+  if (space.type === 'property') {
+    title.textContent = space.name + ' — Color Group';
+    GROUPS[space.group].forEach(gIdx => wrap.appendChild(buildPropertyInfoCol(gIdx)));
+  } else if (space.type === 'rail') {
+    title.textContent = space.name;
+    wrap.appendChild(buildRailInfoCol(idx));
+  } else {
+    title.textContent = space.name;
+    wrap.appendChild(buildUtilInfoCol(idx));
+  }
+
+  content.appendChild(wrap);
+  overlay.classList.remove('hidden');
+}
+
+function addRentRow(table, label, value, bold) {
+  const tr = document.createElement('tr');
+  if (bold) tr.style.fontWeight = '900';
+  const td1 = document.createElement('td');
+  td1.textContent = label;
+  const td2 = document.createElement('td');
+  td2.textContent = value;
+  tr.appendChild(td1); tr.appendChild(td2);
+  table.appendChild(tr);
+}
+
+function buildPropertyInfoCol(idx) {
+  const space = SPACES[idx];
+  const col = document.createElement('div');
+  col.className = 'prop-info-col';
+
+  const swatch = document.createElement('div');
+  swatch.className = 'prop-info-swatch';
+  swatch.style.background = getComputedGroupColor(space.group);
+  col.appendChild(swatch);
+
+  const name = document.createElement('div');
+  name.className = 'prop-info-name';
+  name.textContent = space.name;
+  col.appendChild(name);
+
+  const price = document.createElement('div');
+  price.className = 'prop-info-price';
+  price.textContent = 'Buy: Tk' + priceOf(idx);
+  col.appendChild(price);
+
+  const table = document.createElement('table');
+  table.className = 'rent-table';
+  addRentRow(table, 'Rent (no houses)', 'Tk' + space.rent[0], true);
+  addRentRow(table, 'With 1 house', 'Tk' + space.rent[1]);
+  addRentRow(table, 'With 2 houses', 'Tk' + space.rent[2]);
+  addRentRow(table, 'With 3 houses', 'Tk' + space.rent[3]);
+  addRentRow(table, 'With 4 houses', 'Tk' + space.rent[4]);
+  addRentRow(table, 'With hotel', 'Tk' + space.rent[5]);
+  col.appendChild(table);
+
+  const houseCost = document.createElement('div');
+  houseCost.className = 'prop-info-housecost';
+  houseCost.textContent = `House/hotel cost: Tk${GROUP_HOUSE_COST[space.group]} each`;
+  col.appendChild(houseCost);
+
+  return col;
+}
+
+function buildRailInfoCol(idx) {
+  const space = SPACES[idx];
+  const col = document.createElement('div');
+  col.className = 'prop-info-col';
+
+  const name = document.createElement('div');
+  name.className = 'prop-info-name';
+  name.textContent = space.name;
+  col.appendChild(name);
+
+  const price = document.createElement('div');
+  price.className = 'prop-info-price';
+  price.textContent = 'Buy: Tk' + priceOf(idx);
+  col.appendChild(price);
+
+  const table = document.createElement('table');
+  table.className = 'rent-table';
+  RAIL_RENTS.forEach((rent, i) => {
+    addRentRow(table, `${i + 1} station${i > 0 ? 's' : ''} owned`, 'Tk' + rent, i === 0);
+  });
+  col.appendChild(table);
+
+  return col;
+}
+
+function buildUtilInfoCol(idx) {
+  const space = SPACES[idx];
+  const col = document.createElement('div');
+  col.className = 'prop-info-col';
+
+  const name = document.createElement('div');
+  name.className = 'prop-info-name';
+  name.textContent = space.name;
+  col.appendChild(name);
+
+  const price = document.createElement('div');
+  price.className = 'prop-info-price';
+  price.textContent = 'Buy: Tk' + priceOf(idx);
+  col.appendChild(price);
+
+  const table = document.createElement('table');
+  table.className = 'rent-table';
+  addRentRow(table, '1 utility owned', '4x dice roll', true);
+  addRentRow(table, '2 utilities owned', '10x dice roll');
+  col.appendChild(table);
+
+  return col;
 }
 
 // =========================================================
