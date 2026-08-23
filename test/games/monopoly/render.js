@@ -20,6 +20,21 @@ import {
   gameShell, screenHome, screenLobby, closeTradeModal, scheduleAutoSavePrice,
 } from './main.js';
 
+// Builds a trick/pit card slot's contents (card face + player name) using
+// real DOM nodes instead of an HTML template string, so a player's display
+// name (labelFor) is always inserted as plain text and can never be parsed
+// as markup, no matter what characters it contains.
+function buildTrickSlotContent(cardText, cardColor, name) {
+  const card = document.createElement('div');
+  card.className = 'ct-card' + (cardText === '?' ? ' empty' : '');
+  if (cardColor) card.style.color = cardColor;
+  card.textContent = cardText;
+  const nameEl = document.createElement('div');
+  nameEl.className = 'ct-name';
+  nameEl.textContent = name;
+  return [card, nameEl];
+}
+
 // =========================================================
 // RENDER
 // =========================================================
@@ -116,12 +131,24 @@ export function renderAuctionUI() {
   // Turn order, with the active player highlighted and passed
   // players struck through — makes the rotation visible at a glance.
   const orderEl = document.getElementById('auction-modal-order');
-  orderEl.innerHTML = 'Order: ' + order.map(id => {
+  orderEl.textContent = '';
+  orderEl.append('Order: ');
+  order.forEach((id, i) => {
     const label = nameOf(id) + (id === myId ? ' (you)' : '');
-    if (passed[id]) return `<span style="text-decoration:line-through; opacity:.5;">${label}</span>`;
-    if (id === turnPlayerId) return `<strong>${label}</strong>`;
-    return label;
-  }).join(' → ');
+    let node;
+    if (passed[id]) {
+      node = document.createElement('span');
+      node.style.cssText = 'text-decoration:line-through; opacity:.5;';
+      node.textContent = label;
+    } else if (id === turnPlayerId) {
+      node = document.createElement('strong');
+      node.textContent = label;
+    } else {
+      node = document.createTextNode(label);
+    }
+    orderEl.appendChild(node);
+    if (i < order.length - 1) orderEl.append(' → ');
+  });
 
   const timerEl = document.getElementById('auction-modal-timer');
   timerEl.textContent = secondsLeft;
@@ -400,8 +427,13 @@ export function renderGame() {
 
   if (GAME.phase === 'gameover') {
     if (cardsMode && GAME.finalRanking) {
-      turnMsg.innerHTML = 'Game over! Final ranking (cash + property value):<br>' +
-        GAME.finalRanking.map((id, i) => `${i + 1}. ${labelFor(id)}${GAME.bankrupt[id] ? ' (bankrupt)' : ' — Tk' + computeNetWorth(GAME, id)}`).join('<br>');
+      turnMsg.textContent = '';
+      turnMsg.append('Game over! Final ranking (cash + property value):');
+      GAME.finalRanking.forEach((id, i) => {
+        turnMsg.appendChild(document.createElement('br'));
+        const line = `${i + 1}. ${labelFor(id)}${GAME.bankrupt[id] ? ' (bankrupt)' : ' — Tk' + computeNetWorth(GAME, id)}`;
+        turnMsg.append(line);
+      });
     } else {
       turnMsg.textContent = GAME.winnerId === myId ? 'You win! 🎉' : (GAME.winnerId ? 'Game over — you were eliminated.' : 'Game over.');
     }
@@ -594,10 +626,10 @@ export function renderCenterCardUI(cardsMode) {
       const isActive = id === GAME.trick.order[GAME.trick.turnIdx] && cardIdx === undefined;
       if (isActive) slot.classList.add('active-turn');
       if (cardIdx === undefined) {
-        slot.innerHTML = `<div class="ct-card empty">?</div><div class="ct-name">${labelFor(id)}</div>`;
+        slot.append(...buildTrickSlotContent('?', null, labelFor(id)));
       } else {
         const suit = cardSuit(cardIdx); const red = suit === 1 || suit === 2;
-        slot.innerHTML = `<div class="ct-card" style="color:${red ? '#c0392b' : '#1a1a1a'}">${cardLabel(cardIdx)}</div><div class="ct-name">${labelFor(id)}</div>`;
+        slot.append(...buildTrickSlotContent(cardLabel(cardIdx), red ? '#c0392b' : '#1a1a1a', labelFor(id)));
       }
       trickBox.appendChild(slot);
     });
@@ -608,7 +640,7 @@ export function renderCenterCardUI(cardsMode) {
       const isWinner = id === GAME.pit.winnerId;
       const slot = document.createElement('div');
       slot.className = 'center-trick-slot' + (isWinner ? ' winner' : '');
-      slot.innerHTML = `<div class="ct-card" style="color:${red ? '#c0392b' : '#1a1a1a'}">${cardLabel(cardIdx)}</div><div class="ct-name">${labelFor(id)}</div>`;
+      slot.append(...buildTrickSlotContent(cardLabel(cardIdx), red ? '#c0392b' : '#1a1a1a', labelFor(id)));
       trickBox.appendChild(slot);
     });
   } else {
