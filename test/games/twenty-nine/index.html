@@ -584,6 +584,10 @@ button:disabled{cursor:not-allowed}
 .ltview .ltk span{font-size:12px;color:var(--ink-soft);max-width:92px;text-align:center}
 .ltview .ltk.win .card{box-shadow:0 0 0 3px var(--thread),0 6px 16px rgba(0,0,0,.25)}
 .ltview .ltk.win span{color:var(--ink);font-weight:600}
+
+/* "(7th card)" under the hidden trump: everyone may know the 7th card is in play */
+.corner .cap em.seven{font-size:14px;color:var(--thread);margin-top:3px;white-space:nowrap}
+.facts dd b.seven{font-weight:600;color:var(--accent)}
 </style>
 </head>
 <body>
@@ -1882,7 +1886,8 @@ function renderCorner(){
     const shown = G.revealed && !ui.revealAnim;
     if (!shown){
       key = 'hidden';
-      html = '<div class="tface down" role="img" aria-label="Trump hidden"><span>?</span></div><div class="cap">Trump hidden</div>';
+      html = '<div class="tface down" role="img" aria-label="Trump hidden"><span>?</span></div>' +
+        '<div class="cap">Trump hidden' + (G.mode === MODE.SEVEN ? '<em class="seven">(7th card)</em>' : '') + '</div>';
     } else {
       key = 'shown';
       const active = G.trickNo > G.revealTrick || G.phase === 'end';
@@ -2147,7 +2152,7 @@ function trumpLine(){
       if (G.trumpSuit) return 'Hidden<small>Yours: ' + SUIT_NAME[G.trumpSuit] + ' ' + SYM[G.trumpSuit] + (G.mode === MODE.TREV ? ', trump reverse' : '') + '</small>';
       return 'Hidden<small>Yours: ' + MODE_LABEL[G.mode] + '</small>';
     }
-    return 'Hidden<small>Revealed when a player who can\u2019t follow suit asks.</small>';
+    return 'Hidden' + (G.mode === MODE.SEVEN ? ' <b class="seven">(7th card)</b>' : '') + '<small>Revealed when a player who can\u2019t follow suit asks.</small>';
   }
   if (G.contract === 'single'){
     const was = G.origTrump ? SUIT_NAME[G.origTrump] + ' ' + SYM[G.origTrump] : MODE_LABEL[G.origMode];
@@ -2602,7 +2607,7 @@ function viewFor(seat){
   });
   if (secret){
     v.trumpSuit = null;
-    if (v.mode) v.mode = 'hidden';
+    if (v.mode && v.mode !== MODE.SEVEN) v.mode = 'hidden';
     if (v.origTrump) v.origTrump = '?';
   }
   return v;
