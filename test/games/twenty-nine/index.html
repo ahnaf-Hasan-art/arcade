@@ -567,6 +567,23 @@ button:disabled{cursor:not-allowed}
 .chat-in input{flex:1;border:0;border-radius:0;background:var(--paper-2);font-size:14px}
 .chat-in button{border:0;border-radius:0}
 @media (max-width:960px){ #chat-panel{bottom:10px;right:10px} }
+
+/* the rank of the revealed 7th card, shown on the trump face */
+.tface .rk{position:absolute;left:7%;top:4%;font-family:var(--font-display);font-size:calc(var(--w) * .3);line-height:1}
+
+/* "Last trick" button and viewer */
+.ltbtn{
+  position:absolute;left:14px;bottom:14px;z-index:6;
+  background:rgba(8,12,34,.62);border:1px solid rgba(255,255,255,.22);color:var(--on-cloth);
+  border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;
+}
+.ltbtn:hover{background:rgba(8,12,34,.85)}
+@media (max-width:640px){ .ltbtn{left:8px;bottom:8px;padding:5px 10px;font-size:12px} }
+.ltview{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:14px 0 4px}
+.ltview .ltk{display:flex;flex-direction:column;align-items:center;gap:6px}
+.ltview .ltk span{font-size:12px;color:var(--ink-soft);max-width:92px;text-align:center}
+.ltview .ltk.win .card{box-shadow:0 0 0 3px var(--thread),0 6px 16px rgba(0,0,0,.25)}
+.ltview .ltk.win span{color:var(--ink);font-weight:600}
 </style>
 </head>
 <body>
@@ -656,6 +673,7 @@ button:disabled{cursor:not-allowed}
       <div class="seat s" id="seat0"></div>
       <div class="trick" id="trick" aria-live="polite"></div>
       <div class="center-note" id="centerNote"></div>
+      <button class="ltbtn hide" id="lastTrickBtn" data-act="lastTrick">Last trick</button>
     </div>
     <div class="actions" id="actions" aria-live="polite"></div>
     <div class="handwrap">
@@ -921,7 +939,7 @@ function finishTrick(){
   const pts = G.trick.reduce((a, x) => a + PTS[x.card.r], 0);
   G.points[teamOf(w)] += pts;
   G.tricksWon[teamOf(w)].push(G.trick.map(x => x.card));
-  G.trickHist.push({idx:G.trickNo, winner:w, pts, cards:G.trick.slice()});
+  G.trickHist.push({idx:G.trickNo, winner:w, pts, leader:G.leader, cards:G.trick.slice()});
   G.trickNo++;
   G.leader = w;
   G.mustTrump = -1;
@@ -1592,7 +1610,7 @@ function revealText(){
   if (G.contract === 'single') return 'No trump (Single Hand)';
   if (G.mode === MODE.AREV) return 'All reverse, no trump';
   if (G.mode === MODE.ALEAD) return 'All leading card, no trump';
-  return SUIT_NAME[G.trumpSuit] + ' ' + SYM[G.trumpSuit] + (G.mode === MODE.TREV ? ', trump reverse' : '') + (G.mode === MODE.SEVEN ? ' (7th card)' : '');
+  return SUIT_NAME[G.trumpSuit] + ' ' + SYM[G.trumpSuit] + (G.mode === MODE.TREV ? ', trump reverse' : '') + (G.mode === MODE.SEVEN && G.trumpCard ? ' (7th card: ' + cardName(G.trumpCard) + ')' : G.mode === MODE.SEVEN ? ' (7th card)' : '');
 }
 async function endRound(){
   G.phase = 'end'; G.turn = -1;
@@ -1637,7 +1655,7 @@ async function endRound(){
 /* ================= interface ================= */
 const ui = {bidVal:16, trumpMode:null, trumpSuit:null, rules:false,
   handSeen:new Set(), saidSeen:['','','',''], callSeen:['','','',''], cache:{}, revealAnim:false, cornerKey:'', lastScore:[0,0], lastPts:[0,0],
-  marriageAnim:false, confirmSurrender:false, bumpPts:[false,false], promptId:0, dealNo:-1, lastPlayRect:null};
+  marriageAnim:false, confirmSurrender:false, bumpPts:[false,false], promptId:0, dealNo:-1, lastPlayRect:null, lastTrick:false};
 
 /* ----- per-screen view helpers ----- */
 let pending = null;              // this screen's open question: {id, kind, data}
@@ -1672,7 +1690,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 function uiRoundReset(){
   if (TEST) return;
   ui.handSeen.clear(); ui.saidSeen = ['','','','']; ui.callSeen = ['','','','']; ui.revealAnim = false;
-  ui.marriageAnim = false; ui.confirmSurrender = false;
+  ui.marriageAnim = false; ui.confirmSurrender = false; ui.lastTrick = false;
   ui.lastPts = [0,0];
 }
 function setHTML(el, html){
@@ -1851,6 +1869,7 @@ function trumpFaceHTML(){
       '<span class="sym">' + SYM[G.trumpSuit] + '</span>' +
       (G.mode === MODE.TREV ? '<span class="rv" title="Reversed">⇅</span>' : '') +
       (G.mode === MODE.SEVEN ? '<span class="tag">7th</span>' : '') +
+      (G.mode === MODE.SEVEN && G.trumpCard ? '<span class="rk">' + G.trumpCard.r + '</span>' : '') +
       (G.marriage && !ui.marriageAnim ? '<span class="kq" title="Marriage">K Q</span>' : '') + '</div>';
   }
   const arrows = G.mode === MODE.AREV ? '⇅' : '↑';
@@ -1869,7 +1888,7 @@ function renderCorner(){
       const active = G.trickNo > G.revealTrick || G.phase === 'end';
       let cap;
       if (G.mode === MODE.SUIT) cap = SUIT_NAME[G.trumpSuit] + '<small>Trump</small>';
-      else if (G.mode === MODE.SEVEN) cap = SUIT_NAME[G.trumpSuit] + '<small>Trump from 7th card</small>';
+      else if (G.mode === MODE.SEVEN) cap = SUIT_NAME[G.trumpSuit] + '<small>Trump from 7th card' + (G.trumpCard ? ': ' + G.trumpCard.r + ' ' + SYM[G.trumpCard.s] : '') + '</small>';
       else if (G.mode === MODE.TREV) cap = SUIT_NAME[G.trumpSuit] + '<small>' + (active ? 'Trump reversed, 7 high' : 'Trump, reversed from next trick') + '</small>';
       else if (G.mode === MODE.AREV) cap = 'No trump<small>' + (active ? 'All suits 7 high' : 'Reversed from next trick') + '</small>';
       else cap = 'No trump<small>' + (G.contract === 'single' ? 'Single Hand: led suit wins' : 'Led suit wins') + '</small>';
@@ -1915,6 +1934,8 @@ function renderLocal(){
     if (pending.kind === 'trump'){ ui.trumpMode = null; ui.trumpSuit = null; }
     if (pending.kind !== 'surrender' && pending.kind !== 'play') ui.confirmSurrender = false;
   }
+  if (pending && ['next', 'over', 'redeal', 'surrender'].includes(pending.kind)) ui.lastTrick = false;
+  if (!G.trickHist.length) ui.lastTrick = false;
   ui.bumpPts = [0,1].map(t => G.points[t] !== ui.lastPts[t] && !reduceMotion());
   ui.lastPts = G.points.slice();
   renderTop();
@@ -1925,6 +1946,7 @@ function renderLocal(){
   renderActions();
   renderHand();
   renderPanel();
+  renderLastTrickBtn();
   renderLog();
   renderSheet();
 }
@@ -2132,6 +2154,7 @@ function trumpLine(){
     return 'None, Single Hand<small>The highest card of the led suit wins. The earlier choice (' + (G.bidder === HUMAN || G.origTrump === null ? was : 'hidden') + ') no longer counts.</small>';
   }
   let sub = 'Revealed in trick ' + (G.revealTrick + 1) + ' by ' + NAMES[G.revealedBy] + '.';
+  if (G.mode === MODE.SEVEN && G.trumpCard) sub += ' The 7th card was the ' + cardName(G.trumpCard) + '.';
   if (G.mode === MODE.TREV || G.mode === MODE.AREV){
     sub += G.trickNo > G.revealTrick ? ' Reversed ranking is on.' : ' Reversed ranking starts next trick.';
   }
@@ -2169,6 +2192,23 @@ function renderPanel(){
     (needTxt ? '<p class="need">' + needTxt + '</p>' : '') +
     (lt ? '<div class="lasttrick">' + lt.cards.map(x => cardHTML(x.card)).join('') + '<p>Last trick: ' + NAMES[lt.winner] + '</p></div>' : ''));
 }
+// the previous completed trick stays available all through the current one
+function lastTrickHTML(){
+  const lt = G.trickHist[G.trickHist.length - 1];
+  if (!lt) return '';
+  const cards = lt.cards.map(x => '<div class="ltk' + (x.seat === lt.winner ? ' win' : '') + '">' +
+    cardHTML(x.card) + '<span>' + NAMES[x.seat] + (x.seat === lt.leader ? ' (led)' : '') + '</span></div>').join('');
+  return '<h2>Last trick</h2>' +
+    '<p class="need">Trick ' + (lt.idx + 1) + ' of 8, in play order.' + (G.trick.length ? ' Trick ' + (G.trickNo + 1) + ' is under way.' : '') + '</p>' +
+    '<div class="ltview">' + cards + '</div>' +
+    '<p class="need">' + loc(says(lt.winner, 'took', 'took')) + ' it' + (lt.pts ? ' for ' + lt.pts + ' point' + (lt.pts === 1 ? '' : 's') : ' with no points') + '.</p>' +
+    '<div class="foot"><button class="primary" data-act="closeLastTrick">Close</button></div>';
+}
+function renderLastTrickBtn(){
+  const b = $('#lastTrickBtn');
+  if (!b) return;
+  b.classList.toggle('hide', !(G.phase === 'play' && G.trickHist.length));
+}
 function renderLog(){
   if (TEST || !G) return;
   const el = $('#log');
@@ -2185,7 +2225,9 @@ function renderSheet(){
     ? '<div class="foot"><p class="need waitline">Waiting for ' + esc(rw.waiting.map(s => NAMES[s]).join(', ') || 'the table') + '\u2026</p></div>'
     : '<div class="foot"><button class="primary" data-act="' + act + '">' + label + '</button></div>';
   let h = '';
-  if (ui.rules){
+  if (ui.lastTrick){
+    h = lastTrickHTML();
+  } else if (ui.rules){
     h = rulesHTML() + '<div class="foot"><button class="primary" data-act="close">Close</button></div>';
   } else if (k === 'surrender'){
     const d = pending.data, bt = teamOf(G.bidder);
@@ -2322,6 +2364,8 @@ if (!TEST){
       case 'continue': if (k === 'next' || k === 'redeal' || k === 'over') answer(true); break;
       case 'new': NET.restart && NET.restart(); break;
       case 'rules': ui.rules = true; render(); break;
+      case 'lastTrick': ui.lastTrick = true; render(); break;
+      case 'closeLastTrick': ui.lastTrick = false; render(); break;
       case 'close': ui.rules = false; render(); break;
       case 'surrender':
         if (HUMAN >= 0 && G.phase === 'play' && !G.surrender && G.surrenderReq < 0){ ui.confirmSurrender = true; render(); }
@@ -2341,7 +2385,7 @@ if (!TEST){
     }
   });
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && G && (ui.rules || ui.confirmSurrender)){ ui.rules = false; ui.confirmSurrender = false; render(); }
+    if (e.key === 'Escape' && G && (ui.rules || ui.confirmSurrender || ui.lastTrick)){ ui.rules = false; ui.confirmSurrender = false; ui.lastTrick = false; render(); }
   });
 }
 </script>
@@ -2552,7 +2596,8 @@ function viewFor(seat){
     deck:[], dealt:[], leftover:[], played:null, aiEst:null,
     hands:g.hands.map((h, s) => s === seat ? h : h.map(() => null)),
     hidden:bidderSees ? g.hidden : null,
-    trumpCard:bidderSees ? g.trumpCard : null,
+    // the 7th card is the bidder's secret until trump is revealed, then everyone sees which card it was
+    trumpCard:(bidderSees || g.revealed || g.phase === 'end') ? g.trumpCard : null,
     log:g.log.filter(e => (e.only === undefined || e.only === seat) && e.except !== seat).slice(-60)
   });
   if (secret){
